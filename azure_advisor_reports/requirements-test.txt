@@ -1,0 +1,72 @@
+# Testing Dependencies for Azure Advisor Reports Platform
+# Version pinning follows project standards from CLAUDE.md
+
+# Core testing framework
+pytest==7.4.2
+pytest-django==4.5.2
+pytest-cov==4.1.0
+pytest-xdist==3.3.1  # Parallel test execution
+pytest-mock==3.11.1
+pytest-benchmark==4.0.0  # Performance testing
+
+# Test data generation
+factory-boy==3.3.0
+faker==19.6.2
+model-bakery==1.12.0  # Alternative to factory-boy
+
+# API testing
+pytest-httpx==0.21.3
+requests-mock==1.11.0
+
+# Celery testing
+pytest-celery==0.0.0a1
+celery[pytest]==5.3.4
+
+# Azure testing
+azure-devtools==1.2.0
+azure-mgmt-core==1.4.0
+
+# Database testing
+pytest-postgresql==5.0.0  # For integration tests
+pytest-redis==3.0.2
+
+# Security testing
+bandit==1.7.5
+safety==2.3.5
+semgrep==1.45.0
+
+# Performance testing
+locust==2.17.0
+memory-profiler==0.61.0
+line-profiler==4.1.1
+
+# Code quality
+black==23.9.1
+isort==5.12.0
+flake8==6.1.0
+pylint==2.17.5
+mypy==1.6.1
+
+# Coverage reporting
+coverage==7.3.2
+diff-cover==7.7.0
+
+# Snapshot testing
+syrupy==4.6.0
+
+# Time/datetime testing
+freezegun==1.2.2
+time-machine==2.13.0
+
+# Environment testing
+pytest-env==1.1.0
+python-dotenv==1.0.0
+
+# HTML parsing for integration tests
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Mock external services
+responses==0.23.3
+httpretty==1.1.4
+vcrpy==5.1.0  # Record/replay HTTP interactions

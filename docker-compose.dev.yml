@@ -1,0 +1,280 @@
+# Docker Compose development override
+# This file extends docker-compose.yml for development-specific settings
+#
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ================================
+  # PostgreSQL - Development Settings
+  # ================================
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      # More permissive settings for development
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      # Add development-specific init scripts
+      - ./scripts/postgres/dev-init.sql:/docker-entrypoint-initdb.d/dev-init.sql:ro
+      # Map data volume for persistence
+      - postgres_dev_data:/var/lib/postgresql/data
+    command: |
+      postgres
+      -c log_statement=all
+      -c log_destination=stderr
+      -c logging_collector=on
+      -c log_directory=/var/log/postgresql
+      -c log_filename=postgresql-%Y-%m-%d.log
+      -c log_rotation_age=1d
+      -c log_rotation_size=100MB
+
+  # ================================
+  # Redis - Development Settings
+  # ================================
+  redis:
+    ports:
+      - "6379:6379"
+    command: |
+      redis-server
+      --appendonly yes
+      --requirepass ""
+      --loglevel verbose
+      --logfile /var/log/redis/redis.log
+    volumes:
+      - redis_dev_data:/data
+
+  # ================================
+  # Backend - Development Settings
+  # ================================
+  backend:
+    build:
+      context: ./azure_advisor_reports
+      dockerfile: Dockerfile
+      target: development  # Use development stage
+    environment:
+      # Development-specific environment variables
+      - DEBUG=True
+      - DJANGO_ENVIRONMENT=development
+      - DJANGO_SETTINGS_MODULE=azure_advisor_reports.settings.development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - CORS_ALLOW_ALL_ORIGINS=True
+      # Enable development tools
+      - ENABLE_DEBUG_TOOLBAR=True
+      - ENABLE_DJANGO_EXTENSIONS=True
+    volumes:
+      # Mount source code for hot reloading
+      - ./azure_advisor_reports:/app
+      - ./logs:/app/logs
+      - media_dev_data:/app/media
+      - static_dev_data:/app/staticfiles
+    ports:
+      - "8000:8000"
+      - "8001:8001"  # For debugging
+    command: |
+      sh -c "
+        echo 'Waiting for database...';
+        python manage.py wait_for_db;
+        echo 'Running migrations...';
+        python manage.py migrate;
+        echo 'Collecting static files...';
+        python manage.py collectstatic --noinput;
+        echo 'Creating superuser if needed...';
+        python manage.py shell -c \"
+        from django.contrib.auth import get_user_model;
+        User = get_user_model();
+        if not User.objects.filter(is_superuser=True).exists():
+            User.objects.create_superuser('admin', 'admin@example.com', 'admin123');
+            print('Superuser created: admin/admin123');
+        else:
+            print('Superuser already exists');
+        \";
+        echo 'Starting development server...';
+        python manage.py runserver 0.0.0.0:8000 --settings=azure_advisor_reports.settings.development;
+      "
+
+  # ================================
+  # Celery Worker - Development Settings
+  # ================================
+  celery-worker:
+    build:
+      context: ./azure_advisor_reports
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - DEBUG=True
+      - DJANGO_ENVIRONMENT=development
+      - DJANGO_SETTINGS_MODULE=azure_advisor_reports.settings.development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./azure_advisor_reports:/app
+      - ./logs:/app/logs
+      - media_dev_data:/app/media
+    command: |
+      sh -c "
+        echo 'Waiting for services...';
+        python manage.py wait_for_db;
+        echo 'Starting Celery worker...';
+        celery -A azure_advisor_reports worker -l debug --concurrency=2;
+      "
+
+  # ================================
+  # Celery Beat - Development Settings
+  # ================================
+  celery-beat:
+    build:
+      context: ./azure_advisor_reports
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - DEBUG=True
+      - DJANGO_ENVIRONMENT=development
+      - DJANGO_SETTINGS_MODULE=azure_advisor_reports.settings.development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./azure_advisor_reports:/app
+      - ./logs:/app/logs
+    command: |
+      sh -c "
+        echo 'Waiting for services...';
+        python manage.py wait_for_db;
+        echo 'Starting Celery beat...';
+        celery -A azure_advisor_reports beat -l debug --scheduler django_celery_beat.schedulers:DatabaseScheduler;
+      "
+
+  # ================================
+  # Frontend - Development Settings
+  # ================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development  # Use development stage
+    environment:
+      # Development-specific environment variables
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - REACT_APP_AZURE_CLIENT_ID=dev-client-id-placeholder
+      - REACT_APP_AZURE_TENANT_ID=dev-tenant-id-placeholder
+      - REACT_APP_AZURE_REDIRECT_URI=http://localhost:3000
+      - REACT_APP_ENABLE_DEV_TOOLS=true
+      - REACT_APP_ENABLE_REACT_QUERY_DEVTOOLS=true
+      - CHOKIDAR_USEPOLLING=true  # For Windows file watching
+      - FAST_REFRESH=true
+    volumes:
+      # Mount source code for hot reloading
+      - ./frontend:/app
+      - frontend_dev_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+    command: |
+      sh -c "
+        echo 'Installing dependencies...';
+        npm install;
+        echo 'Starting development server...';
+        npm start;
+      "
+
+  # ================================
+  # Development Tools
+  # ================================
+
+  # Mailcatcher for email testing
+  mailcatcher:
+    image: sj26/mailcatcher:latest
+    container_name: azure-advisor-mailcatcher
+    ports:
+      - "1080:1080"  # Web interface
+      - "1025:1025"  # SMTP server
+    networks:
+      - azure-advisor-network
+
+  # Adminer for database management
+  adminer:
+    image: adminer:4.8.1
+    container_name: azure-advisor-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - azure-advisor-network
+    depends_on:
+      - postgres
+
+  # Flower for Celery monitoring
+  flower:
+    build:
+      context: ./azure_advisor_reports
+      dockerfile: Dockerfile
+      target: development
+    container_name: azure-advisor-flower
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    networks:
+      - azure-advisor-network
+    depends_on:
+      - redis
+    command: |
+      sh -c "
+        echo 'Starting Flower monitoring...';
+        celery -A azure_advisor_reports flower --port=5555 --broker=redis://redis:6379/0;
+      "
+
+  # Nginx for local SSL (optional)
+  nginx-dev:
+    image: nginx:1.24-alpine
+    container_name: azure-advisor-nginx-dev
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./scripts/nginx/dev.conf:/etc/nginx/nginx.conf:ro
+      - ./scripts/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - azure-advisor-network
+    depends_on:
+      - backend
+      - frontend
+    profiles:
+      - ssl  # Only start with: docker-compose --profile ssl up
+
+# ================================
+# Development Volumes
+# ================================
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  media_dev_data:
+    driver: local
+  static_dev_data:
+    driver: local
+  frontend_dev_node_modules:
+    driver: local
+
+# ================================
+# Development Networks
+# ================================
+networks:
+  azure-advisor-network:
+    driver: bridge
+    name: azure-advisor-dev-network

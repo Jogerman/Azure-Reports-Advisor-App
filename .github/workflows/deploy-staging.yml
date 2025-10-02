@@ -1,0 +1,372 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME_BACKEND: azure-advisor-backend-staging
+  AZURE_WEBAPP_NAME_FRONTEND: azure-advisor-frontend-staging
+  RESOURCE_GROUP: rg-azure-advisor-staging
+
+jobs:
+  # ================================
+  # Staging Deployment Preparation
+  # ================================
+  prepare-deployment:
+    name: Prepare Staging Deployment
+    runs-on: ubuntu-latest
+
+    outputs:
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+
+    steps:
+    - name: Create deployment
+      id: deployment
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const deployment = await github.rest.repos.createDeployment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: context.sha,
+            environment: 'staging',
+            description: 'Staging deployment',
+            auto_merge: false
+          });
+          core.setOutput('deployment_id', deployment.data.id);
+
+  # ================================
+  # Build and Test
+  # ================================
+  build-and-test:
+    name: Build and Test for Staging
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    # Backend tests
+    - name: Install backend dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r azure_advisor_reports/requirements.txt
+
+    - name: Run backend tests
+      working-directory: ./azure_advisor_reports
+      env:
+        SECRET_KEY: test-secret-key
+        DATABASE_URL: sqlite:///test.db
+        REDIS_URL: redis://localhost:6379/0
+      run: |
+        python manage.py test --keepdb
+
+    # Frontend tests and build
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm test -- --watchAll=false
+
+    - name: Build frontend for staging
+      working-directory: ./frontend
+      env:
+        REACT_APP_API_URL: https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1
+        REACT_APP_AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_STAGING }}
+        REACT_APP_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        REACT_APP_AZURE_REDIRECT_URI: https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net
+        CI: false
+      run: npm run build
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+        retention-days: 1
+
+  # ================================
+  # Deploy Backend to Azure
+  # ================================
+  deploy-backend:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, build-and-test]
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r azure_advisor_reports/requirements.txt
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+    - name: Configure App Settings
+      uses: azure/appservice-settings@v1
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_BACKEND }}
+        app-settings-json: |
+          [
+            {
+              "name": "SECRET_KEY",
+              "value": "${{ secrets.DJANGO_SECRET_KEY_STAGING }}"
+            },
+            {
+              "name": "DEBUG",
+              "value": "False"
+            },
+            {
+              "name": "DJANGO_ENVIRONMENT",
+              "value": "staging"
+            },
+            {
+              "name": "DATABASE_URL",
+              "value": "${{ secrets.DATABASE_URL_STAGING }}"
+            },
+            {
+              "name": "REDIS_URL",
+              "value": "${{ secrets.REDIS_URL_STAGING }}"
+            },
+            {
+              "name": "AZURE_CLIENT_ID",
+              "value": "${{ secrets.AZURE_CLIENT_ID_STAGING }}"
+            },
+            {
+              "name": "AZURE_CLIENT_SECRET",
+              "value": "${{ secrets.AZURE_CLIENT_SECRET_STAGING }}"
+            },
+            {
+              "name": "AZURE_TENANT_ID",
+              "value": "${{ secrets.AZURE_TENANT_ID }}"
+            },
+            {
+              "name": "AZURE_STORAGE_CONNECTION_STRING",
+              "value": "${{ secrets.AZURE_STORAGE_CONNECTION_STRING_STAGING }}"
+            },
+            {
+              "name": "CORS_ALLOWED_ORIGINS",
+              "value": "https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net"
+            },
+            {
+              "name": "ALLOWED_HOSTS",
+              "value": "${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net"
+            }
+          ]
+
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_BACKEND }}
+        package: ./azure_advisor_reports
+
+    - name: Run Database Migrations
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          az webapp ssh --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} --resource-group ${{ env.RESOURCE_GROUP }} --command "cd /home/site/wwwroot && python manage.py migrate --no-input"
+
+    - name: Collect Static Files
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          az webapp ssh --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} --resource-group ${{ env.RESOURCE_GROUP }} --command "cd /home/site/wwwroot && python manage.py collectstatic --no-input"
+
+  # ================================
+  # Deploy Frontend to Azure
+  # ================================
+  deploy-frontend:
+    name: Deploy Frontend to Staging
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, build-and-test]
+    environment: staging
+
+    steps:
+    - name: Download frontend build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: ./build
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_FRONTEND }}
+        package: ./build
+
+  # ================================
+  # Health Checks and Smoke Tests
+  # ================================
+  verify-deployment:
+    name: Verify Staging Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+
+    steps:
+    - name: Wait for services to be ready
+      run: sleep 60
+
+    - name: Health check - Backend
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/health/)
+        if [ $response -eq 200 ]; then
+          echo "✅ Backend health check passed"
+        else
+          echo "❌ Backend health check failed with status: $response"
+          exit 1
+        fi
+
+    - name: Health check - Frontend
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net/)
+        if [ $response -eq 200 ]; then
+          echo "✅ Frontend health check passed"
+        else
+          echo "❌ Frontend health check failed with status: $response"
+          exit 1
+        fi
+
+    - name: API smoke test
+      run: |
+        # Test that API endpoints are accessible
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1/clients/ \
+          -H "Accept: application/json" || (echo "❌ API smoke test failed" && exit 1)
+        echo "✅ API smoke test passed"
+
+  # ================================
+  # Deployment Status Update
+  # ================================
+  update-deployment-status:
+    name: Update Deployment Status
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, verify-deployment]
+    if: always()
+
+    steps:
+    - name: Update deployment status (success)
+      if: needs.verify-deployment.result == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: ${{ needs.prepare-deployment.outputs.deployment_id }},
+            state: 'success',
+            environment_url: 'https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net',
+            description: 'Deployment to staging succeeded'
+          });
+
+    - name: Update deployment status (failure)
+      if: needs.verify-deployment.result == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: ${{ needs.prepare-deployment.outputs.deployment_id }},
+            state: 'failure',
+            description: 'Deployment to staging failed'
+          });
+
+  # ================================
+  # Notifications
+  # ================================
+  notify-deployment:
+    name: Notify Deployment Result
+    runs-on: ubuntu-latest
+    needs: [verify-deployment]
+    if: always()
+
+    steps:
+    - name: Notify success
+      if: needs.verify-deployment.result == 'success'
+      run: |
+        echo "🚀 Staging deployment successful!"
+        echo "Backend: https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net"
+        echo "Frontend: https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net"
+
+    - name: Notify failure
+      if: needs.verify-deployment.result == 'failure'
+      run: |
+        echo "❌ Staging deployment failed!"
+        exit 1
+
+    # Optional: Slack/Teams notification
+    # - name: Slack Notification
+    #   uses: 8398a7/action-slack@v3
+    #   if: always()
+    #   with:
+    #     status: ${{ job.status }}
+    #     fields: repo,message,commit,author,action,eventName,ref,workflow
+    #     webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ================================
+  # Rollback on Failure
+  # ================================
+  rollback-on-failure:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [verify-deployment]
+    if: failure()
+
+    steps:
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+    - name: Rollback backend deployment
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Rolling back backend to previous version..."
+          az webapp deployment slot swap --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging --target-slot production
+
+    - name: Rollback frontend deployment
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Rolling back frontend to previous version..."
+          az webapp deployment slot swap --name ${{ env.AZURE_WEBAPP_NAME_FRONTEND }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging --target-slot production
+
+    - name: Verify rollback
+      run: |
+        sleep 30
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/health/ || exit 1
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net/ || exit 1
+        echo "✅ Rollback completed successfully"

@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Select-Object Name, Status)",
+      "Bash(powershell:*)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker run:*)",
+      "Bash(cat:*)",
+      "Bash(docker-compose:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(PORT=3001 npm start)",
+      "Bash(PORT=3002 npm start)",
+      "Bash(wmic process where processid=461124 delete:*)",
+      "Bash(PORT=3000 npm start)",
+      "Bash(docker exec:*)",
+      "Bash(/bashes)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(python manage.py:*)",
+      "Bash(dir:*)",
+      "Bash(./venv/Scripts/python.exe -m pytest apps/authentication/tests/test_models.py::TestUserModel::test_user_creation -v --no-cov)",
+      "Bash(python:*)",
+      "Bash(npm run build:*)",
+      "Bash(docker:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

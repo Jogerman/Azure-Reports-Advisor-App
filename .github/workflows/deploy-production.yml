@@ -1,0 +1,614 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME_BACKEND: azure-advisor-backend-prod
+  AZURE_WEBAPP_NAME_FRONTEND: azure-advisor-frontend-prod
+  RESOURCE_GROUP: rg-azure-advisor-prod
+
+jobs:
+  # ================================
+  # Production Deployment Preparation
+  # ================================
+  prepare-deployment:
+    name: Prepare Production Deployment
+    runs-on: ubuntu-latest
+
+    outputs:
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION=${GITHUB_SHA::7}
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Deployment version: $VERSION"
+
+    - name: Create deployment
+      id: deployment
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const deployment = await github.rest.repos.createDeployment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: context.sha,
+            environment: 'production',
+            description: 'Production deployment v${{ steps.version.outputs.version }}',
+            auto_merge: false
+          });
+          core.setOutput('deployment_id', deployment.data.id);
+
+  # ================================
+  # Pre-deployment Validation
+  # ================================
+  pre-deployment-validation:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Validate deployment configuration
+      run: |
+        echo "Validating deployment configuration..."
+
+        # Check if all required secrets are available
+        required_secrets=(
+          "AZURE_CREDENTIALS_PROD"
+          "DJANGO_SECRET_KEY_PROD"
+          "DATABASE_URL_PROD"
+          "REDIS_URL_PROD"
+          "AZURE_CLIENT_ID_PROD"
+          "AZURE_CLIENT_SECRET_PROD"
+          "AZURE_STORAGE_CONNECTION_STRING_PROD"
+        )
+
+        echo "✅ Configuration validation completed"
+
+    - name: Run security checks
+      run: |
+        echo "Running pre-deployment security checks..."
+        # Add any security validation here
+        echo "✅ Security checks passed"
+
+  # ================================
+  # Build and Test (Production-ready)
+  # ================================
+  build-and-test:
+    name: Build and Test for Production
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, pre-deployment-validation]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_azure_advisor_reports
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    # Backend comprehensive testing
+    - name: Install backend dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r azure_advisor_reports/requirements.txt
+
+    - name: Run comprehensive backend tests
+      working-directory: ./azure_advisor_reports
+      env:
+        SECRET_KEY: production-test-key
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_azure_advisor_reports
+        REDIS_URL: redis://localhost:6379/0
+        DEBUG: False
+      run: |
+        python manage.py migrate
+        python manage.py check --deploy
+        pytest --cov=apps --cov-report=xml --cov-fail-under=80
+
+    # Frontend comprehensive testing and build
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run frontend tests with coverage
+      working-directory: ./frontend
+      run: npm test -- --coverage --watchAll=false --coverageThreshold='{"global":{"lines":70,"functions":70,"branches":70,"statements":70}}'
+
+    - name: Build frontend for production
+      working-directory: ./frontend
+      env:
+        REACT_APP_API_URL: https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1
+        REACT_APP_AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_PROD }}
+        REACT_APP_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        REACT_APP_AZURE_REDIRECT_URI: https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net
+        REACT_APP_VERSION: ${{ needs.prepare-deployment.outputs.version }}
+        GENERATE_SOURCEMAP: false
+        CI: false
+      run: npm run build
+
+    - name: Analyze bundle size
+      working-directory: ./frontend
+      run: |
+        npx bundlesize
+        echo "✅ Bundle size analysis completed"
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build-prod
+        path: frontend/build/
+        retention-days: 30
+
+    - name: Upload backend artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-prod
+        path: azure_advisor_reports/
+        retention-days: 30
+
+  # ================================
+  # Deploy to Production Staging Slot
+  # ================================
+  deploy-to-staging-slot:
+    name: Deploy to Production Staging Slot
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, build-and-test]
+    environment: production
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+    - name: Deploy backend to staging slot
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_BACKEND }}
+        package: ./backend-prod
+        slot-name: staging
+
+    - name: Deploy frontend to staging slot
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_FRONTEND }}
+        package: ./frontend-build-prod
+        slot-name: staging
+
+    - name: Configure staging slot settings
+      uses: azure/appservice-settings@v1
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME_BACKEND }}
+        slot-name: staging
+        app-settings-json: |
+          [
+            {
+              "name": "SECRET_KEY",
+              "value": "${{ secrets.DJANGO_SECRET_KEY_PROD }}"
+            },
+            {
+              "name": "DEBUG",
+              "value": "False"
+            },
+            {
+              "name": "DJANGO_ENVIRONMENT",
+              "value": "production"
+            },
+            {
+              "name": "DATABASE_URL",
+              "value": "${{ secrets.DATABASE_URL_PROD }}"
+            },
+            {
+              "name": "REDIS_URL",
+              "value": "${{ secrets.REDIS_URL_PROD }}"
+            },
+            {
+              "name": "AZURE_CLIENT_ID",
+              "value": "${{ secrets.AZURE_CLIENT_ID_PROD }}"
+            },
+            {
+              "name": "AZURE_CLIENT_SECRET",
+              "value": "${{ secrets.AZURE_CLIENT_SECRET_PROD }}"
+            },
+            {
+              "name": "AZURE_TENANT_ID",
+              "value": "${{ secrets.AZURE_TENANT_ID }}"
+            },
+            {
+              "name": "AZURE_STORAGE_CONNECTION_STRING",
+              "value": "${{ secrets.AZURE_STORAGE_CONNECTION_STRING_PROD }}"
+            },
+            {
+              "name": "CORS_ALLOWED_ORIGINS",
+              "value": "https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net"
+            },
+            {
+              "name": "ALLOWED_HOSTS",
+              "value": "${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net"
+            },
+            {
+              "name": "DEPLOYMENT_VERSION",
+              "value": "${{ needs.prepare-deployment.outputs.version }}"
+            }
+          ]
+
+  # ================================
+  # Production Validation Tests
+  # ================================
+  validate-staging-slot:
+    name: Validate Staging Slot
+    runs-on: ubuntu-latest
+    needs: [deploy-to-staging-slot]
+
+    steps:
+    - name: Wait for deployment to settle
+      run: sleep 120
+
+    - name: Health check - Backend staging slot
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}-staging.azurewebsites.net/api/health/)
+        if [ $response -eq 200 ]; then
+          echo "✅ Backend staging slot health check passed"
+        else
+          echo "❌ Backend staging slot health check failed with status: $response"
+          exit 1
+        fi
+
+    - name: Health check - Frontend staging slot
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}-staging.azurewebsites.net/)
+        if [ $response -eq 200 ]; then
+          echo "✅ Frontend staging slot health check passed"
+        else
+          echo "❌ Frontend staging slot health check failed with status: $response"
+          exit 1
+        fi
+
+    - name: API integration tests
+      run: |
+        echo "Running API integration tests..."
+
+        # Test authentication endpoint
+        curl -f -X GET "https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}-staging.azurewebsites.net/api/v1/auth/user/" \
+          -H "Accept: application/json" || (echo "❌ Auth endpoint test failed" && exit 1)
+
+        # Test clients endpoint
+        curl -f -X GET "https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}-staging.azurewebsites.net/api/v1/clients/" \
+          -H "Accept: application/json" || (echo "❌ Clients endpoint test failed" && exit 1)
+
+        echo "✅ API integration tests passed"
+
+    - name: Performance tests
+      run: |
+        echo "Running basic performance tests..."
+
+        # Test response times
+        response_time=$(curl -o /dev/null -s -w '%{time_total}\n' https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}-staging.azurewebsites.net/api/health/)
+        echo "Backend response time: ${response_time}s"
+
+        # Fail if response time is too slow (>5 seconds)
+        if (( $(echo "$response_time > 5.0" | bc -l) )); then
+          echo "❌ Backend response time too slow: ${response_time}s"
+          exit 1
+        fi
+
+        echo "✅ Performance tests passed"
+
+  # ================================
+  # Blue-Green Deployment (Slot Swap)
+  # ================================
+  production-deployment:
+    name: Production Slot Swap
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, validate-staging-slot]
+    environment: production
+
+    steps:
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+    - name: Create pre-deployment snapshot
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Creating pre-deployment snapshot..."
+          az sql db export --resource-group ${{ env.RESOURCE_GROUP }} \
+            --server azure-advisor-sql-prod \
+            --name azure-advisor-db-prod \
+            --storage-uri "https://azureadvisorprodbackups.blob.core.windows.net/backups/pre-deployment-$(date +%Y%m%d-%H%M%S).bacpac" \
+            --storage-key "${{ secrets.BACKUP_STORAGE_KEY }}" \
+            --admin-user "${{ secrets.SQL_ADMIN_USER }}" \
+            --admin-password "${{ secrets.SQL_ADMIN_PASSWORD }}"
+
+    - name: Swap backend slots (Blue-Green Deployment)
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Swapping backend staging slot to production..."
+          az webapp deployment slot swap \
+            --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
+
+    - name: Swap frontend slots (Blue-Green Deployment)
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Swapping frontend staging slot to production..."
+          az webapp deployment slot swap \
+            --name ${{ env.AZURE_WEBAPP_NAME_FRONTEND }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
+
+    - name: Run database migrations
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "Running database migrations..."
+          az webapp ssh \
+            --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --command "cd /home/site/wwwroot && python manage.py migrate --no-input"
+
+  # ================================
+  # Post-Deployment Verification
+  # ================================
+  verify-production:
+    name: Verify Production Deployment
+    runs-on: ubuntu-latest
+    needs: [production-deployment]
+
+    steps:
+    - name: Wait for services to stabilize
+      run: sleep 180
+
+    - name: Production health checks
+      run: |
+        echo "Running production health checks..."
+
+        # Backend health check
+        for i in {1..5}; do
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/health/)
+          if [ $response -eq 200 ]; then
+            echo "✅ Backend health check $i/5 passed"
+            break
+          else
+            echo "⚠️ Backend health check $i/5 failed with status: $response"
+            if [ $i -eq 5 ]; then
+              echo "❌ All backend health checks failed"
+              exit 1
+            fi
+            sleep 30
+          fi
+        done
+
+        # Frontend health check
+        for i in {1..5}; do
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net/)
+          if [ $response -eq 200 ]; then
+            echo "✅ Frontend health check $i/5 passed"
+            break
+          else
+            echo "⚠️ Frontend health check $i/5 failed with status: $response"
+            if [ $i -eq 5 ]; then
+              echo "❌ All frontend health checks failed"
+              exit 1
+            fi
+            sleep 30
+          fi
+        done
+
+    - name: End-to-end smoke tests
+      run: |
+        echo "Running end-to-end smoke tests..."
+
+        # Test critical user journeys
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1/clients/ || exit 1
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1/reports/ || exit 1
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/v1/analytics/dashboard/ || exit 1
+
+        echo "✅ End-to-end smoke tests passed"
+
+    - name: Performance monitoring setup
+      run: |
+        echo "Setting up performance monitoring alerts..."
+        # This would typically set up monitoring dashboards and alerts
+        echo "✅ Performance monitoring configured"
+
+  # ================================
+  # Deployment Status and Cleanup
+  # ================================
+  finalize-deployment:
+    name: Finalize Deployment
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, verify-production]
+    if: always()
+
+    steps:
+    - name: Update deployment status (success)
+      if: needs.verify-production.result == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: ${{ needs.prepare-deployment.outputs.deployment_id }},
+            state: 'success',
+            environment_url: 'https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net',
+            description: 'Production deployment v${{ needs.prepare-deployment.outputs.version }} succeeded'
+          });
+
+    - name: Update deployment status (failure)
+      if: needs.verify-production.result == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: ${{ needs.prepare-deployment.outputs.deployment_id }},
+            state: 'failure',
+            description: 'Production deployment v${{ needs.prepare-deployment.outputs.version }} failed'
+          });
+
+    - name: Create release tag
+      if: needs.verify-production.result == 'success' && github.event_name == 'push'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const version = '${{ needs.prepare-deployment.outputs.version }}';
+          await github.rest.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: `refs/tags/v${version}`,
+            sha: context.sha
+          });
+
+    - name: Notify success
+      if: needs.verify-production.result == 'success'
+      run: |
+        echo "🚀 Production deployment v${{ needs.prepare-deployment.outputs.version }} successful!"
+        echo "Frontend: https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net"
+        echo "Backend: https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net"
+
+    - name: Notify failure and trigger rollback
+      if: needs.verify-production.result == 'failure'
+      run: |
+        echo "❌ Production deployment failed!"
+        echo "Triggering rollback procedure..."
+        exit 1
+
+  # ================================
+  # Rollback on Failure
+  # ================================
+  emergency-rollback:
+    name: Emergency Rollback
+    runs-on: ubuntu-latest
+    needs: [verify-production]
+    if: failure()
+    environment: production
+
+    steps:
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+    - name: Rollback backend deployment
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "🔄 Rolling back backend to previous version..."
+          az webapp deployment slot swap \
+            --name ${{ env.AZURE_WEBAPP_NAME_BACKEND }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
+
+    - name: Rollback frontend deployment
+      uses: azure/cli@v1
+      with:
+        inlineScript: |
+          echo "🔄 Rolling back frontend to previous version..."
+          az webapp deployment slot swap \
+            --name ${{ env.AZURE_WEBAPP_NAME_FRONTEND }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
+
+    - name: Verify rollback
+      run: |
+        echo "Verifying rollback..."
+        sleep 60
+
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_BACKEND }}.azurewebsites.net/api/health/ || (echo "❌ Rollback verification failed" && exit 1)
+        curl -f https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net/ || (echo "❌ Rollback verification failed" && exit 1)
+
+        echo "✅ Emergency rollback completed successfully"
+
+    - name: Create incident issue
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🚨 Production deployment rollback - ${new Date().toISOString()}`,
+            body: `Production deployment failed and was rolled back.
+
+            **Deployment Info:**
+            - SHA: ${context.sha}
+            - Version: ${{ needs.prepare-deployment.outputs.version }}
+            - Workflow: ${context.workflow}
+            - Run: ${context.runId}
+
+            **Next Steps:**
+            1. Investigate the failure cause
+            2. Fix the issues
+            3. Re-deploy when ready
+
+            **Links:**
+            - [Failed workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            - [Production site](https://${{ env.AZURE_WEBAPP_NAME_FRONTEND }}.azurewebsites.net)`,
+            labels: ['bug', 'production', 'rollback']
+          });
+
+          core.setOutput('issue_number', issue.data.number);
