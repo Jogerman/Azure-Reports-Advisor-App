@@ -27,12 +27,12 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # API routes
-    path('api/', include(router.urls)),
-    path('api/auth/', include('apps.authentication.urls')),
-    path('api/clients/', include('apps.clients.urls')),
-    path('api/reports/', include('apps.reports.urls')),
-    path('api/analytics/', include('apps.analytics.urls')),
+    # API v1 routes
+    path('api/v1/', include(router.urls)),
+    path('api/v1/auth/', include('apps.authentication.urls')),
+    path('api/v1/clients/', include('apps.clients.urls')),
+    path('api/v1/reports/', include('apps.reports.urls')),
+    path('api/v1/analytics/', include('apps.analytics.urls')),
 
     # Health check endpoint
     path('health/', include('apps.core.urls')),

@@ -60,13 +60,16 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
         repeat: Infinity,
         ease: 'linear',
       }}
+      role="status"
+      aria-busy="true"
+      aria-label="Loading"
     />
   );
 };
 
 // Composite skeleton components for common patterns
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
+  <div className={`bg-white rounded-lg shadow p-6 ${className}`} role="status" aria-busy="true" aria-label="Loading card">
     <div className="space-y-4">
       <SkeletonLoader variant="text" width="60%" />
       <SkeletonLoader variant="text" width="100%" />
@@ -82,7 +85,7 @@ export const SkeletonTable: React.FC<{ rows?: number; className?: string }> = ({
   rows = 5,
   className = '',
 }) => (
-  <div className={`space-y-3 ${className}`}>
+  <div className={`space-y-3 ${className}`} role="status" aria-busy="true" aria-label="Loading table">
     <div className="flex space-x-4">
       {[1, 2, 3, 4].map((i) => (
         <SkeletonLoader key={i} variant="text" width="25%" />
@@ -102,7 +105,7 @@ export const SkeletonList: React.FC<{ items?: number; className?: string }> = ({
   items = 5,
   className = '',
 }) => (
-  <div className={`space-y-4 ${className}`}>
+  <div className={`space-y-4 ${className}`} role="status" aria-busy="true" aria-label="Loading list">
     {Array.from({ length: items }).map((_, i) => (
       <div key={i} className="flex items-center space-x-4">
         <SkeletonLoader variant="circular" />

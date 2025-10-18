@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiSearch, FiFilter, FiEdit2, FiTrash2, FiFileText } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiFilter, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { clientService, Client, ClientListParams } from '../services';
 import { Button, Card, LoadingSpinner, Modal, ConfirmDialog, showToast } from '../components/common';
 import ClientForm from '../components/clients/ClientForm';

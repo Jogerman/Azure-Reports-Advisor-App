@@ -27,8 +27,8 @@ const Button: React.FC<ButtonProps> = ({
 
   const variantStyles: Record<ButtonVariant, string> = {
     primary: 'bg-azure-600 text-white hover:bg-azure-700 focus:ring-azure-500 shadow-sm hover:shadow-md',
-    secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 shadow-sm hover:shadow-md',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md',
+    secondary: 'bg-info-600 text-white hover:bg-info-700 focus:ring-info-500 shadow-sm hover:shadow-md',
+    danger: 'bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500 shadow-sm hover:shadow-md',
     outline: 'bg-transparent border-2 border-azure-600 text-azure-600 hover:bg-azure-50 focus:ring-azure-500',
     ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
   };

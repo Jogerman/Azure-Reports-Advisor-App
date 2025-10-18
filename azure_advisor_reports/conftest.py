@@ -1,110 +1,72 @@
 """
-Global pytest configuration and fixtures for Azure Advisor Reports Platform
-Provides shared test utilities, fixtures, and configuration across all test modules
+Root conftest.py for pytest configuration and shared fixtures.
+
+This file provides common fixtures that can be used across all test modules.
 """
 
-import os
-import tempfile
 import pytest
-import uuid
-from pathlib import Path
+import os
+import sys
 from decimal import Decimal
-from unittest.mock import Mock, patch
-from io import StringIO
+from datetime import datetime, date, timedelta
 
-# Configure Django settings before any Django imports
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "azure_advisor_reports.settings.testing")
 
+# ============================================================================
+# Django Configuration (MUST BE FIRST - Before any Django imports)
+# ============================================================================
+
+# Ensure the project root is in the path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Set Django settings module for pytest-django
+# Use root settings.py (not settings package) for testing as it has proper test configuration
+os.environ['DJANGO_SETTINGS_MODULE'] = 'azure_advisor_reports.settings'
+
+# Import Django and setup immediately
+# This runs during conftest import, before test collection
 import django
-try:
-    from django.apps import apps
-    if not apps.ready:
-        django.setup()
-except:
+from django.apps import apps
+from django.conf import settings
+
+# Check if Django is already configured
+if not apps.ready:
     django.setup()
 
-import pandas as pd
-from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
-from rest_framework.test import APIClient
-
-# Test data imports will be done lazily to avoid circular imports
-User = get_user_model()
-
-# Lazy load factories to avoid import errors
-def get_factories():
-    """Lazy load factories to avoid issues during conftest loading."""
-    try:
-        from tests.factories import (
-            UserFactory,
-            ClientFactory,
-            ReportFactory,
-            RecommendationFactory,
-        )
-        return UserFactory, ClientFactory, ReportFactory, RecommendationFactory
-    except ImportError:
-        return None, None, None, None
 
 # ============================================================================
-# PYTEST CONFIGURATION
+# Pytest Configuration
 # ============================================================================
-
-def pytest_configure(config):
-    """Configure pytest with custom markers and settings."""
-    pass
-
-
-def pytest_collection_modifyitems(config, items):
-    """Automatically mark tests based on file location and naming patterns."""
-    for item in items:
-        # Mark integration tests
-        if "integration" in str(item.fspath):
-            item.add_marker(pytest.mark.integration)
-
-        # Mark API tests
-        if "test_api" in item.name or "test_views" in item.name:
-            item.add_marker(pytest.mark.api)
-
-        # Mark slow tests
-        if "test_large" in item.name or "test_performance" in item.name:
-            item.add_marker(pytest.mark.slow)
-
-        # Mark Celery tests
-        if "test_task" in item.name or "celery" in str(item.fspath):
-            item.add_marker(pytest.mark.celery)
-
-        # Mark CSV processing tests
-        if "csv" in item.name.lower() or "csv" in str(item.fspath):
-            item.add_marker(pytest.mark.csv)
-
-        # Mark report generation tests
-        if "report" in item.name.lower() and "test_report" in item.name:
-            item.add_marker(pytest.mark.report)
+# Note: pytest-django will automatically configure Django using the
+# DJANGO_SETTINGS_MODULE defined in pytest.ini
 
 
 # ============================================================================
-# DATABASE AND DJANGO FIXTURES
+# Database and Django Settings
 # ============================================================================
 
-@pytest.fixture(scope="session")
-def django_db_setup():
-    """Setup test database configuration."""
-    pass
+@pytest.fixture(scope='session')
+def django_db_setup(django_db_setup, django_db_blocker):
+    """
+    Set up the test database with any required initial data.
+    """
+    with django_db_blocker.unblock():
+        pass  # Add any session-level data here if needed
 
+
+# ============================================================================
+# User Fixtures
+# ============================================================================
 
 @pytest.fixture
-def transactional_db(db):
-    """Provide transactional database access for tests that need it."""
-    return db
-
-
-@pytest.fixture
-def user(db):
-    """Create a test user."""
+def test_user(db):
+    """Create a test user with analyst role."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     return User.objects.create_user(
-        username='testuser',
         email='testuser@example.com',
+        username='testuser',
         password='testpass123',
         first_name='Test',
         last_name='User',
@@ -113,51 +75,47 @@ def user(db):
 
 
 @pytest.fixture
-def admin_user(db):
-    """Create an admin user."""
-    return User.objects.create_superuser(
-        username='admin',
+def test_admin_user(db):
+    """Create a test admin user."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(
         email='admin@example.com',
-        password='testpass123',
+        username='admin',
+        password='adminpass123',
         first_name='Admin',
         last_name='User',
-        role='admin'
+        role='admin',
+        is_staff=True,
+        is_superuser=True
     )
 
 
 @pytest.fixture
-def manager_user(db):
-    """Create a manager user."""
+def test_manager_user(db):
+    """Create a test manager user."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     return User.objects.create_user(
-        username='manager',
         email='manager@example.com',
-        password='testpass123',
+        username='manager',
+        password='managerpass123',
         first_name='Manager',
         last_name='User',
-        role='manager'
+        role='manager',
+        is_staff=True
     )
 
 
 @pytest.fixture
-def analyst_user(db):
-    """Create an analyst user."""
+def test_viewer_user(db):
+    """Create a test viewer user (read-only)."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     return User.objects.create_user(
-        username='analyst',
-        email='analyst@example.com',
-        password='testpass123',
-        first_name='Analyst',
-        last_name='User',
-        role='analyst'
-    )
-
-
-@pytest.fixture
-def viewer_user(db):
-    """Create a viewer user."""
-    return User.objects.create_user(
-        username='viewer',
         email='viewer@example.com',
-        password='testpass123',
+        username='viewer',
+        password='viewerpass123',
         first_name='Viewer',
         last_name='User',
         role='viewer'
@@ -165,539 +123,413 @@ def viewer_user(db):
 
 
 # ============================================================================
-# API CLIENT FIXTURES
+# Client Fixtures
 # ============================================================================
 
 @pytest.fixture
-def api_client():
-    """Create an API client for testing."""
-    return APIClient()
-
-
-@pytest.fixture
-def authenticated_client(user):
-    """Create an authenticated API client."""
-    client = APIClient()
-    # Use JWT authentication instead of RefreshToken
-    import jwt
-    from datetime import datetime, timedelta
-    from django.conf import settings
-
-    payload = {
-        'user_id': str(user.id),
-        'email': user.email,
-        'role': user.role,
-        'exp': datetime.utcnow() + timedelta(hours=1),
-        'iat': datetime.utcnow(),
-        'type': 'access'
-    }
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-    return client
-
-
-@pytest.fixture
-def admin_client(admin_user):
-    """Create an admin authenticated API client."""
-    client = APIClient()
-    # Use JWT authentication instead of RefreshToken
-    import jwt
-    from datetime import datetime, timedelta
-    from django.conf import settings
-
-    payload = {
-        'user_id': str(admin_user.id),
-        'email': admin_user.email,
-        'role': admin_user.role,
-        'exp': datetime.utcnow() + timedelta(hours=1),
-        'iat': datetime.utcnow(),
-        'type': 'access'
-    }
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
-    return client
-
-
-# ============================================================================
-# MODEL FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def client_model():
-    """Create a test client."""
-    return ClientFactory()
-
-
-@pytest.fixture
-def multiple_clients():
-    """Create multiple test clients."""
-    return ClientFactory.create_batch(5)
-
-
-@pytest.fixture
-def report(client_model, user):
-    """Create a test report."""
-    return ReportFactory(client=client_model, created_by=user)
-
-
-@pytest.fixture
-def completed_report(client_model, user):
-    """Create a completed test report with recommendations."""
-    report = ReportFactory(
-        client=client_model,
-        created_by=user,
-        status="completed",
-        analysis_data={
-            "total_recommendations": 25,
-            "category_distribution": {
-                "Cost": 10,
-                "Security": 8,
-                "Reliability": 4,
-                "OperationalExcellence": 3
-            },
-            "estimated_monthly_savings": "1250.00",
-            "advisor_score": 85
-        }
+def test_client_obj(db):
+    """Create an active test client (renamed to avoid conflict with api_client)."""
+    from apps.clients.models import Client
+    return Client.objects.create(
+        company_name="Test Company Inc.",
+        industry="Technology",
+        contact_email="contact@testcompany.com",
+        contact_phone="+1-555-0100",
+        azure_subscription_ids=["sub-123-456", "sub-789-012"],
+        status='active',
+        notes="Test client for unit testing"
     )
-    # Create recommendations for the report
-    RecommendationFactory.create_batch(25, report=report)
+
+
+@pytest.fixture
+def test_client_inactive(db):
+    """Create an inactive test client."""
+    from apps.clients.models import Client
+    return Client.objects.create(
+        company_name="Inactive Company",
+        industry="Healthcare",
+        contact_email="contact@inactive.com",
+        contact_phone="+1-555-0200",
+        status='inactive'
+    )
+
+
+@pytest.fixture
+def test_client_healthcare(db):
+    """Create a healthcare industry client."""
+    from apps.clients.models import Client
+    return Client.objects.create(
+        company_name="Healthcare Corp",
+        industry="Healthcare",
+        contact_email="contact@healthcarecorp.com",
+        contact_phone="+1-555-0300",
+        azure_subscription_ids=["sub-health-001"],
+        status='active',
+        notes="Healthcare industry test client"
+    )
+
+
+# ============================================================================
+# Report Fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_report(db, test_client_obj, test_user):
+    """Create a test report with pending status."""
+    from apps.reports.models import Report
+    return Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='detailed',
+        status='pending',
+        title="Test Detailed Report"
+    )
+
+
+@pytest.fixture
+def test_report_executive(db, test_client_obj, test_user):
+    """Create an executive summary report."""
+    from apps.reports.models import Report
+    return Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='executive',
+        status='pending',
+        title="Test Executive Summary"
+    )
+
+
+@pytest.fixture
+def test_report_cost(db, test_client_obj, test_user):
+    """Create a cost optimization report."""
+    from apps.reports.models import Report
+    return Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='cost',
+        status='pending',
+        title="Test Cost Optimization Report"
+    )
+
+
+@pytest.fixture
+def test_report_with_csv(db, test_client_obj, test_user):
+    """Create a test report with CSV file uploaded."""
+    from apps.reports.models import Report
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from django.utils import timezone
+
+    csv_content = b"""Category,Business Impact,Recommendation,Resource Name,Potential Annual Cost Savings,Currency
+Cost,High,Reduce VM size,vm-test-01,1200.00,USD
+Security,High,Enable MFA,security-policy,0.00,USD
+"""
+    csv_file = SimpleUploadedFile("test.csv", csv_content, content_type="text/csv")
+
+    return Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='detailed',
+        status='uploaded',
+        csv_file=csv_file,
+        csv_uploaded_at=timezone.now(),
+        title="Test Report with CSV"
+    )
+
+
+@pytest.fixture
+def test_report_processing(db, test_client_obj, test_user):
+    """Create a test report in processing status."""
+    from apps.reports.models import Report
+    report = Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='executive',
+        status='processing',
+        title="Test Processing Report"
+    )
+    report.start_processing()
     return report
 
 
 @pytest.fixture
-def recommendations(report):
-    """Create test recommendations."""
-    return RecommendationFactory.create_batch(10, report=report)
-
-
-# ============================================================================
-# FILE FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def temp_media_root():
-    """Create temporary media root for file testing."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        with override_settings(MEDIA_ROOT=temp_dir):
-            yield temp_dir
-
-
-@pytest.fixture
-def sample_csv_data():
-    """Generate sample Azure Advisor CSV data."""
-    import random
-    return pd.DataFrame({
-        "Category": ["Cost", "Security", "Reliability", "OperationalExcellence"] * 5,
-        "Business Impact": ["High", "Medium", "Low"] * 7,  # 21 items, need only 20
-        "Recommendation": [f"Recommendation {i}" for i in range(20)],
-        "Subscription ID": [str(uuid.uuid4()) for _ in range(20)],
-        "Subscription Name": [f"Subscription {i}" for i in range(20)],
-        "Resource Group": [f"rg-test-{i}" for i in range(20)],
-        "Resource Name": [f"resource-{i}" for i in range(20)],
-        "Resource Type": ["Virtual Machine", "Storage Account", "SQL Database", "App Service"] * 5,
-        "Potential Annual Cost Savings (USD)": [round(random.uniform(100, 5000), 2) for _ in range(20)],
-        "Currency": ["USD"] * 20,
-        "Potential Benefits": [f"Benefits description {i}" for i in range(20)],
-        "Retirement Date": [None] * 20,
-        "Retiring Feature": [None] * 20,
-    })[:20]  # Take only first 20 rows
-
-
-@pytest.fixture
-def sample_csv_file(sample_csv_data):
-    """Create a sample CSV file for testing."""
-    csv_content = sample_csv_data.to_csv(index=False)
-    return SimpleUploadedFile(
-        "test_advisor_data.csv",
-        csv_content.encode("utf-8"),
-        content_type="text/csv"
-    )
-
-
-@pytest.fixture
-def large_csv_file():
-    """Create a large CSV file for performance testing."""
-    import random
-    # Generate 1000 recommendations for performance testing
-    data = pd.DataFrame({
-        "Category": ["Cost", "Security", "Reliability", "OperationalExcellence"] * 250,
-        "Business Impact": ["High", "Medium", "Low"] * 334,  # Cycle through values
-        "Recommendation": [f"Large dataset recommendation {i}" for i in range(1000)],
-        "Subscription ID": [str(uuid.uuid4()) for _ in range(1000)],
-        "Subscription Name": [f"Subscription {i}" for i in range(1000)],
-        "Resource Group": [f"rg-large-{i}" for i in range(1000)],
-        "Resource Name": [f"resource-large-{i}" for i in range(1000)],
-        "Resource Type": ["Virtual Machine", "Storage Account", "SQL Database", "App Service"] * 250,
-        "Potential Annual Cost Savings (USD)": [round(random.uniform(100, 5000), 2) for _ in range(1000)],
-        "Currency": ["USD"] * 1000,
-        "Potential Benefits": [f"Benefits for large dataset {i}" for i in range(1000)],
-        "Retirement Date": [None] * 1000,
-        "Retiring Feature": [None] * 1000,
-    })[:1000]
-
-    csv_content = data.to_csv(index=False)
-    return SimpleUploadedFile(
-        "large_advisor_data.csv",
-        csv_content.encode("utf-8"),
-        content_type="text/csv"
-    )
-
-
-@pytest.fixture
-def invalid_csv_file():
-    """Create an invalid CSV file for testing error handling."""
-    invalid_content = "Invalid,CSV,Header\nMissing,Required,Columns"
-    return SimpleUploadedFile(
-        "invalid.csv",
-        invalid_content.encode("utf-8"),
-        content_type="text/csv"
-    )
-
-
-@pytest.fixture
-def empty_csv_file():
-    """Create an empty CSV file for testing."""
-    return SimpleUploadedFile(
-        "empty.csv",
-        b"",
-        content_type="text/csv"
-    )
-
-
-@pytest.fixture
-def malformed_csv_file():
-    """Create a malformed CSV file for testing."""
-    malformed_content = 'Category,Business Impact\n"Unclosed quote,High\nNo closing quote'
-    return SimpleUploadedFile(
-        "malformed.csv",
-        malformed_content.encode("utf-8"),
-        content_type="text/csv"
-    )
-
-
-# ============================================================================
-# MOCK FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def mock_azure_auth():
-    """Mock Azure AD authentication."""
-    with patch("apps.authentication.services.AzureADService") as mock:
-        mock_instance = Mock()
-        mock_instance.validate_token.return_value = {
-            "sub": "test-user-id",
-            "email": "test@example.com",
-            "name": "Test User",
-            "roles": ["User"]
+def test_report_completed(db, test_client_obj, test_user):
+    """Create a completed test report with analysis data."""
+    from apps.reports.models import Report
+    report = Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='cost',
+        status='completed',
+        title="Test Completed Report",
+        analysis_data={
+            'total_recommendations': 25,
+            'category_distribution': {
+                'cost': 10,
+                'security': 8,
+                'reliability': 5,
+                'performance': 2
+            },
+            'business_impact_distribution': {
+                'high': 8,
+                'medium': 12,
+                'low': 5
+            },
+            'total_potential_savings': 15000.00,
+            'average_potential_savings': 600.00,
+            'estimated_monthly_savings': 1250.00
         }
-        mock.return_value = mock_instance
-        yield mock_instance
+    )
+    report.start_processing()
+    report.complete_processing()
+    return report
 
 
 @pytest.fixture
-def azure_token_mock():
-    """Mock Azure AD access token."""
-    return "mock_azure_ad_access_token_" + "x" * 100
+def test_report_failed(db, test_client_obj, test_user):
+    """Create a failed test report with error message."""
+    from apps.reports.models import Report
+    report = Report.objects.create(
+        client=test_client_obj,
+        created_by=test_user,
+        report_type='security',
+        status='failed',
+        error_message="CSV parsing error: Invalid format",
+        retry_count=1
+    )
+    return report
+
+
+# ============================================================================
+# Recommendation Fixtures
+# ============================================================================
+
+@pytest.fixture
+def test_recommendation(db, test_report):
+    """Create a single test recommendation."""
+    from apps.reports.models import Recommendation
+    return Recommendation.objects.create(
+        report=test_report,
+        category='cost',
+        business_impact='high',
+        recommendation='Reduce VM size from Standard_D4 to Standard_D2',
+        subscription_id='sub-123-456',
+        subscription_name='Production Subscription',
+        resource_group='rg-production',
+        resource_name='vm-web-01',
+        resource_type='Microsoft.Compute/virtualMachines',
+        potential_savings=Decimal('1200.00'),
+        currency='USD',
+        potential_benefits='Save 50% on compute costs',
+        advisor_score_impact=Decimal('10.00'),
+        csv_row_number=2
+    )
 
 
 @pytest.fixture
-def azure_user_info():
-    """Mock Azure AD user information."""
-    return {
-        'id': 'azure-object-id-12345',
-        'mail': 'testuser@example.com',
-        'userPrincipalName': 'testuser@example.com',
-        'givenName': 'Test',
-        'surname': 'User',
-        'jobTitle': 'Software Engineer',
-        'department': 'Engineering',
-        'mobilePhone': '+1234567890',
-        'displayName': 'Test User'
-    }
+def test_recommendations_bulk(db, test_report):
+    """Create 20 test recommendations for a report."""
+    from apps.reports.models import Recommendation
+    recommendations = []
+
+    categories = ['cost', 'security', 'reliability', 'operational_excellence', 'performance']
+    impacts = ['high', 'medium', 'low']
+
+    for i in range(20):
+        category = categories[i % len(categories)]
+        impact = impacts[i % len(impacts)]
+
+        rec = Recommendation(
+            report=test_report,
+            category=category,
+            business_impact=impact,
+            recommendation=f'Test recommendation {i+1}: Optimize {category} for better performance',
+            subscription_id=f'sub-{1000+i}',
+            subscription_name=f'Test Subscription {i%3 + 1}',
+            resource_group=f'rg-test-{i%5 + 1}',
+            resource_name=f'test-resource-{i+1}',
+            resource_type='Microsoft.Compute/virtualMachines',
+            potential_savings=Decimal(str(100.00 * (i + 1))),
+            currency='USD',
+            potential_benefits=f'Save costs and improve {category}',
+            advisor_score_impact=Decimal(str(5.00 + (i % 10))),
+            csv_row_number=i + 2
+        )
+        recommendations.append(rec)
+
+    return Recommendation.objects.bulk_create(recommendations)
+
+
+# ============================================================================
+# API Client Fixtures
+# ============================================================================
+
+@pytest.fixture
+def api_client():
+    """Return Django REST framework API client."""
+    from rest_framework.test import APIClient
+    return APIClient()
 
 
 @pytest.fixture
-def mock_azure_ad_service(azure_user_info):
-    """Mock AzureADService for testing without actual Azure AD calls."""
-    with patch('apps.authentication.services.AzureADService') as mock_service:
-        instance = mock_service.return_value
-        instance.validate_token.return_value = (True, azure_user_info)
-        instance.create_or_update_user.return_value = None  # Will be set in tests
-        yield instance
+def authenticated_api_client(api_client, test_user):
+    """Return authenticated API client with analyst user."""
+    api_client.force_authenticate(user=test_user)
+    return api_client
 
 
 @pytest.fixture
-def mock_graph_api_success(azure_user_info):
-    """Mock successful Microsoft Graph API response."""
-    with patch('requests.get') as mock_get:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = azure_user_info
-        mock_get.return_value = mock_response
-        yield mock_get
+def admin_api_client(api_client, test_admin_user):
+    """Return authenticated API client with admin user."""
+    api_client.force_authenticate(user=test_admin_user)
+    return api_client
 
 
 @pytest.fixture
-def mock_graph_api_failure():
-    """Mock failed Microsoft Graph API response."""
-    with patch('requests.get') as mock_get:
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {'error': 'Unauthorized'}
-        mock_get.return_value = mock_response
-        yield mock_get
+def manager_api_client(api_client, test_manager_user):
+    """Return authenticated API client with manager user."""
+    api_client.force_authenticate(user=test_manager_user)
+    return api_client
 
 
 @pytest.fixture
-def jwt_access_token(user):
-    """Generate a valid JWT access token for testing."""
-    import jwt
-    from datetime import datetime, timedelta
-    from django.conf import settings
+def viewer_api_client(api_client, test_viewer_user):
+    """Return authenticated API client with viewer user."""
+    api_client.force_authenticate(user=test_viewer_user)
+    return api_client
 
-    payload = {
-        'user_id': str(user.id),
-        'email': user.email,
-        'role': user.role,
-        'exp': datetime.utcnow() + timedelta(hours=1),
-        'iat': datetime.utcnow(),
-        'type': 'access'
-    }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+
+# ============================================================================
+# CSV File Fixtures
+# ============================================================================
+
+@pytest.fixture
+def sample_csv_valid():
+    """Return valid CSV content for testing."""
+    return """Category,Recommendation,Impact,Business Impact,Resource Name,Resource Type,Resource Group,Subscription ID,Subscription Name,Potential Annual Cost Savings,Currency,Potential Benefits,Advisor Score Impact
+Cost,Right-size underutilized virtual machines,High,High,vm-prod-01,Microsoft.Compute/virtualMachines,rg-production,12345678-1234-1234-1234-123456789012,Production Subscription,"1,200.00",USD,Reduce costs by 40%,10.5
+Security,Enable Azure Defender for App Service,High,High,app-service-web,Microsoft.Web/sites,rg-web-apps,12345678-1234-1234-1234-123456789012,Production Subscription,0.00,USD,Improve security posture,15.0
+Reliability,Enable geo-redundant backup,Medium,Medium,storage-account-01,Microsoft.Storage/storageAccounts,rg-storage,12345678-1234-1234-1234-123456789012,Production Subscription,0.00,USD,Increase data durability,8.0
+Performance,Upgrade to Premium storage,Medium,Low,sql-database-01,Microsoft.Sql/servers/databases,rg-databases,12345678-1234-1234-1234-123456789012,Production Subscription,0.00,USD,Improve query performance,5.0
+Cost,Delete unattached managed disks,High,Medium,disk-unattached-01,Microsoft.Compute/disks,rg-disks,12345678-1234-1234-1234-123456789012,Production Subscription,150.00,USD,Eliminate unnecessary costs,8.0
+"""
 
 
 @pytest.fixture
-def jwt_refresh_token(user):
-    """Generate a valid JWT refresh token for testing."""
-    import jwt
-    from datetime import datetime, timedelta
-    from django.conf import settings
-
-    payload = {
-        'user_id': str(user.id),
-        'exp': datetime.utcnow() + timedelta(days=7),
-        'iat': datetime.utcnow(),
-        'type': 'refresh'
-    }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+def sample_csv_file_valid(tmp_path, sample_csv_valid):
+    """Create a valid CSV file for testing."""
+    file_path = tmp_path / "valid_test.csv"
+    file_path.write_text(sample_csv_valid, encoding='utf-8')
+    return str(file_path)
 
 
 @pytest.fixture
-def expired_jwt_token(user):
-    """Generate an expired JWT token for testing."""
-    import jwt
-    from datetime import datetime, timedelta
-    from django.conf import settings
-
-    payload = {
-        'user_id': str(user.id),
-        'email': user.email,
-        'role': user.role,
-        'exp': datetime.utcnow() - timedelta(hours=1),  # Expired 1 hour ago
-        'iat': datetime.utcnow() - timedelta(hours=2),
-        'type': 'access'
-    }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+def sample_csv_empty(tmp_path):
+    """Create an empty CSV file."""
+    file_path = tmp_path / "empty.csv"
+    file_path.write_text("", encoding='utf-8')
+    return str(file_path)
 
 
 @pytest.fixture
-def invalid_jwt_token():
-    """Generate an invalid JWT token (wrong secret)."""
-    import jwt
-    from datetime import datetime, timedelta
-
-    payload = {
-        'user_id': 'some-user-id',
-        'email': 'test@example.com',
-        'role': 'analyst',
-        'exp': datetime.utcnow() + timedelta(hours=1),
-        'iat': datetime.utcnow(),
-        'type': 'access'
-    }
-    return jwt.encode(payload, 'wrong-secret-key', algorithm='HS256')
+def sample_csv_missing_columns(tmp_path):
+    """Create CSV with missing required columns."""
+    file_path = tmp_path / "missing_columns.csv"
+    content = """Impact,Resource Name
+High,vm-01
+Medium,vm-02
+"""
+    file_path.write_text(content, encoding='utf-8')
+    return str(file_path)
 
 
 @pytest.fixture
-def mock_blob_storage():
-    """Mock Azure Blob Storage operations."""
-    with patch("azure.storage.blob.BlobServiceClient") as mock:
-        mock_instance = Mock()
-        mock_instance.upload_blob.return_value = Mock(url="https://test.blob.core.windows.net/test.csv")
-        mock_instance.download_blob.return_value = Mock(readall=lambda: b"test,csv,content")
-        mock.return_value = mock_instance
-        yield mock_instance
+def sample_csv_utf8_bom(tmp_path):
+    """Create CSV with UTF-8 BOM encoding."""
+    file_path = tmp_path / "utf8_bom.csv"
+    content = "Category,Recommendation,Business Impact,Resource Name,Potential Annual Cost Savings,Currency\n"
+    content += "Cost,Test recommendation,High,vm-test,1000.00,USD\n"
 
+    # Write with BOM
+    with open(file_path, 'w', encoding='utf-8-sig') as f:
+        f.write(content)
+
+    return str(file_path)
+
+
+# ============================================================================
+# Time-related Fixtures
+# ============================================================================
+
+@pytest.fixture
+def freeze_time(monkeypatch):
+    """
+    Fixture to freeze time at a specific datetime.
+    Usage: freeze_time(datetime(2025, 1, 15, 12, 0, 0))
+    """
+    from django.utils import timezone
+
+    def _freeze(frozen_datetime):
+        class FrozenDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return frozen_datetime
+
+        monkeypatch.setattr(timezone, 'now', lambda: frozen_datetime)
+        return frozen_datetime
+
+    return _freeze
+
+
+# ============================================================================
+# Mock Fixtures
+# ============================================================================
 
 @pytest.fixture
 def mock_celery_task():
-    """Mock Celery task execution."""
-    with patch("celery.Task.apply_async") as mock:
-        mock_result = Mock()
-        mock_result.id = "test-task-id"
-        mock_result.state = "SUCCESS"
-        mock_result.result = {"status": "completed"}
-        mock.return_value = mock_result
-        yield mock
+    """Mock Celery task for testing."""
+    class MockTask:
+        def __init__(self):
+            self.id = 'mock-task-id-12345'
+            self.state = 'PENDING'
+            self.result = None
 
+        def get(self, timeout=None):
+            return self.result
 
-@pytest.fixture
-def mock_pdf_generation():
-    """Mock PDF generation."""
-    with patch("apps.reports.services.pdf_generator.generate_pdf") as mock:
-        mock.return_value = "/tmp/test_report.pdf"
-        yield mock
+        def ready(self):
+            return self.state in ['SUCCESS', 'FAILURE']
 
+        def successful(self):
+            return self.state == 'SUCCESS'
 
-# ============================================================================
-# PERFORMANCE TESTING FIXTURES
-# ============================================================================
+        def failed(self):
+            return self.state == 'FAILURE'
 
-@pytest.fixture
-def performance_mode():
-    """Enable performance testing mode."""
-    with override_settings(PERFORMANCE_TEST_MODE=True):
-        yield
-
-
-@pytest.fixture
-def benchmark_settings():
-    """Configure benchmarking for performance tests."""
-    return {
-        "min_rounds": 5,
-        "max_time": 10.0,
-        "warmup": False,
-    }
+    return MockTask()
 
 
 # ============================================================================
-# INTEGRATION TEST FIXTURES
-# ============================================================================
-
-@pytest.fixture(scope="session")
-def live_server_url():
-    """Provide live server URL for integration tests."""
-    return "http://testserver"
-
-
-@pytest.fixture
-def integration_test_data():
-    """Create comprehensive test data for integration tests."""
-    # Create users
-    admin = UserFactory(role="admin")
-    manager = UserFactory(role="manager")
-    analyst = UserFactory(role="analyst")
-
-    # Create clients
-    clients = ClientFactory.create_batch(3)
-
-    # Create reports with different statuses
-    pending_report = ReportFactory(client=clients[0], created_by=analyst, status="pending")
-    processing_report = ReportFactory(client=clients[1], created_by=analyst, status="processing")
-    completed_report = ReportFactory(client=clients[2], created_by=analyst, status="completed")
-
-    # Create recommendations for completed report
-    RecommendationFactory.create_batch(15, report=completed_report)
-
-    return {
-        "users": {"admin": admin, "manager": manager, "analyst": analyst},
-        "clients": clients,
-        "reports": {
-            "pending": pending_report,
-            "processing": processing_report,
-            "completed": completed_report
-        }
-    }
-
-
-# ============================================================================
-# CLEANUP FIXTURES
+# Cleanup Fixtures
 # ============================================================================
 
 @pytest.fixture(autouse=True)
-def cleanup_temp_files():
-    """Automatically cleanup temporary files after each test."""
+def reset_sequences(db):
+    """Reset database sequences after each test."""
     yield
-    # Cleanup any temporary files created during tests
-    import glob
-    for pattern in ["/tmp/test_*.pdf", "/tmp/test_*.html", "/tmp/test_*.csv"]:
-        for file_path in glob.glob(pattern):
-            try:
-                os.unlink(file_path)
-            except OSError:
-                pass
+    # Sequences are automatically reset by Django's test runner
 
 
-# ============================================================================
-# UTILITY FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def assert_num_queries():
-    """Utility to assert the number of database queries."""
-    from django.test import override_settings
-    from django.db import connection
-    from django.test.utils import override_settings
-
-    def _assert_num_queries(num, func, *args, **kwargs):
-        with override_settings(DEBUG=True):
-            with connection.cursor() as cursor:
-                initial_queries = len(connection.queries)
-                result = func(*args, **kwargs)
-                final_queries = len(connection.queries)
-                executed_queries = final_queries - initial_queries
-
-                if executed_queries != num:
-                    msg = f"Expected {num} queries, but {executed_queries} were executed"
-                    raise AssertionError(msg)
-
-                return result
-
-    return _assert_num_queries
-
-
-@pytest.fixture
-def capture_emails():
-    """Capture emails sent during tests."""
-    from django.core import mail
-    mail.outbox = []
-    return mail.outbox
-
-
-# ============================================================================
-# SECURITY TEST FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def security_headers():
-    """Expected security headers for testing."""
-    return {
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block",
-        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        "Content-Security-Policy": "default-src 'self'",
-    }
-
-
-@pytest.fixture
-def sql_injection_payloads():
-    """Common SQL injection payloads for security testing."""
-    return [
-        "'; DROP TABLE users; --",
-        "' OR '1'='1",
-        "'; UPDATE users SET password='hacked'; --",
-        "' UNION SELECT * FROM users --",
-        "'; DELETE FROM clients; --",
-    ]
-
-
-@pytest.fixture
-def xss_payloads():
-    """Common XSS payloads for security testing."""
-    return [
-        "<script>alert('XSS')</script>",
-        "javascript:alert('XSS')",
-        "<img src=x onerror=alert('XSS')>",
-        "';alert('XSS');//",
-        "<svg onload=alert('XSS')>",
-    ]
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear Django cache before each test."""
+    from django.core.cache import cache
+    try:
+        cache.clear()
+    except Exception:
+        # Ignore cache errors in tests (Redis might not be available)
+        pass
+    yield
+    try:
+        cache.clear()
+    except Exception:
+        pass

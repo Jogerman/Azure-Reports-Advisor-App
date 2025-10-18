@@ -2,7 +2,7 @@ import apiClient from './apiClient';
 import { API_ENDPOINTS } from '../config/api';
 
 export type ReportType = 'detailed' | 'executive' | 'cost' | 'security' | 'operations';
-export type ReportStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ReportStatus = 'pending' | 'uploaded' | 'processing' | 'generating' | 'completed' | 'failed' | 'cancelled';
 
 export interface Report {
   id: string;
@@ -87,12 +87,12 @@ class ReportService {
   }
 
   /**
-   * Generate report from uploaded CSV
+   * Generate HTML/PDF files for a completed report
    */
-  async generateReport(data: GenerateReportData): Promise<Report> {
-    const response = await apiClient.post<Report>(
-      API_ENDPOINTS.REPORTS.GENERATE,
-      data
+  async generateReport(reportId: string, format: 'html' | 'pdf' | 'both' = 'both'): Promise<any> {
+    const response = await apiClient.post(
+      API_ENDPOINTS.REPORTS.GENERATE(reportId),
+      { format }
     );
     return response.data;
   }
@@ -133,7 +133,7 @@ class ReportService {
    */
   async downloadReport(id: string, format: 'html' | 'pdf' = 'pdf'): Promise<Blob> {
     const response = await apiClient.get(
-      `${API_ENDPOINTS.REPORTS.DOWNLOAD(id)}?format=${format}`,
+      API_ENDPOINTS.REPORTS.DOWNLOAD(id, format),
       {
         responseType: 'blob',
       }
@@ -149,18 +149,58 @@ class ReportService {
   }
 
   /**
-   * Helper method to trigger file download in browser
+   * Get report statistics/analytics
+   */
+  async getReportStatistics(id: string): Promise<any> {
+    const response = await apiClient.get(
+      `/reports/${id}/statistics/`
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Get report recommendations
+   */
+  async getReportRecommendations(id: string, params?: {
+    category?: string;
+    business_impact?: string;
+    min_savings?: number;
+  }): Promise<any[]> {
+    const response = await apiClient.get(
+      `/reports/${id}/recommendations/`,
+      { params }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Helper method to trigger file download or open in browser
+   * HTML files open in new tab for inline viewing
+   * PDF files download to disk
    */
   downloadFile(blob: Blob, filename: string): void {
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+
+    // Check if this is an HTML file
+    const isHtml = filename.toLowerCase().endsWith('.html');
+
+    if (isHtml) {
+      // HTML: Open in new tab for inline viewing
+      window.open(url, '_blank');
+      // Clean up after a delay to allow the new tab to load
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } else {
+      // PDF: Download to disk
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }
   }
 }
 
-export default new ReportService();
+const reportService = new ReportService();
+export default reportService;

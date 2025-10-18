@@ -82,7 +82,6 @@ module infrastructure 'modules/infrastructure.bicep' = {
 module security 'modules/security.bicep' = {
   scope: resourceGroup
   name: 'security-deployment'
-  dependsOn: [infrastructure]
   params: {
     location: location
     environment: environment
@@ -103,7 +102,6 @@ module security 'modules/security.bicep' = {
 module networking 'modules/networking.bicep' = if (enableFrontDoor) {
   scope: resourceGroup
   name: 'networking-deployment'
-  dependsOn: [infrastructure]
   params: {
     location: location
     environment: environment
@@ -151,8 +149,7 @@ output frontDoorName string = enableFrontDoor ? networking.outputs.frontDoorName
 
 // Deployment information
 output deploymentInfo object = {
-  timestamp: deployment().properties.timestamp
-  correlationId: deployment().properties.correlationId
+  deploymentName: deployment().name
   environment: environment
   location: location
   resourceGroupName: resourceGroupName

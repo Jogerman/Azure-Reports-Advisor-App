@@ -1,55 +1,134 @@
 """
-Development settings for azure_advisor_reports project.
+Django development settings for azure_advisor_reports project.
 
-This file contains settings specific to the development environment.
+This file contains all development-specific settings.
+Use this for local development only.
 """
 
 from .base import *
 from decouple import config
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# ============================================================================
+# BASIC SETTINGS
+# ============================================================================
+
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
+
 DEBUG = True
 
-# Allowed hosts for development
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
 
-# Development-specific apps
-INSTALLED_APPS += [
-    'django_extensions',
-]
+# ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
 
-# Enable debug toolbar if requested
-if config('ENABLE_DEBUG_TOOLBAR', default=False, cast=bool):
-    INSTALLED_APPS += ['debug_toolbar']
-    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+import sys
 
-    # Debug toolbar configuration
-    DEBUG_TOOLBAR_CONFIG = {
-        'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
-        'SHOW_TEMPLATE_CONTEXT': True,
+# Use SQLite for testing to avoid PostgreSQL dependency
+if 'test' in sys.argv or 'pytest' in sys.modules:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='azure_advisor_reports'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default='postgres'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
     }
 
-    INTERNAL_IPS = [
-        '127.0.0.1',
-        'localhost',
-    ]
+# ============================================================================
+# CACHE CONFIGURATION
+# ============================================================================
 
-# CORS settings for development (more permissive)
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://0.0.0.0:3000",
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': config('REDIS_URL', default='redis://localhost:6379/1'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'azure_advisor_reports_dev',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# ============================================================================
+# CELERY CONFIGURATION
+# ============================================================================
+
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+
+# ============================================================================
+# CORS CONFIGURATION
+# ============================================================================
+
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 
-# Email backend for development (console output)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
-# Celery settings for development
-CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', default=False, cast=bool)
-CELERY_TASK_EAGER_PROPAGATES = config('CELERY_TASK_EAGER_PROPAGATES', default=True, cast=bool)
+# ============================================================================
+# AZURE AD CONFIGURATION
+# ============================================================================
 
-# Logging Configuration for Development
+AZURE_AD = {
+    'CLIENT_ID': config('AZURE_CLIENT_ID', default=''),
+    'CLIENT_SECRET': config('AZURE_CLIENT_SECRET', default=''),
+    'TENANT_ID': config('AZURE_TENANT_ID', default=''),
+    'REDIRECT_URI': config('AZURE_REDIRECT_URI', default='http://localhost:3000'),
+    'SCOPE': ['openid', 'profile', 'email'],
+    'AUTHORITY': f"https://login.microsoftonline.com/{config('AZURE_TENANT_ID', default='')}",
+}
+
+# ============================================================================
+# AZURE STORAGE CONFIGURATION
+# ============================================================================
+
+AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME', default='')
+AZURE_ACCOUNT_KEY = config('AZURE_ACCOUNT_KEY', default='')
+AZURE_CONTAINER = config('AZURE_CONTAINER', default='reports')
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -62,27 +141,23 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
-        'colored': {
-            'format': '{levelname} {asctime} {name}: {message}',
-            'style': '{',
-        },
     },
     'handlers': {
         'file': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'development.log',
+            'filename': BASE_DIR / 'logs' / 'django.log',
             'formatter': 'verbose',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'colored',
+            'formatter': 'simple',
         },
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO',
+        'level': 'WARNING',
     },
     'loggers': {
         'django': {
@@ -95,64 +170,32 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
-        'celery': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        # Reduce noise from some third-party libraries
-        'urllib3': {
-            'level': 'WARNING',
-        },
-        'requests': {
-            'level': 'WARNING',
-        },
     },
 }
 
-# Disable password validation for development (optional)
-AUTH_PASSWORD_VALIDATORS = []
+# ============================================================================
+# DEVELOPMENT TOOLS
+# ============================================================================
 
-# Development database optimizations
-DATABASES['default'].update({
-    'OPTIONS': {
-        'sslmode': 'prefer',  # Less strict SSL for local development
-    },
-    'CONN_MAX_AGE': 60,  # Keep connections alive for 60 seconds
-})
+# Add development-specific apps
+INSTALLED_APPS += [
+    'django_extensions',
+]
 
-# Development cache settings (use dummy cache if Redis not available)
-try:
-    import redis
-    redis.Redis.from_url(CACHES['default']['LOCATION']).ping()
-except:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-        }
-    }
+# Disable Celery beat for local development (optional)
+# CELERY_TASK_ALWAYS_EAGER = True
+# CELERY_TASK_EAGER_PROPAGATES = True
 
-# Development file storage (local filesystem)
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# ============================================================================
+# DEBUG TOOLBAR (Optional)
+# ============================================================================
 
-# Security settings (relaxed for development)
-SECURE_BROWSER_XSS_FILTER = False
-SECURE_CONTENT_TYPE_NOSNIFF = False
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_SECONDS = 0
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-
-# Django Extensions settings
-if 'django_extensions' in INSTALLED_APPS:
-    SHELL_PLUS = 'ipython'
-    SHELL_PLUS_PRE_IMPORTS = [
-        ('apps.authentication.models', 'User'),
-        ('apps.clients.models', 'Client'),
-        ('apps.reports.models', 'Report', 'Recommendation'),
-    ]
-
-# Override any production-specific settings
-DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB for development testing
-FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB for development testing
+# Temporarily disabled due to namespace issues
+# if DEBUG:
+#     INSTALLED_APPS += ['debug_toolbar']
+#     MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
+#     INTERNAL_IPS = ['127.0.0.1', 'localhost']
+#
+#     DEBUG_TOOLBAR_CONFIG = {
+#         'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
+#     }

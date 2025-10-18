@@ -22,16 +22,19 @@ export const API_ENDPOINTS = {
   REPORTS: {
     LIST: '/reports/',
     UPLOAD: '/reports/upload/',
-    GENERATE: '/reports/generate/',
+    GENERATE: (id: string) => `/reports/${id}/generate/`,
     DETAIL: (id: string) => `/reports/${id}/`,
     STATUS: (id: string) => `/reports/${id}/status/`,
-    DOWNLOAD: (id: string) => `/reports/${id}/download/`,
+    DOWNLOAD: (id: string, format: 'html' | 'pdf' = 'pdf') => `/reports/${id}/download/${format}/`,
+    PROCESS: (id: string) => `/reports/${id}/process/`,
   },
 
   // Analytics
   ANALYTICS: {
     DASHBOARD: '/analytics/dashboard/',
     TRENDS: '/analytics/trends/',
+    CATEGORIES: '/analytics/categories/',
+    RECENT_ACTIVITY: '/analytics/recent-activity/',
     CLIENT_PERFORMANCE: '/analytics/client-performance/',
   },
 

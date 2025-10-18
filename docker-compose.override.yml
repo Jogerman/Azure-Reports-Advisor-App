@@ -16,15 +16,18 @@ services:
       - ENABLE_DEBUG_TOOLBAR=True
       - ENABLE_DJANGO_EXTENSIONS=True
       - CELERY_TASK_ALWAYS_EAGER=False
-    volumes:
-      - ./azure_advisor_reports:/app
-      - media_data:/app/media
-      - static_data:/app/staticfiles
-      - ./logs:/app/logs
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=azure_advisor_reports
+    # Volumes commented out to use built image
+    # volumes:
+    #   - ./azure_advisor_reports:/app
+    #   - media_data:/app/media
+    #   - static_data:/app/staticfiles
+    #   - ./logs:/app/logs
     command: >
-      sh -c "pip install -r requirements-dev.txt &&
-             python manage.py collectstatic --noinput &&
-             python manage.py migrate &&
+      sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
 
   # ================================
@@ -35,10 +38,14 @@ services:
       - DEBUG=True
       - DJANGO_ENVIRONMENT=development
       - LOG_LEVEL=DEBUG
-    volumes:
-      - ./azure_advisor_reports:/app
-      - media_data:/app/media
-      - ./logs:/app/logs
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=azure_advisor_reports
+    # volumes:
+    #   - ./azure_advisor_reports:/app
+    #   - media_data:/app/media
+    #   - ./logs:/app/logs
     command: celery -A azure_advisor_reports worker -l debug --concurrency=1
 
   # ================================
@@ -49,9 +56,13 @@ services:
       - DEBUG=True
       - DJANGO_ENVIRONMENT=development
       - LOG_LEVEL=DEBUG
-    volumes:
-      - ./azure_advisor_reports:/app
-      - ./logs:/app/logs
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=azure_advisor_reports
+    # volumes:
+    #   - ./azure_advisor_reports:/app
+    #   - ./logs:/app/logs
 
   # ================================
   # Frontend Development Overrides

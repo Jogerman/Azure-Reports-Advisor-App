@@ -98,4 +98,5 @@ class ClientService {
   }
 }
 
-export default new ClientService();
+const clientService = new ClientService();
+export default clientService;

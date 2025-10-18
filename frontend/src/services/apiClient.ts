@@ -18,6 +18,10 @@ const apiClient: AxiosInstance = axios.create({
 
 /**
  * Request interceptor to add authentication token
+ *
+ * Note: Using idToken for backend authentication. The idToken contains user identity
+ * and is issued by Azure AD with the client application as the audience.
+ * For production, consider implementing custom API scopes.
  */
 apiClient.interceptors.request.use(
   async (config) => {
@@ -31,8 +35,15 @@ apiClient.interceptors.request.use(
           account,
         });
 
-        if (response.accessToken) {
+        // Use idToken instead of accessToken for backend authentication
+        // The idToken is designed for user authentication and contains user identity claims
+        if (response.idToken) {
+          config.headers.Authorization = `Bearer ${response.idToken}`;
+          console.log('Using idToken for authentication');
+        } else if (response.accessToken) {
+          // Fallback to accessToken if idToken is not available (shouldn't happen)
           config.headers.Authorization = `Bearer ${response.accessToken}`;
+          console.warn('idToken not available, falling back to accessToken');
         }
       }
     } catch (error) {
@@ -67,8 +78,10 @@ apiClient.interceptors.response.use(
           // Try to acquire token interactively
           const response = await msalInstance.acquireTokenPopup(tokenRequest);
 
-          if (response.accessToken && originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${response.accessToken}`;
+          // Use idToken for retry as well
+          const token = response.idToken || response.accessToken;
+          if (token && originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
             return apiClient(originalRequest);
           }
         }

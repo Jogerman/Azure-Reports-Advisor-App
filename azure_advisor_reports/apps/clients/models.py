@@ -4,9 +4,7 @@ Client models for managing customer information and Azure subscriptions.
 
 import uuid
 from django.db import models
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
+from django.conf import settings
 
 
 class Client(models.Model):
@@ -66,7 +64,7 @@ class Client(models.Model):
 
     # Relationship management
     account_manager = models.ForeignKey(
-        User,
+        'authentication.User',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -78,7 +76,7 @@ class Client(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        User,
+        'authentication.User',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -183,7 +181,7 @@ class ClientNote(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='client_notes')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey('authentication.User', on_delete=models.CASCADE)
     note_type = models.CharField(max_length=20, choices=NOTE_TYPES, default='general')
     subject = models.CharField(max_length=255, help_text="Brief subject line")
     content = models.TextField(help_text="Detailed note content")

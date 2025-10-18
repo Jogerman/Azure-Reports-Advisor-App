@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   FiHome,
@@ -56,7 +56,7 @@ const NavItem: React.FC<NavItemProps> = ({
       }
     >
       <div className="flex items-center space-x-3">
-        <span className="text-xl group-hover:scale-110 transition-transform">{icon}</span>
+        <span className="text-xl group-hover:scale-110 transition-transform" aria-hidden="true">{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
       {badge && (
@@ -69,6 +69,19 @@ const NavItem: React.FC<NavItemProps> = ({
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) => {
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -76,6 +89,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden transition-opacity"
           onClick={onClose}
+          role="button"
+          aria-label="Close navigation menu"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClose();
+            }
+          }}
         />
       )}
 
@@ -163,8 +185,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
           <div className="p-4 border-t border-gray-200">
             <div className="bg-gradient-to-br from-azure-50 to-azure-100 rounded-lg p-4 border border-azure-200">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-azure-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FiHelpCircle className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 bg-azure-600 rounded-lg flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                  <FiHelpCircle className="w-5 h-5 text-white" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-azure-900 mb-1">

@@ -11,7 +11,6 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.126",
     "@types/react": "^18.3.25",
     "@types/react-dom": "^18.3.7",
@@ -34,8 +33,14 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:prod": "cross-env GENERATE_SOURCEMAP=false react-scripts build",
+    "build:analyze": "npm run build && npm run analyze",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test:ci": "react-scripts test --watchAll=false --coverage",
+    "eject": "react-scripts eject",
+    "analyze": "source-map-explorer 'build/static/js/*.js'",
+    "serve:prod": "npx serve -s build -l 3000",
+    "lighthouse": "lighthouse http://localhost:3000 --view --only-categories=performance,accessibility,best-practices,seo,pwa"
   },
   "proxy": "http://localhost:8000",
   "eslintConfig": {
@@ -57,10 +62,14 @@
     ]
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17"
+    "source-map-explorer": "^2.5.3",
+    "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.4"
   }
 }

@@ -28,16 +28,11 @@ const ReportsPage: React.FC = () => {
     mutationFn: (data: { client_id: string; csv_file: File; report_type?: ReportType }) =>
       reportService.uploadCSV(data),
     onSuccess: (report) => {
-      showToast.success('CSV uploaded successfully! Report is being generated...');
+      showToast.success('CSV uploaded successfully! Report is being processed...');
       queryClient.invalidateQueries({ queryKey: ['reports'] });
 
-      // If report type was selected, trigger generation
-      if (selectedReportType) {
-        generateMutation.mutate({
-          report_id: report.id,
-          report_type: selectedReportType,
-        });
-      }
+      // CSV processing happens automatically in the backend via Celery
+      // No need to trigger it manually anymore
 
       // Reset and go to view reports
       setTimeout(() => {
@@ -50,14 +45,8 @@ const ReportsPage: React.FC = () => {
     },
   });
 
-  // Generate report mutation
-  const generateMutation = useMutation({
-    mutationFn: (data: { report_id: string; report_type: ReportType }) =>
-      reportService.generateReport(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
-    },
-  });
+  // This mutation is no longer needed since CSV processing is automatic
+  // Keeping it here for backwards compatibility but it won't be called
 
   const clients = clientsData?.results || [];
   const selectedClient = clients.find((c) => c.id === selectedClientId);

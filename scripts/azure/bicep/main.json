@@ -1,0 +1,1736 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.3.11034",
+      "templateHash": "12007018412289223344"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "resourceGroupPrefix": {
+      "type": "string",
+      "defaultValue": "rg-azure-advisor",
+      "metadata": {
+        "description": "Resource group name prefix"
+      }
+    },
+    "appNamePrefix": {
+      "type": "string",
+      "defaultValue": "azure-advisor",
+      "metadata": {
+        "description": "Application name prefix"
+      }
+    },
+    "azureAdClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure AD client ID for authentication"
+      }
+    },
+    "azureAdTenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure AD tenant ID"
+      }
+    },
+    "azureAdClientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Azure AD client secret"
+      }
+    },
+    "customDomain": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom domain name (optional)"
+      }
+    },
+    "enableAppInsights": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Application Insights"
+      }
+    },
+    "enableFrontDoor": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Azure Front Door"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "Environment": "[parameters('environment')]",
+        "Project": "AzureAdvisorReports",
+        "ManagedBy": "Bicep",
+        "CreatedDate": "[utcNow('yyyy-MM-dd')]"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    }
+  },
+  "variables": {
+    "resourceGroupName": "[format('{0}-{1}', parameters('resourceGroupPrefix'), parameters('environment'))]",
+    "appNameSuffix": "[if(equals(parameters('environment'), 'prod'), '', format('-{0}', parameters('environment')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "infrastructure-deployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "appNamePrefix": {
+            "value": "[parameters('appNamePrefix')]"
+          },
+          "appNameSuffix": {
+            "value": "[variables('appNameSuffix')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "enableAppInsights": {
+            "value": "[parameters('enableAppInsights')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.3.11034",
+              "templateHash": "611180094883424971"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for all resources"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Environment name"
+              }
+            },
+            "appNamePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name prefix"
+              }
+            },
+            "appNameSuffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name suffix"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "enableAppInsights": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable Application Insights"
+              }
+            }
+          },
+          "variables": {
+            "environmentConfig": {
+              "dev": {
+                "appServicePlanSku": "B1",
+                "appServicePlanCapacity": 1,
+                "postgreSqlSku": "Standard_B2s",
+                "postgreSqlStorageMB": 32768,
+                "redisSku": "Basic",
+                "redisCapacity": 0
+              },
+              "staging": {
+                "appServicePlanSku": "S2",
+                "appServicePlanCapacity": 1,
+                "postgreSqlSku": "GeneralPurpose_D2s_v3",
+                "postgreSqlStorageMB": 65536,
+                "redisSku": "Standard",
+                "redisCapacity": 1
+              },
+              "prod": {
+                "appServicePlanSku": "P2v3",
+                "appServicePlanCapacity": 2,
+                "postgreSqlSku": "GeneralPurpose_D4s_v3",
+                "postgreSqlStorageMB": 131072,
+                "redisSku": "Premium",
+                "redisCapacity": 1
+              }
+            },
+            "config": "[variables('environmentConfig')[parameters('environment')]]",
+            "appServicePlanBackendName": "[format('{0}-backend-asp{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "appServicePlanFrontendName": "[format('{0}-frontend-asp{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "appServiceBackendName": "[format('{0}-backend{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "appServiceFrontendName": "[format('{0}-frontend{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "postgreSqlServerName": "[format('{0}-psql{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "postgreSqlDatabaseName": "azure_advisor_reports",
+            "redisName": "[format('{0}-redis{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "storageAccountName": "[replace(format('{0}stor{1}', parameters('appNamePrefix'), parameters('appNameSuffix')), '-', '')]",
+            "appInsightsName": "[format('{0}-ai{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "logAnalyticsWorkspaceName": "[format('{0}-law{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "containers": [
+              "csv-uploads",
+              "reports-html",
+              "reports-pdf",
+              "static-assets"
+            ]
+          },
+          "resources": [
+            {
+              "condition": "[parameters('enableAppInsights')]",
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": 1
+                },
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            },
+            {
+              "condition": "[parameters('enableAppInsights')]",
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[variables('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "Flow_Type": "Redfield",
+                "Request_Source": "IbizaAIExtension",
+                "WorkspaceResourceId": "[if(parameters('enableAppInsights'), resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), null())]",
+                "IngestionMode": "LogAnalytics",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "dnsEndpointType": "Standard",
+                "defaultToOAuthAuthentication": false,
+                "publicNetworkAccess": "Enabled",
+                "allowCrossTenantReplication": false,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": true,
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "virtualNetworkRules": [],
+                  "ipRules": [],
+                  "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                  "requireInfrastructureEncryption": false,
+                  "services": {
+                    "file": {
+                      "keyType": "Account",
+                      "enabled": true
+                    },
+                    "blob": {
+                      "keyType": "Account",
+                      "enabled": true
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+              "properties": {
+                "changeFeed": {
+                  "enabled": false
+                },
+                "restorePolicy": {
+                  "enabled": false
+                },
+                "containerDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                },
+                "deleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                },
+                "isVersioningEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "storageContainers",
+                "count": "[length(variables('containers'))]"
+              },
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('containers')[copyIndex()])]",
+              "properties": {
+                "immutableStorageWithVersioning": {
+                  "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "[if(equals(variables('containers')[copyIndex()], 'static-assets'), 'Blob', 'None')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+              "apiVersion": "2023-06-01-preview",
+              "name": "[variables('postgreSqlServerName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[variables('config').postgreSqlSku]",
+                "tier": "[if(startsWith(variables('config').postgreSqlSku, 'Standard_B'), 'Burstable', 'GeneralPurpose')]"
+              },
+              "properties": {
+                "createMode": "Default",
+                "version": "15",
+                "administratorLogin": "postgres",
+                "administratorLoginPassword": "[format('{0}Aa1!', uniqueString(resourceGroup().id))]",
+                "availabilityZone": "1",
+                "storage": {
+                  "storageSizeGB": "[div(variables('config').postgreSqlStorageMB, 1024)]",
+                  "autoGrow": "Enabled",
+                  "type": "PremiumV2_LRS"
+                },
+                "backup": {
+                  "backupRetentionDays": 7,
+                  "geoRedundantBackup": "Disabled"
+                },
+                "highAvailability": {
+                  "mode": "[if(equals(parameters('environment'), 'prod'), 'ZoneRedundant', 'Disabled')]"
+                },
+                "network": {
+                  "delegatedSubnetResourceId": null,
+                  "privateDnsZoneArmResourceId": null,
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+              "apiVersion": "2023-06-01-preview",
+              "name": "[format('{0}/{1}', variables('postgreSqlServerName'), variables('postgreSqlDatabaseName'))]",
+              "properties": {
+                "charset": "utf8",
+                "collation": "en_US.utf8"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgreSqlServerName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+              "apiVersion": "2023-06-01-preview",
+              "name": "[format('{0}/{1}', variables('postgreSqlServerName'), 'AllowAzureServices')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgreSqlServerName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cache/redis",
+              "apiVersion": "2023-08-01",
+              "name": "[variables('redisName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "enableNonSslPort": false,
+                "minimumTlsVersion": "1.2",
+                "sku": {
+                  "capacity": "[variables('config').redisCapacity]",
+                  "family": "[if(equals(variables('config').redisSku, 'Premium'), 'P', 'C')]",
+                  "name": "[variables('config').redisSku]"
+                },
+                "redisConfiguration": {
+                  "rdb-backup-enabled": "[if(equals(variables('config').redisSku, 'Premium'), 'true', 'false')]",
+                  "rdb-storage-connection-string": "[if(equals(variables('config').redisSku, 'Premium'), reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').primaryEndpoints.blob, '')]"
+                },
+                "publicNetworkAccess": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('appServicePlanBackendName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[variables('config').appServicePlanSku]",
+                "capacity": "[variables('config').appServicePlanCapacity]"
+              },
+              "kind": "linux",
+              "properties": {
+                "perSiteScaling": false,
+                "elasticScaleEnabled": false,
+                "maximumElasticWorkerCount": 1,
+                "isSpot": false,
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0,
+                "zoneRedundant": false
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('appServicePlanFrontendName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[if(equals(parameters('environment'), 'dev'), 'B1', variables('config').appServicePlanSku)]",
+                "capacity": 1
+              },
+              "kind": "linux",
+              "properties": {
+                "perSiteScaling": false,
+                "elasticScaleEnabled": false,
+                "maximumElasticWorkerCount": 1,
+                "isSpot": false,
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0,
+                "zoneRedundant": false
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('appServiceBackendName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[format('{0}.azurewebsites.net', variables('appServiceBackendName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[format('{0}.scm.azurewebsites.net', variables('appServiceBackendName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanBackendName'))]",
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "vnetRouteAllEnabled": false,
+                "vnetImagePullEnabled": false,
+                "vnetContentShareEnabled": false,
+                "siteConfig": {
+                  "numberOfWorkers": 1,
+                  "linuxFxVersion": "PYTHON|3.11",
+                  "acrUseManagedIdentityCreds": false,
+                  "alwaysOn": "[and(not(equals(variables('config').appServicePlanSku, 'F1')), not(equals(variables('config').appServicePlanSku, 'D1')))]",
+                  "http20Enabled": true,
+                  "functionAppScaleLimit": 0,
+                  "minimumElasticInstanceCount": 0,
+                  "appSettings": [
+                    {
+                      "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+                      "value": "false"
+                    },
+                    {
+                      "name": "DJANGO_SETTINGS_MODULE",
+                      "value": "azure_advisor_reports.settings.production"
+                    },
+                    {
+                      "name": "PYTHONPATH",
+                      "value": "/home/site/wwwroot"
+                    },
+                    {
+                      "name": "AZURE_STORAGE_CONNECTION_STRING",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "DATABASE_URL",
+                      "value": "[format('postgresql://postgres:{0}Aa1!@{1}:5432/{2}', uniqueString(resourceGroup().id), reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgreSqlServerName')), '2023-06-01-preview').fullyQualifiedDomainName, variables('postgreSqlDatabaseName'))]"
+                    },
+                    {
+                      "name": "REDIS_URL",
+                      "value": "[format('rediss://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+                    },
+                    {
+                      "name": "CELERY_BROKER_URL",
+                      "value": "[format('rediss://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+                    },
+                    {
+                      "name": "CELERY_RESULT_BACKEND",
+                      "value": "[format('rediss://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+                    },
+                    {
+                      "name": "APPINSIGHTS_CONNECTION_STRING",
+                      "value": "[if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString, '')]"
+                    }
+                  ]
+                },
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "clientCertMode": "Required",
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true,
+                "redundancyMode": "None",
+                "storageAccountRequired": false,
+                "keyVaultReferenceIdentity": "SystemAssigned"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanBackendName'))]",
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgreSqlServerName'))]",
+                "[resourceId('Microsoft.Cache/redis', variables('redisName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('appServiceFrontendName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[format('{0}.azurewebsites.net', variables('appServiceFrontendName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[format('{0}.scm.azurewebsites.net', variables('appServiceFrontendName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanFrontendName'))]",
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "vnetRouteAllEnabled": false,
+                "vnetImagePullEnabled": false,
+                "vnetContentShareEnabled": false,
+                "siteConfig": {
+                  "numberOfWorkers": 1,
+                  "linuxFxVersion": "NODE|18-lts",
+                  "acrUseManagedIdentityCreds": false,
+                  "alwaysOn": true,
+                  "http20Enabled": true,
+                  "functionAppScaleLimit": 0,
+                  "minimumElasticInstanceCount": 0,
+                  "appSettings": [
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "18.17.0"
+                    },
+                    {
+                      "name": "REACT_APP_API_URL",
+                      "value": "[format('https://{0}.azurewebsites.net/api/v1', variables('appServiceBackendName'))]"
+                    }
+                  ]
+                },
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "clientCertMode": "Required",
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true,
+                "redundancyMode": "None",
+                "storageAccountRequired": false,
+                "keyVaultReferenceIdentity": "SystemAssigned"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanFrontendName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appServicePlanBackendName": {
+              "type": "string",
+              "value": "[variables('appServicePlanBackendName')]"
+            },
+            "appServicePlanFrontendName": {
+              "type": "string",
+              "value": "[variables('appServicePlanFrontendName')]"
+            },
+            "appServiceBackendName": {
+              "type": "string",
+              "value": "[variables('appServiceBackendName')]"
+            },
+            "appServiceBackendUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('appServiceBackendName')), '2023-01-01').defaultHostName)]"
+            },
+            "appServiceBackendId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', variables('appServiceBackendName'))]"
+            },
+            "appServiceFrontendName": {
+              "type": "string",
+              "value": "[variables('appServiceFrontendName')]"
+            },
+            "appServiceFrontendUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('appServiceFrontendName')), '2023-01-01').defaultHostName)]"
+            },
+            "appServiceFrontendId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', variables('appServiceFrontendName'))]"
+            },
+            "postgreSqlServerName": {
+              "type": "string",
+              "value": "[variables('postgreSqlServerName')]"
+            },
+            "postgreSqlDatabaseName": {
+              "type": "string",
+              "value": "[variables('postgreSqlDatabaseName')]"
+            },
+            "postgreSqlConnectionString": {
+              "type": "string",
+              "value": "[format('postgresql://postgres:{0}Aa1!@{1}:5432/{2}', uniqueString(resourceGroup().id), reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgreSqlServerName')), '2023-06-01-preview').fullyQualifiedDomainName, variables('postgreSqlDatabaseName'))]"
+            },
+            "redisName": {
+              "type": "string",
+              "value": "[variables('redisName')]"
+            },
+            "redisConnectionString": {
+              "type": "string",
+              "value": "[format('rediss://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "value": "[variables('storageAccountName')]"
+            },
+            "storageAccountConnectionString": {
+              "type": "string",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+            },
+            "appInsightsName": {
+              "type": "string",
+              "value": "[if(parameters('enableAppInsights'), variables('appInsightsName'), '')]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString, '')]"
+            },
+            "appInsightsInstrumentationKey": {
+              "type": "string",
+              "value": "[if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey, '')]"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "value": "[if(parameters('enableAppInsights'), variables('logAnalyticsWorkspaceName'), '')]"
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[if(parameters('enableAppInsights'), resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "security-deployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "appNamePrefix": {
+            "value": "[parameters('appNamePrefix')]"
+          },
+          "appNameSuffix": {
+            "value": "[variables('appNameSuffix')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "azureAdClientId": {
+            "value": "[parameters('azureAdClientId')]"
+          },
+          "azureAdTenantId": {
+            "value": "[parameters('azureAdTenantId')]"
+          },
+          "azureAdClientSecret": {
+            "value": "[parameters('azureAdClientSecret')]"
+          },
+          "appServiceBackendName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceBackendName.value]"
+          },
+          "appServiceFrontendName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceFrontendName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.3.11034",
+              "templateHash": "10007221570831317101"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for all resources"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Environment name"
+              }
+            },
+            "appNamePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name prefix"
+              }
+            },
+            "appNameSuffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name suffix"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "azureAdClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AD client ID for authentication"
+              }
+            },
+            "azureAdTenantId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AD tenant ID"
+              }
+            },
+            "azureAdClientSecret": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Azure AD client secret"
+              }
+            },
+            "appServiceBackendName": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend App Service name"
+              }
+            },
+            "appServiceFrontendName": {
+              "type": "string",
+              "metadata": {
+                "description": "Frontend App Service name"
+              }
+            }
+          },
+          "variables": {
+            "keyVaultName": "[format('{0}-kv{1}-{2}', parameters('appNamePrefix'), parameters('appNameSuffix'), uniqueString(resourceGroup().id))]",
+            "keyVaultSku": "[if(equals(parameters('environment'), 'prod'), 'premium', 'standard')]",
+            "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[variables('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "enabledForDeployment": true,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "tenantId": "[subscription().tenantId]",
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enablePurgeProtection": true,
+                "enableRbacAuthorization": true,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                },
+                "sku": {
+                  "family": "A",
+                  "name": "[variables('keyVaultSku')]"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'DATABASE-URL')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "PLACEHOLDER-Configure-After-Deployment",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'REDIS-URL')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "PLACEHOLDER-Configure-After-Deployment",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'AZURE-STORAGE-CONNECTION-STRING')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "PLACEHOLDER-Configure-After-Deployment",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'DJANGO-SECRET-KEY')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "[base64(uniqueString(resourceGroup().id, deployment().name))]",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'AZURE-AD-CLIENT-ID')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "[parameters('azureAdClientId')]",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'AZURE-AD-CLIENT-SECRET')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "[parameters('azureAdClientSecret')]",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', variables('keyVaultName'), 'AZURE-AD-TENANT-ID')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "value": "[parameters('azureAdTenantId')]",
+                "contentType": "text/plain",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.Web/sites', parameters('appServiceBackendName')), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('appServiceBackendName')), '2023-01-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.Web/sites', parameters('appServiceFrontendName')), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('appServiceFrontendName')), '2023-01-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyVaultName'))]",
+              "name": "KeyVaultDiagnostics",
+              "properties": {
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "enabled": true,
+                      "days": 30
+                    }
+                  },
+                  {
+                    "categoryGroup": "audit",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "enabled": true,
+                      "days": 90
+                    }
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "enabled": true,
+                      "days": 30
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "keyVaultName": {
+              "type": "string",
+              "value": "[variables('keyVaultName')]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), '2023-07-01').vaultUri]"
+            },
+            "keyVaultResourceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+            },
+            "backendManagedIdentityPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appServiceBackendName')), '2023-01-01', 'full').identity.principalId]"
+            },
+            "frontendManagedIdentityPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appServiceFrontendName')), '2023-01-01', 'full').identity.principalId]"
+            },
+            "secretDatabaseUrlReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'DATABASE-URL'), '2023-07-01').secretUri)]"
+            },
+            "secretRedisUrlReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'REDIS-URL'), '2023-07-01').secretUri)]"
+            },
+            "secretStorageConnectionStringReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'AZURE-STORAGE-CONNECTION-STRING'), '2023-07-01').secretUri)]"
+            },
+            "secretDjangoSecretKeyReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'DJANGO-SECRET-KEY'), '2023-07-01').secretUri)]"
+            },
+            "secretAzureAdClientIdReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'AZURE-AD-CLIENT-ID'), '2023-07-01').secretUri)]"
+            },
+            "secretAzureAdClientSecretReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'AZURE-AD-CLIENT-SECRET'), '2023-07-01').secretUri)]"
+            },
+            "secretAzureAdTenantIdReference": {
+              "type": "string",
+              "value": "[format('@Microsoft.KeyVault(SecretUri={0})', reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), 'AZURE-AD-TENANT-ID'), '2023-07-01').secretUri)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableFrontDoor')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "networking-deployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "appNamePrefix": {
+            "value": "[parameters('appNamePrefix')]"
+          },
+          "appNameSuffix": {
+            "value": "[variables('appNameSuffix')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "customDomain": {
+            "value": "[parameters('customDomain')]"
+          },
+          "backendUrl": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceBackendUrl.value]"
+          },
+          "frontendUrl": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceFrontendUrl.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.3.11034",
+              "templateHash": "9672509948840575688"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for all resources"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Environment name"
+              }
+            },
+            "appNamePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name prefix"
+              }
+            },
+            "appNameSuffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Application name suffix"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "customDomain": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom domain name (optional)"
+              }
+            },
+            "backendUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend App Service URL"
+              }
+            },
+            "frontendUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Frontend App Service URL"
+              }
+            }
+          },
+          "variables": {
+            "frontDoorProfileName": "[format('{0}-afd{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "frontDoorEndpointName": "[format('{0}-endpoint{1}', parameters('appNamePrefix'), parameters('appNameSuffix'))]",
+            "frontDoorSkuName": "[if(equals(parameters('environment'), 'prod'), 'Premium_AzureFrontDoor', 'Standard_AzureFrontDoor')]",
+            "wafPolicyName": "[format('{0}wafpolicy{1}', parameters('appNamePrefix'), replace(parameters('appNameSuffix'), '-', ''))]",
+            "backendOriginGroupName": "backend-origin-group",
+            "frontendOriginGroupName": "frontend-origin-group",
+            "backendOriginName": "backend-origin",
+            "frontendOriginName": "frontend-origin",
+            "apiRouteName": "api-route",
+            "defaultRouteName": "default-route",
+            "backendHostname": "[replace(replace(parameters('backendUrl'), 'https://', ''), 'http://', '')]",
+            "frontendHostname": "[replace(replace(parameters('frontendUrl'), 'https://', ''), 'http://', '')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/FrontDoorWebApplicationFirewallPolicies",
+              "apiVersion": "2022-05-01",
+              "name": "[variables('wafPolicyName')]",
+              "location": "Global",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[variables('frontDoorSkuName')]"
+              },
+              "properties": {
+                "policySettings": {
+                  "enabledState": "Enabled",
+                  "mode": "[if(equals(parameters('environment'), 'dev'), 'Detection', 'Prevention')]",
+                  "redirectUrl": null,
+                  "customBlockResponseStatusCode": 403,
+                  "customBlockResponseBody": null,
+                  "requestBodyCheck": "Enabled"
+                },
+                "customRules": {
+                  "rules": [
+                    {
+                      "name": "RateLimitRule",
+                      "priority": 100,
+                      "ruleType": "RateLimitRule",
+                      "rateLimitDurationInMinutes": 1,
+                      "rateLimitThreshold": "[if(equals(parameters('environment'), 'prod'), 100, 300)]",
+                      "action": "Block",
+                      "matchConditions": [
+                        {
+                          "matchVariable": "RequestUri",
+                          "operator": "Contains",
+                          "negateCondition": false,
+                          "matchValue": [
+                            "/api/"
+                          ],
+                          "transforms": []
+                        }
+                      ]
+                    },
+                    {
+                      "name": "BlockSuspiciousUserAgents",
+                      "priority": 200,
+                      "ruleType": "MatchRule",
+                      "action": "Block",
+                      "matchConditions": [
+                        {
+                          "matchVariable": "RequestHeader",
+                          "selector": "User-Agent",
+                          "operator": "Contains",
+                          "negateCondition": false,
+                          "matchValue": [
+                            "bot",
+                            "crawler",
+                            "spider",
+                            "scraper"
+                          ],
+                          "transforms": [
+                            "Lowercase"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "GeoBlockingRule",
+                      "priority": 300,
+                      "ruleType": "MatchRule",
+                      "action": "[if(equals(parameters('environment'), 'prod'), 'Log', 'Log')]",
+                      "matchConditions": [
+                        {
+                          "matchVariable": "RemoteAddr",
+                          "operator": "GeoMatch",
+                          "negateCondition": true,
+                          "matchValue": [
+                            "US",
+                            "CA",
+                            "GB",
+                            "DE",
+                            "FR",
+                            "AU",
+                            "IN"
+                          ],
+                          "transforms": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "managedRules": {
+                  "managedRuleSets": [
+                    {
+                      "ruleSetType": "Microsoft_DefaultRuleSet",
+                      "ruleSetVersion": "2.1",
+                      "ruleSetAction": "Block",
+                      "ruleGroupOverrides": [],
+                      "exclusions": []
+                    },
+                    {
+                      "ruleSetType": "Microsoft_BotManagerRuleSet",
+                      "ruleSetVersion": "1.0",
+                      "ruleSetAction": "Block",
+                      "ruleGroupOverrides": [],
+                      "exclusions": []
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Cdn/profiles",
+              "apiVersion": "2023-05-01",
+              "name": "[variables('frontDoorProfileName')]",
+              "location": "Global",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[variables('frontDoorSkuName')]"
+              },
+              "properties": {
+                "originResponseTimeoutSeconds": 60
+              }
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/afdEndpoints",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('frontDoorProfileName'), variables('frontDoorEndpointName'))]",
+              "location": "Global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "enabledState": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/originGroups",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('frontDoorProfileName'), variables('backendOriginGroupName'))]",
+              "properties": {
+                "loadBalancingSettings": {
+                  "sampleSize": 4,
+                  "successfulSamplesRequired": 3,
+                  "additionalLatencyInMilliseconds": 50
+                },
+                "healthProbeSettings": {
+                  "probePath": "/api/health/",
+                  "probeRequestType": "GET",
+                  "probeProtocol": "Https",
+                  "probeIntervalInSeconds": 30
+                },
+                "sessionAffinityState": "Disabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/originGroups",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('frontDoorProfileName'), variables('frontendOriginGroupName'))]",
+              "properties": {
+                "loadBalancingSettings": {
+                  "sampleSize": 4,
+                  "successfulSamplesRequired": 3,
+                  "additionalLatencyInMilliseconds": 50
+                },
+                "healthProbeSettings": {
+                  "probePath": "/",
+                  "probeRequestType": "GET",
+                  "probeProtocol": "Https",
+                  "probeIntervalInSeconds": 30
+                },
+                "sessionAffinityState": "Disabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/originGroups/origins",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('frontDoorProfileName'), variables('backendOriginGroupName'), variables('backendOriginName'))]",
+              "properties": {
+                "hostName": "[variables('backendHostname')]",
+                "httpPort": 80,
+                "httpsPort": 443,
+                "originHostHeader": "[variables('backendHostname')]",
+                "priority": 1,
+                "weight": 1000,
+                "enabledState": "Enabled",
+                "enforceCertificateNameCheck": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('backendOriginGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/originGroups/origins",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('frontDoorProfileName'), variables('frontendOriginGroupName'), variables('frontendOriginName'))]",
+              "properties": {
+                "hostName": "[variables('frontendHostname')]",
+                "httpPort": 80,
+                "httpsPort": 443,
+                "originHostHeader": "[variables('frontendHostname')]",
+                "priority": 1,
+                "weight": 1000,
+                "enabledState": "Enabled",
+                "enforceCertificateNameCheck": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('frontendOriginGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/afdEndpoints/routes",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('frontDoorProfileName'), variables('frontDoorEndpointName'), variables('apiRouteName'))]",
+              "properties": {
+                "originGroup": {
+                  "id": "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('backendOriginGroupName'))]"
+                },
+                "supportedProtocols": [
+                  "Http",
+                  "Https"
+                ],
+                "patternsToMatch": [
+                  "/api/*",
+                  "/admin/*",
+                  "/static/*"
+                ],
+                "forwardingProtocol": "HttpsOnly",
+                "linkToDefaultDomain": "Enabled",
+                "httpsRedirect": "Enabled",
+                "enabledState": "Enabled",
+                "cacheConfiguration": {
+                  "queryStringCachingBehavior": "IgnoreQueryString",
+                  "compressionSettings": {
+                    "contentTypesToCompress": [
+                      "application/json",
+                      "application/javascript",
+                      "text/css",
+                      "text/html",
+                      "text/javascript",
+                      "text/plain"
+                    ],
+                    "isCompressionEnabled": true
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles/originGroups/origins', variables('frontDoorProfileName'), variables('backendOriginGroupName'), variables('backendOriginName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('backendOriginGroupName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/originGroups/origins', variables('frontDoorProfileName'), variables('frontendOriginGroupName'), variables('frontendOriginName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/afdEndpoints/routes",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('frontDoorProfileName'), variables('frontDoorEndpointName'), variables('defaultRouteName'))]",
+              "properties": {
+                "originGroup": {
+                  "id": "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('frontendOriginGroupName'))]"
+                },
+                "supportedProtocols": [
+                  "Http",
+                  "Https"
+                ],
+                "patternsToMatch": [
+                  "/*"
+                ],
+                "forwardingProtocol": "HttpsOnly",
+                "linkToDefaultDomain": "Enabled",
+                "httpsRedirect": "Enabled",
+                "enabledState": "Enabled",
+                "cacheConfiguration": {
+                  "queryStringCachingBehavior": "IgnoreQueryString",
+                  "compressionSettings": {
+                    "contentTypesToCompress": [
+                      "application/javascript",
+                      "application/json",
+                      "application/x-javascript",
+                      "application/xml",
+                      "text/css",
+                      "text/html",
+                      "text/javascript",
+                      "text/plain",
+                      "text/xml"
+                    ],
+                    "isCompressionEnabled": true
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles/afdEndpoints/routes', variables('frontDoorProfileName'), variables('frontDoorEndpointName'), variables('apiRouteName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/originGroups/origins', variables('frontDoorProfileName'), variables('backendOriginGroupName'), variables('backendOriginName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/originGroups/origins', variables('frontDoorProfileName'), variables('frontendOriginGroupName'), variables('frontendOriginName'))]",
+                "[resourceId('Microsoft.Cdn/profiles/originGroups', variables('frontDoorProfileName'), variables('frontendOriginGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Cdn/profiles/securityPolicies",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('frontDoorProfileName'), 'SecurityPolicy')]",
+              "properties": {
+                "parameters": {
+                  "type": "WebApplicationFirewall",
+                  "wafPolicy": {
+                    "id": "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', variables('wafPolicyName'))]"
+                  },
+                  "associations": [
+                    {
+                      "domains": [
+                        {
+                          "id": "[resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName'))]"
+                        }
+                      ],
+                      "patternsToMatch": [
+                        "/*"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName'))]",
+                "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]",
+                "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', variables('wafPolicyName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[format('Microsoft.Cdn/profiles/{0}', variables('frontDoorProfileName'))]",
+              "name": "FrontDoorDiagnostics",
+              "properties": {
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "enabled": true,
+                      "days": 30
+                    }
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "enabled": true,
+                      "days": 30
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "frontDoorName": {
+              "type": "string",
+              "value": "[variables('frontDoorProfileName')]"
+            },
+            "frontDoorEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName')), '2023-05-01').hostName]"
+            },
+            "frontDoorEndpointUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Cdn/profiles/afdEndpoints', variables('frontDoorProfileName'), variables('frontDoorEndpointName')), '2023-05-01').hostName)]"
+            },
+            "frontDoorResourceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Cdn/profiles', variables('frontDoorProfileName'))]"
+            },
+            "wafPolicyId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/FrontDoorWebApplicationFirewallPolicies', variables('wafPolicyName'))]"
+            },
+            "wafPolicyName": {
+              "type": "string",
+              "value": "[variables('wafPolicyName')]"
+            },
+            "customDomainConfigured": {
+              "type": "bool",
+              "value": "[not(equals(parameters('customDomain'), ''))]"
+            },
+            "customDomainName": {
+              "type": "string",
+              "value": "[parameters('customDomain')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[variables('resourceGroupName')]"
+    },
+    "subscriptionId": {
+      "type": "string",
+      "value": "[subscription().subscriptionId]"
+    },
+    "appServiceBackendName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceBackendName.value]"
+    },
+    "appServiceBackendUrl": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceBackendUrl.value]"
+    },
+    "appServiceFrontendName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceFrontendName.value]"
+    },
+    "appServiceFrontendUrl": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appServiceFrontendUrl.value]"
+    },
+    "postgreSqlServerName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.postgreSqlServerName.value]"
+    },
+    "postgreSqlDatabaseName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.postgreSqlDatabaseName.value]"
+    },
+    "postgreSqlConnectionString": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.postgreSqlConnectionString.value]"
+    },
+    "redisName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.redisName.value]"
+    },
+    "redisConnectionString": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.redisConnectionString.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.storageAccountName.value]"
+    },
+    "storageAccountConnectionString": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.storageAccountConnectionString.value]"
+    },
+    "appInsightsName": {
+      "type": "string",
+      "value": "[if(parameters('enableAppInsights'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appInsightsName.value, '')]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[if(parameters('enableAppInsights'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.appInsightsConnectionString.value, '')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'security-deployment'), '2025-04-01').outputs.keyVaultName.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'security-deployment'), '2025-04-01').outputs.keyVaultUri.value]"
+    },
+    "frontDoorEndpoint": {
+      "type": "string",
+      "value": "[if(parameters('enableFrontDoor'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'networking-deployment'), '2025-04-01').outputs.frontDoorEndpoint.value, '')]"
+    },
+    "frontDoorName": {
+      "type": "string",
+      "value": "[if(parameters('enableFrontDoor'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'networking-deployment'), '2025-04-01').outputs.frontDoorName.value, '')]"
+    },
+    "deploymentInfo": {
+      "type": "object",
+      "value": {
+        "deploymentName": "[deployment().name]",
+        "environment": "[parameters('environment')]",
+        "location": "[parameters('location')]",
+        "resourceGroupName": "[variables('resourceGroupName')]"
+      }
+    }
+  }
+}

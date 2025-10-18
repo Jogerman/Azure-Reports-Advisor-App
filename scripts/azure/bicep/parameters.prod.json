@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "resourceGroupPrefix": {
+      "value": "rg-azure-advisor"
+    },
+    "appNamePrefix": {
+      "value": "azure-advisor"
+    },
+    "azureAdClientId": {
+      "value": "YOUR_AZURE_AD_CLIENT_ID_PROD"
+    },
+    "azureAdTenantId": {
+      "value": "YOUR_AZURE_AD_TENANT_ID"
+    },
+    "azureAdClientSecret": {
+      "value": "YOUR_AZURE_AD_CLIENT_SECRET_PROD"
+    },
+    "customDomain": {
+      "value": ""
+    },
+    "enableAppInsights": {
+      "value": true
+    },
+    "enableFrontDoor": {
+      "value": true
+    }
+  }
+}

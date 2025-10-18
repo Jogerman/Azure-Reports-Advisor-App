@@ -1,0 +1,56 @@
+Operations to perform:
+  Apply all migrations: admin, analytics, auth, authentication, clients, contenttypes, django_celery_beat, django_celery_results, reports, sessions
+Running migrations:
+  No migrations to apply.
+  Your models in app(s): 'reports' have changes that are not yet reflected in a migration, and so won't be applied.
+  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 13, 2025 - 15:20:16
+Django version 4.2.7, using settings 'azure_advisor_reports.settings.development'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Operations to perform:
+  Apply all migrations: admin, analytics, auth, authentication, clients, contenttypes, django_celery_beat, django_celery_results, reports, sessions
+Running migrations:
+  No migrations to apply.
+  Your models in app(s): 'reports' have changes that are not yet reflected in a migration, and so won't be applied.
+  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 13, 2025 - 16:10:58
+Django version 4.2.7, using settings 'azure_advisor_reports.settings.development'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Operations to perform:
+  Apply all migrations: admin, analytics, auth, authentication, clients, contenttypes, django_celery_beat, django_celery_results, reports, sessions
+Running migrations:
+  No migrations to apply.
+  Your models in app(s): 'reports' have changes that are not yet reflected in a migration, and so won't be applied.
+  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 13, 2025 - 18:02:38
+Django version 4.2.7, using settings 'azure_advisor_reports.settings.development'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Operations to perform:
+  Apply all migrations: admin, analytics, auth, authentication, clients, contenttypes, django_celery_beat, django_celery_results, reports, sessions
+Running migrations:
+  No migrations to apply.
+  Your models in app(s): 'reports' have changes that are not yet reflected in a migration, and so won't be applied.
+  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 13, 2025 - 18:15:04
+Django version 4.2.7, using settings 'azure_advisor_reports.settings.development'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+

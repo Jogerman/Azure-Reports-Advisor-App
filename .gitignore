@@ -265,4 +265,5 @@ uploads/
 *.tmp
 *.temp
 temp/
-tmp/
+tmp/nul
+*/nul

@@ -27,7 +27,18 @@
       "Bash(npm run build:*)",
       "Bash(docker:*)",
       "Bash(npm install:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(pytest:*)",
+      "Bash(.venvScriptsActivate.ps1)",
+      "Bash(Get-Content TASK.md)",
+      "Bash(Select-String -Pattern \"Milestone 4\" -Context 5,20)",
+      "Bash(set DJANGO_SETTINGS_MODULE=azure_advisor_reports.settings)",
+      "Bash(Select-Object -First 50)",
+      "Bash(az bicep build:*)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_tabs"
     ],
     "deny": [],
     "ask": []

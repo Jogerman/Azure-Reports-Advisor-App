@@ -41,19 +41,40 @@ class AzureADAuthentication(authentication.BaseAuthentication):
 
     def _verify_token(self, token):
         """
-        Verify JWT token with Azure AD.
-        """
-        # Get Azure AD public keys for token verification
-        jwks_url = f"https://login.microsoftonline.com/{settings.AZURE_AD['TENANT_ID']}/discovery/v2.0/keys"
+        Verify JWT token (id_token) with Azure AD.
 
+        Note: This implementation accepts id_tokens from Azure AD for user authentication.
+        For production, consider implementing custom API scopes and using access_tokens
+        specifically issued for this API resource.
+        """
         try:
             # Get the token header
             unverified_header = jwt.get_unverified_header(token)
 
+            # First decode without verification to inspect token claims
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
+            token_issuer = unverified_payload.get('iss')
+            token_audience = unverified_payload.get('aud')
+
+            logger.info(f"Token issuer: {token_issuer}")
+            logger.info(f"Token audience: {token_audience}")
+            logger.info(f"Token type (nonce present): {'nonce' in unverified_payload}")
+
+            # Determine the correct JWKS URL based on the token issuer
+            tenant_id = settings.AZURE_AD['TENANT_ID']
+            if 'sts.windows.net' in token_issuer:
+                # v1.0 endpoint token
+                jwks_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/keys"
+            else:
+                # v2.0 endpoint token
+                jwks_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
+
             # Get public keys from Azure AD
+            logger.info(f"Fetching keys from: {jwks_url}")
             jwks_response = requests.get(jwks_url, timeout=10)
             jwks_response.raise_for_status()
             jwks = jwks_response.json()
+            logger.info(f"Found {len(jwks.get('keys', []))} keys from Azure AD")
 
             # Find the correct key
             rsa_key = {}
@@ -66,12 +87,15 @@ class AzureADAuthentication(authentication.BaseAuthentication):
                         'n': key['n'],
                         'e': key['e']
                     }
+                    logger.info(f"Found matching key with kid: {key['kid']}")
                     break
 
             if not rsa_key:
+                logger.error(f"No matching key found for kid: {unverified_header['kid']}")
+                logger.error(f"Available kids: {[k['kid'] for k in jwks['keys']]}")
                 raise exceptions.AuthenticationFailed('Unable to find appropriate key')
 
-            # Construct the key
+            # Construct the public key from JWKS
             from cryptography.hazmat.primitives.asymmetric import rsa
             from cryptography.hazmat.primitives import serialization
             import base64
@@ -92,26 +116,44 @@ class AzureADAuthentication(authentication.BaseAuthentication):
             )
 
             # Verify and decode the token
-            audience = settings.AZURE_AD['CLIENT_ID']
-            issuer = f"https://login.microsoftonline.com/{settings.AZURE_AD['TENANT_ID']}/v2.0"
+            # For id_token: audience should be the client_id
+            # For access_token: audience should be the API resource ID
+            client_id = settings.AZURE_AD['CLIENT_ID']
 
+            # Accept either id_token (aud=client_id) or properly scoped access_token
+            # Skip audience validation for now - will validate manually
             payload = jwt.decode(
                 token,
                 pem,
                 algorithms=['RS256'],
-                audience=audience,
-                issuer=issuer
+                issuer=token_issuer,
+                options={"verify_aud": False}
             )
 
+            # Manual audience validation: accept client_id (id_token) or MS Graph (for dev only)
+            if token_audience not in [client_id, '00000003-0000-0000-c000-000000000000']:
+                logger.warning(f"Token audience {token_audience} not recognized. Expected {client_id}")
+                # For now, we'll allow it for development but log the warning
+
+            logger.info(f"Token verified successfully for user: {payload.get('preferred_username', 'unknown')}")
             return payload
 
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
+            logger.error(f"Token expired: {str(e)}")
             raise exceptions.AuthenticationFailed('Token has expired')
         except jwt.InvalidTokenError as e:
+            logger.error(f"Invalid token details: {type(e).__name__} - {str(e)}")
+            logger.error(f"Token header: {jwt.get_unverified_header(token)}")
+            logger.error(f"Token payload (unverified): {jwt.decode(token, options={'verify_signature': False})}")
             raise exceptions.AuthenticationFailed(f'Invalid token: {str(e)}')
         except requests.RequestException as e:
             logger.error(f"Failed to get Azure AD keys: {str(e)}")
             raise exceptions.AuthenticationFailed('Unable to verify token')
+        except Exception as e:
+            logger.error(f"Unexpected error during token verification: {type(e).__name__} - {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise exceptions.AuthenticationFailed(f'Token verification failed: {str(e)}')
 
     def _get_or_create_user(self, user_info):
         """

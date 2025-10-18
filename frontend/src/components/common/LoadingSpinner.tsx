@@ -19,7 +19,12 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   };
 
   const spinner = (
-    <div className="flex flex-col items-center justify-center space-y-3">
+    <div
+      className="flex flex-col items-center justify-center space-y-3"
+      role="status"
+      aria-busy="true"
+      aria-label={text || "Loading"}
+    >
       <motion.div
         animate={{ rotate: 360 }}
         transition={{
@@ -28,6 +33,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           ease: 'linear',
         }}
         className={`${sizeStyles[size]} border-4 border-gray-200 border-t-azure-600 rounded-full`}
+        aria-hidden="true"
       />
       {text && (
         <motion.p
@@ -35,6 +41,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="text-sm text-gray-600"
+          aria-live="polite"
         >
           {text}
         </motion.p>

@@ -61,8 +61,11 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CORS_ALLOWED_ORIGINS=http://localhost:3000
       - CORS_ALLOW_ALL_ORIGINS=True
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
     volumes:
-      - ./azure_advisor_reports:/app
+      # - ./azure_advisor_reports:/app  # Commented out for initial testing
       - media_data:/app/media
       - static_data:/app/staticfiles
     ports:
@@ -74,10 +77,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: >
-      sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+    command:
+      - sh
+      - -c
+      - |
+        python manage.py migrate
+        python manage.py runserver 0.0.0.0:8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 30s

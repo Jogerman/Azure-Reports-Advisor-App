@@ -7,3 +7,4 @@ export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as Toast, showToast } from './Toast';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as SkeletonLoader, SkeletonCard, SkeletonTable, SkeletonList } from './SkeletonLoader';
+export { LazyImage, LazyBackgroundImage } from './LazyImage';

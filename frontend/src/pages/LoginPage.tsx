@@ -34,17 +34,17 @@ const LoginPage: React.FC = () => {
 
   const features = [
     {
-      icon: <FiZap className="w-5 h-5" />,
+      icon: <FiZap className="w-5 h-5" aria-hidden="true" />,
       title: 'Lightning Fast',
       description: 'Generate reports in minutes, not hours',
     },
     {
-      icon: <FiShield className="w-5 h-5" />,
+      icon: <FiShield className="w-5 h-5" aria-hidden="true" />,
       title: 'Secure & Compliant',
       description: 'Enterprise-grade security with Azure AD',
     },
     {
-      icon: <FiTrendingUp className="w-5 h-5" />,
+      icon: <FiTrendingUp className="w-5 h-5" aria-hidden="true" />,
       title: 'Professional Output',
       description: 'Client-ready reports with beautiful formatting',
     },
@@ -107,8 +107,9 @@ const LoginPage: React.FC = () => {
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.6 }}
               className="w-14 h-14 bg-gradient-to-br from-azure-600 to-azure-700 rounded-xl flex items-center justify-center shadow-lg"
+              aria-hidden="true"
             >
-              <FiCloud className="w-8 h-8 text-white" />
+              <FiCloud className="w-8 h-8 text-white" aria-hidden="true" />
             </motion.div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
@@ -148,7 +149,7 @@ const LoginPage: React.FC = () => {
                 className="bg-white bg-opacity-50 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-gray-100"
               >
                 <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 w-10 h-10 bg-azure-100 rounded-lg flex items-center justify-center text-azure-600">
+                  <div className="flex-shrink-0 w-10 h-10 bg-azure-100 rounded-lg flex items-center justify-center text-azure-600" aria-hidden="true">
                     {feature.icon}
                   </div>
                   <div>
@@ -172,7 +173,7 @@ const LoginPage: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
                 className="flex items-start space-x-3"
               >
-                <FiCheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                <FiCheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <span className="text-gray-700 text-sm">{benefit}</span>
               </motion.div>
             ))}
@@ -185,7 +186,7 @@ const LoginPage: React.FC = () => {
             transition={{ delay: 1.2 }}
             className="inline-flex items-center space-x-2 bg-white bg-opacity-70 backdrop-blur-sm text-azure-700 px-4 py-3 rounded-xl border border-azure-200 shadow-sm"
           >
-            <FiLock className="w-4 h-4" />
+            <FiLock className="w-4 h-4" aria-hidden="true" />
             <span className="text-sm font-medium">
               Secured with Microsoft Azure Active Directory
             </span>
@@ -249,7 +250,7 @@ const LoginPage: React.FC = () => {
                     size="lg"
                     fullWidth
                     onClick={handleLogin}
-                    icon={<FiCloud className="w-5 h-5" />}
+                    icon={<FiCloud className="w-5 h-5" aria-hidden="true" />}
                     className="mb-6 shadow-lg hover:shadow-xl transition-shadow"
                     aria-label="Sign in with Microsoft"
                   >
@@ -270,16 +271,17 @@ const LoginPage: React.FC = () => {
                   <div className="text-center space-y-4">
                     <p className="text-sm text-gray-600">
                       Don't have an account?{' '}
-                      <a
-                        href="#"
-                        className="text-azure-600 hover:text-azure-700 font-medium"
-                        onClick={(e) => {
-                          e.preventDefault();
+                      <button
+                        type="button"
+                        className="text-azure-600 hover:text-azure-700 font-medium underline focus:outline-none focus:ring-2 focus:ring-azure-500 focus:ring-offset-2 rounded"
+                        onClick={() => {
                           // In production, this would link to registration or contact page
+                          console.log('Contact administrator clicked');
                         }}
+                        aria-label="Contact your administrator for account access"
                       >
                         Contact your administrator
-                      </a>
+                      </button>
                     </p>
                   </div>
                 </motion.div>
@@ -294,13 +296,29 @@ const LoginPage: React.FC = () => {
             >
               <p className="text-xs text-gray-500 leading-relaxed">
                 By signing in, you agree to our{' '}
-                <a href="#" className="text-azure-600 hover:text-azure-700 underline">
+                <button
+                  type="button"
+                  className="text-azure-600 hover:text-azure-700 underline focus:outline-none focus:ring-2 focus:ring-azure-500 focus:ring-offset-2 rounded"
+                  onClick={() => {
+                    // In production, this would link to the terms of service page
+                    console.log('Terms of Service clicked');
+                  }}
+                  aria-label="View Terms of Service"
+                >
                   Terms of Service
-                </a>{' '}
+                </button>{' '}
                 and{' '}
-                <a href="#" className="text-azure-600 hover:text-azure-700 underline">
+                <button
+                  type="button"
+                  className="text-azure-600 hover:text-azure-700 underline focus:outline-none focus:ring-2 focus:ring-azure-500 focus:ring-offset-2 rounded"
+                  onClick={() => {
+                    // In production, this would link to the privacy policy page
+                    console.log('Privacy Policy clicked');
+                  }}
+                  aria-label="View Privacy Policy"
+                >
                   Privacy Policy
-                </a>
+                </button>
               </p>
             </motion.div>
 

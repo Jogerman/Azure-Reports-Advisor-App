@@ -3,6 +3,7 @@ export { default as apiClient } from './apiClient';
 export { default as authService } from './authService';
 export { default as clientService } from './clientService';
 export { default as reportService } from './reportService';
+export { default as analyticsService } from './analyticsService';
 
 // Re-export types
 export type { User, LoginRequest, LoginResponse } from './authService';
@@ -23,3 +24,7 @@ export type {
   ReportListResponse,
   ReportStatusResponse,
 } from './reportService';
+export type {
+  DashboardMetrics,
+  AnalyticsData,
+} from './analyticsService';

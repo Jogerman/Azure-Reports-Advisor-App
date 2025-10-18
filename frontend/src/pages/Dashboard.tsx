@@ -1,61 +1,54 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   FiUsers,
   FiFileText,
   FiDollarSign,
   FiTrendingUp,
   FiArrowRight,
-  FiCheckCircle,
   FiAlertCircle,
-  FiClock,
+  FiRefreshCw,
 } from 'react-icons/fi';
-import Card from '../components/common/Card';
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  change?: string;
-  trend?: 'up' | 'down';
-  icon: React.ReactNode;
-  color: 'azure' | 'green' | 'orange' | 'red';
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, trend, icon, color }) => {
-  const colorClasses = {
-    azure: 'bg-azure-50 text-azure-600',
-    green: 'bg-green-50 text-green-600',
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-  };
-
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
-    >
-      <Card>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${colorClasses[color]}`}>
-              {icon}
-            </div>
-            {change && (
-              <span className={`text-sm font-medium ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                {change}
-              </span>
-            )}
-          </div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">{title}</h3>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-        </div>
-      </Card>
-    </motion.div>
-  );
-};
+import { toast } from 'react-toastify';
+import { MetricCard, CategoryChart, TrendChart, RecentActivity } from '../components/dashboard';
+import { analyticsService } from '../services';
 
 const Dashboard: React.FC = () => {
+  // Use React Query for data fetching with auto-refresh every 30 seconds
+  const {
+    data: analyticsData,
+    isLoading: loading,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ['dashboard-analytics'],
+    queryFn: () => analyticsService.getDashboardAnalytics(),
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchIntervalInBackground: false, // Don't refresh when tab is not active
+    staleTime: 20000, // Consider data stale after 20 seconds
+    retry: 2, // Retry failed requests twice
+  });
+
+  // Handle errors with React effect
+  React.useEffect(() => {
+    if (error) {
+      toast.error('Failed to load analytics data');
+      console.error('Analytics error:', error);
+    }
+  }, [error]);
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast.success('Dashboard refreshed');
+    } catch (err) {
+      toast.error('Failed to refresh dashboard');
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -71,6 +64,21 @@ const Dashboard: React.FC = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  // Format currency
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  // Format number with commas
+  const formatNumber = (value: number): string => {
+    return new Intl.NumberFormat('en-US').format(value);
+  };
+
   return (
     <motion.div
       variants={containerVariants}
@@ -79,150 +87,210 @@ const Dashboard: React.FC = () => {
     >
       {/* Page Header */}
       <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">
-          Welcome to Azure Advisor Reports Platform. Here's an overview of your reports and clients.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <p className="text-gray-600">
+              Welcome to Azure Advisor Reports Platform. Here's an overview of your reports and clients.
+            </p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRefresh}
+            disabled={isFetching}
+            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            aria-label="Refresh dashboard data"
+          >
+            <FiRefreshCw className={`mr-2 w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            {isFetching ? 'Refreshing...' : 'Refresh'}
+          </motion.button>
+        </div>
       </motion.div>
+
+      {/* Error State */}
+      {error && (
+        <motion.div
+          variants={itemVariants}
+          className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3"
+          role="alert"
+          aria-live="assertive"
+        >
+          <FiAlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
+            <p className="text-sm text-red-700 mt-1">
+              {error instanceof Error ? error.message : 'Failed to load analytics data'}
+            </p>
+            <button
+              onClick={handleRefresh}
+              className="mt-2 text-sm font-medium text-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
+              aria-label="Retry loading dashboard data"
+            >
+              Try again
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Metrics Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
-          title="Total Clients"
-          value="0"
-          change="+0%"
-          trend="up"
+          title="Active Clients"
+          value={loading ? '...' : formatNumber(analyticsData?.metrics.activeClients || 0)}
+          change={analyticsData?.metrics.trends.clients}
+          changeLabel="vs last month"
           icon={<FiUsers className="w-6 h-6" />}
           color="azure"
+          loading={loading}
         />
         <MetricCard
           title="Reports Generated"
-          value="0"
-          change="+0%"
-          trend="up"
+          value={loading ? '...' : formatNumber(analyticsData?.metrics.reportsGeneratedThisMonth || 0)}
+          subtitle="This month"
+          change={analyticsData?.metrics.trends.reports}
+          changeLabel="vs last month"
           icon={<FiFileText className="w-6 h-6" />}
-          color="green"
+          color="success"
+          loading={loading}
         />
         <MetricCard
           title="Total Potential Savings"
-          value="$0"
+          value={loading ? '...' : formatCurrency(analyticsData?.metrics.totalPotentialSavings || 0)}
+          change={analyticsData?.metrics.trends.savings}
+          changeLabel="vs last month"
           icon={<FiDollarSign className="w-6 h-6" />}
-          color="orange"
+          color="warning"
+          loading={loading}
         />
         <MetricCard
-          title="Active Reports"
-          value="0"
+          title="Total Recommendations"
+          value={loading ? '...' : formatNumber(analyticsData?.metrics.totalRecommendations || 0)}
+          change={analyticsData?.metrics.trends.recommendations}
+          changeLabel="vs last month"
           icon={<FiTrendingUp className="w-6 h-6" />}
-          color="red"
+          color="info"
+          loading={loading}
         />
       </motion.div>
 
-      {/* Welcome Card */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <Card>
-          <div className="p-8">
-            <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-azure-500 to-azure-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FiCheckCircle className="w-8 h-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Welcome to Azure Advisor Reports Platform!
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  The core UI components are ready and functional. You can now navigate through the platform using the sidebar.
-                  Start by adding clients and generating professional Azure Advisor reports.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <Link to="/clients">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="inline-flex items-center px-6 py-3 bg-azure-600 text-white font-medium rounded-lg shadow-sm hover:bg-azure-700 transition-colors"
-                    >
-                      <FiUsers className="mr-2" />
-                      Manage Clients
-                      <FiArrowRight className="ml-2" />
-                    </motion.button>
-                  </Link>
-                  <Link to="/reports">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="inline-flex items-center px-6 py-3 bg-white text-gray-700 font-medium rounded-lg shadow-sm border border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                      <FiFileText className="mr-2" />
-                      Generate Reports
-                      <FiArrowRight className="ml-2" />
-                    </motion.button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Charts Grid */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Category Distribution */}
+        <CategoryChart
+          data={analyticsData?.categoryDistribution || []}
+          title="Recommendations by Category"
+          subtitle="Distribution across Azure Advisor categories"
+          loading={loading}
+        />
+
+        {/* Trend Chart */}
+        <TrendChart
+          data={analyticsData?.trendData || []}
+          title="Report Generation Trend"
+          subtitle="Reports generated over time"
+          valueLabel="Reports"
+          loading={loading}
+          showTimeRangeSelector={true}
+        />
       </motion.div>
 
-      {/* Quick Actions Grid */}
+      {/* Recent Activity */}
+      <motion.div variants={itemVariants} className="mb-8">
+        <RecentActivity
+          activities={analyticsData?.recentActivity || []}
+          title="Recent Activity"
+          subtitle="Latest reports and system events"
+          maxItems={10}
+          loading={loading}
+          showActions={true}
+        />
+      </motion.div>
+
+      {/* Quick Actions */}
       <motion.div variants={itemVariants}>
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Recent Activity */}
-          <Card>
-            <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="navigation" aria-label="Quick actions">
+          {/* Manage Clients */}
+          <Link
+            to="/clients"
+            className="focus:outline-none focus:ring-2 focus:ring-azure-500 focus:ring-offset-2 rounded-lg"
+            aria-label="Manage Clients - Add, edit, or view your client list and their Azure subscriptions"
+          >
+            <motion.div
+              whileHover={{ y: -4, boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.1)' }}
+              transition={{ duration: 0.2 }}
+              className="p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-azure-300 transition-all h-full"
+            >
               <div className="flex items-center space-x-3 mb-4">
-                <FiClock className="w-5 h-5 text-azure-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+                <div className="w-12 h-12 bg-azure-50 rounded-lg flex items-center justify-center" aria-hidden="true">
+                  <FiUsers className="w-6 h-6 text-azure-600" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Manage Clients</h3>
               </div>
               <p className="text-gray-600 text-sm mb-4">
-                View your recent reports and activity history.
+                Add, edit, or view your client list and their Azure subscriptions.
               </p>
-              <Link
-                to="/history"
-                className="inline-flex items-center text-sm font-medium text-azure-600 hover:text-azure-700"
-              >
+              <div className="inline-flex items-center text-sm font-medium text-azure-600">
+                Go to Clients
+                <FiArrowRight className="ml-1 w-4 h-4" aria-hidden="true" />
+              </div>
+            </motion.div>
+          </Link>
+
+          {/* Generate Reports */}
+          <Link
+            to="/reports"
+            className="focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-lg"
+            aria-label="Generate Reports - Upload Azure Advisor CSV and generate professional reports"
+          >
+            <motion.div
+              whileHover={{ y: -4, boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.1)' }}
+              transition={{ duration: 0.2 }}
+              className="p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-green-300 transition-all h-full"
+            >
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center" aria-hidden="true">
+                  <FiFileText className="w-6 h-6 text-green-600" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Generate Reports</h3>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">
+                Upload Azure Advisor CSV and generate professional reports.
+              </p>
+              <div className="inline-flex items-center text-sm font-medium text-green-600">
+                Upload CSV
+                <FiArrowRight className="ml-1 w-4 h-4" aria-hidden="true" />
+              </div>
+            </motion.div>
+          </Link>
+
+          {/* View History */}
+          <Link
+            to="/history"
+            className="focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-lg"
+            aria-label="View History - Access all your previously generated reports and activity"
+          >
+            <motion.div
+              whileHover={{ y: -4, boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.1)' }}
+              transition={{ duration: 0.2 }}
+              className="p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-purple-300 transition-all h-full"
+            >
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center" aria-hidden="true">
+                  <FiTrendingUp className="w-6 h-6 text-purple-600" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">View History</h3>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">
+                Access all your previously generated reports and activity.
+              </p>
+              <div className="inline-flex items-center text-sm font-medium text-purple-600">
                 View History
-                <FiArrowRight className="ml-1 w-4 h-4" />
-              </Link>
-            </div>
-          </Card>
-
-          {/* Upload CSV */}
-          <Card>
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <FiFileText className="w-5 h-5 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Upload CSV</h3>
+                <FiArrowRight className="ml-1 w-4 h-4" aria-hidden="true" />
               </div>
-              <p className="text-gray-600 text-sm mb-4">
-                Upload Azure Advisor CSV to generate a new report.
-              </p>
-              <Link
-                to="/reports"
-                className="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-700"
-              >
-                Upload Now
-                <FiArrowRight className="ml-1 w-4 h-4" />
-              </Link>
-            </div>
-          </Card>
-
-          {/* System Status */}
-          <Card>
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <FiAlertCircle className="w-5 h-5 text-orange-600" />
-                <h3 className="text-lg font-semibold text-gray-900">System Status</h3>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">
-                All systems operational. Platform ready for use.
-              </p>
-              <div className="inline-flex items-center text-sm font-medium text-gray-600">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                Operational
-              </div>
-            </div>
-          </Card>
+            </motion.div>
+          </Link>
         </div>
       </motion.div>
     </motion.div>

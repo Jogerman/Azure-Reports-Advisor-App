@@ -63,7 +63,7 @@ class UserSession(models.Model):
     Track user sessions for security monitoring.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='sessions')
     session_key = models.CharField(max_length=255)
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()

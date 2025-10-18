@@ -4,14 +4,12 @@ Analytics models for tracking metrics and performance data.
 
 import uuid
 from django.db import models
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 
 from apps.clients.models import Client
 from apps.reports.models import Report
-
-User = get_user_model()
 
 
 class DashboardMetrics(models.Model):
@@ -221,7 +219,7 @@ class UserActivity(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    user = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='activities')
     action = models.CharField(max_length=30, choices=ACTION_CHOICES)
     description = models.CharField(max_length=255, help_text="Brief description of the action")
 
