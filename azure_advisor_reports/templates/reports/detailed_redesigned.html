@@ -1,0 +1,705 @@
+{% extends 'reports/base_redesigned.html' %}
+
+{% block title %}Detailed Azure Advisor Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Executive Summary Dashboard -->
+    <div class="executive-summary">
+        <div class="summary-header">
+            <h2 class="summary-title">Executive Summary</h2>
+            <p class="summary-subtitle">Key findings and recommendations from Azure Advisor analysis</p>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-label">Total Recommendations</div>
+                <div class="metric-value">{{ total_recommendations }}</div>
+                <div class="metric-subtitle">Across all categories</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Potential Annual Savings</div>
+                <div class="metric-value">${{ total_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">${{ monthly_savings|floatformat:0 }} per month</div>
+            </div>
+
+            <div class="metric-card metric-critical">
+                <div class="metric-icon">⚠️</div>
+                <div class="metric-label">High Priority Items</div>
+                <div class="metric-value">{{ high_impact_count }}</div>
+                <div class="metric-subtitle">Immediate attention required</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-label">Categories Affected</div>
+                <div class="metric-value">{{ category_distribution|length }}</div>
+                <div class="metric-subtitle">Azure Advisor pillars</div>
+            </div>
+        </div>
+
+        <!-- Impact Distribution -->
+        <div class="metrics-grid" style="margin-top: 40px;">
+            <div class="metric-card metric-critical">
+                <div class="metric-label">High Impact</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ high_impact_count }}</div>
+                <div class="metric-subtitle">Critical recommendations</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-label">Medium Impact</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ medium_impact_count }}</div>
+                <div class="metric-subtitle">Important items</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-label">Low Impact</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ low_impact_count }}</div>
+                <div class="metric-subtitle">Optimization opportunities</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Distribution Charts -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📈</div>
+            <h2 class="section-title">Category Distribution</h2>
+        </div>
+
+        <div class="charts-grid">
+            <!-- Category Distribution Donut Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Recommendations by Category</h3>
+                    <p class="chart-subtitle">Distribution across Azure Advisor pillars</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Impact Distribution Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Impact Level Distribution</h3>
+                    <p class="chart-subtitle">Priority classification of recommendations</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="impactChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Potential Chart -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon icon-cost">💰</div>
+            <h2 class="section-title">Cost Optimization Potential</h2>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">Potential Savings by Category</h3>
+                <p class="chart-subtitle">Annual cost reduction opportunities</p>
+            </div>
+            <div class="chart-wrapper chart-large">
+                <canvas id="savingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Summary Table -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📋</div>
+            <h2 class="section-title">Category Summary</h2>
+            <span class="section-count">{{ category_stats|length }} Categories</span>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th style="text-align: center;">Total Count</th>
+                        <th style="text-align: center;">High Priority</th>
+                        <th style="text-align: right;">Potential Savings</th>
+                        <th style="text-align: right;">Avg. Savings per Item</th>
+                        <th style="text-align: center;">Distribution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in category_stats %}
+                    <tr>
+                        <td>
+                            <span class="font-bold text-lg">{{ cat.category }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="font-bold text-xl">{{ cat.count }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            {% if cat.high_impact > 0 %}
+                            <span class="badge badge-high">{{ cat.high_impact }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="font-bold text-success text-lg">${{ cat.total_savings|floatformat:2 }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="text-muted">${{ cat.avg_savings|floatformat:2 }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <div style="width: 100%; background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: {% widthratio cat.count total_recommendations 100 %}%; background: var(--gradient-azure); height: 100%;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detailed Recommendations by Category -->
+    {% for category, recs in recommendations_by_category.items %}
+    <div class="section">
+        <div class="section-header">
+            {% if 'Cost' in category %}
+            <div class="section-icon icon-cost">💰</div>
+            {% elif 'Security' in category %}
+            <div class="section-icon icon-security">🔒</div>
+            {% elif 'Reliability' in category %}
+            <div class="section-icon icon-reliability">🛡️</div>
+            {% elif 'Excellence' in category %}
+            <div class="section-icon icon-operations">⚙️</div>
+            {% else %}
+            <div class="section-icon">⚡</div>
+            {% endif %}
+            <h2 class="section-title">{{ category }}</h2>
+            <span class="section-count">{{ recs|length }} items</span>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">Priority</th>
+                        <th>Recommendation Details</th>
+                        <th style="width: 250px;">Affected Resource</th>
+                        <th style="width: 150px; text-align: right;">Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in recs %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-{{ rec.business_impact }}">
+                                {{ rec.get_business_impact_display|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="font-bold text-base" style="margin-bottom: 8px; color: var(--gray-900);">
+                                {{ rec.recommendation|truncatewords:20 }}
+                            </div>
+                            {% if rec.potential_benefits %}
+                            <div class="text-sm text-muted" style="line-height: 1.6;">
+                                <strong>Benefits:</strong> {{ rec.potential_benefits|truncatewords:30 }}
+                            </div>
+                            {% endif %}
+                            {% if rec.advisor_score_impact > 0 %}
+                            <div class="text-xs text-primary" style="margin-top: 6px;">
+                                <strong>Advisor Score Impact:</strong> +{{ rec.advisor_score_impact }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if rec.resource_name %}
+                            <div class="font-semibold" style="margin-bottom: 4px;">{{ rec.resource_name|truncatechars:30 }}</div>
+                            <div class="text-xs text-muted" style="line-height: 1.4;">
+                                {% if rec.resource_type %}
+                                <div>Type: {{ rec.resource_type|truncatechars:35 }}</div>
+                                {% endif %}
+                                {% if rec.resource_group %}
+                                <div>RG: {{ rec.resource_group|truncatechars:30 }}</div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted font-medium">General Recommendation</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if rec.potential_savings > 0 %}
+                            <div class="font-bold text-success text-lg" style="margin-bottom: 4px;">
+                                ${{ rec.potential_savings|floatformat:2 }}
+                            </div>
+                            <div class="text-xs text-muted">
+                                ${{ rec.monthly_savings|floatformat:2 }}/month
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Subscription Breakdown -->
+    {% if subscriptions %}
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">☁️</div>
+            <h2 class="section-title">Azure Subscription Breakdown</h2>
+            <span class="section-count">{{ subscriptions|length }} Subscriptions</span>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">Recommendations per Subscription</h3>
+                <p class="chart-subtitle">Distribution across your Azure subscriptions</p>
+            </div>
+            <div class="chart-wrapper chart-large">
+                <canvas id="subscriptionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container" style="margin-top: 40px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Subscription Name</th>
+                        <th>Subscription ID</th>
+                        <th style="text-align: center;">Recommendations</th>
+                        <th style="text-align: right;">Potential Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in subscriptions %}
+                    <tr>
+                        <td>
+                            <span class="font-bold">{{ sub.subscription_name|default:"Unnamed Subscription" }}</span>
+                        </td>
+                        <td>
+                            <code style="font-size: 0.8em; color: var(--gray-600); font-family: var(--font-family-mono);">
+                                {{ sub.subscription_id|truncatechars:25 }}
+                            </code>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="font-bold text-xl">{{ sub.rec_count }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            {% if sub.total_savings %}
+                            <span class="font-bold text-success text-lg">${{ sub.total_savings|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Top 10 High-Impact Recommendations -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-danger);">🎯</div>
+            <h2 class="section-title">Top Priority Recommendations</h2>
+            <span class="section-count">Quick Wins</span>
+        </div>
+
+        <div class="info-box danger-box">
+            <div class="info-box-icon">⚠️</div>
+            <h3>Critical Action Items</h3>
+            <p>These recommendations have the highest impact on your Azure environment. Prioritize these for immediate review and implementation.</p>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 100px;">Priority</th>
+                        <th style="width: 150px;">Category</th>
+                        <th>Recommendation</th>
+                        <th style="width: 150px; text-align: right;">Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in top_recommendations %}
+                    <tr>
+                        <td style="text-align: center;">
+                            <span class="font-bold text-primary text-lg">{{ forloop.counter }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ rec.business_impact }}">
+                                {{ rec.get_business_impact_display|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ rec.category }}">
+                                {{ rec.get_category_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="font-semibold">{{ rec.recommendation|truncatewords:25 }}</div>
+                            {% if rec.resource_name %}
+                            <div class="text-xs text-muted" style="margin-top: 4px;">
+                                Resource: {{ rec.resource_name|truncatechars:40 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if rec.potential_savings > 0 %}
+                            <span class="font-bold text-success text-lg">${{ rec.potential_savings|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-muted">Non-financial</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Implementation Roadmap -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-success);">🗓️</div>
+            <h2 class="section-title">Recommended Implementation Roadmap</h2>
+        </div>
+
+        <div class="success-box">
+            <h3>Phase 1: Immediate Actions (Week 1-2)</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2;">
+                <li><strong>Review High-Impact Items:</strong> Analyze all {{ high_impact_count }} high-priority recommendations with stakeholders</li>
+                <li><strong>Security First:</strong> Address critical security recommendations immediately</li>
+                <li><strong>Quick Wins:</strong> Implement low-risk, high-value cost optimizations</li>
+            </ol>
+        </div>
+
+        <div class="info-box" style="margin-top: 20px;">
+            <h3>Phase 2: Strategic Implementation (Week 3-6)</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2;">
+                <li><strong>Technical Review:</strong> Deep-dive analysis of medium-impact recommendations</li>
+                <li><strong>Resource Optimization:</strong> Right-size VMs and storage configurations</li>
+                <li><strong>Architecture Updates:</strong> Implement reliability and performance improvements</li>
+                <li><strong>Monitor Results:</strong> Track cost savings and performance metrics</li>
+            </ol>
+        </div>
+
+        <div class="warning-box" style="margin-top: 20px;">
+            <h3>Phase 3: Continuous Optimization (Ongoing)</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2;">
+                <li><strong>Monthly Reviews:</strong> Schedule regular Azure Advisor reviews</li>
+                <li><strong>Automation:</strong> Implement automated remediation where appropriate</li>
+                <li><strong>Documentation:</strong> Maintain runbooks for common optimizations</li>
+                <li><strong>Training:</strong> Educate team on Azure best practices</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Key Insights & Analysis -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">💡</div>
+            <h2 class="section-title">Key Insights & Analysis</h2>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">ROI Potential</div>
+                <div class="metric-value" style="font-size: 2.5rem;">
+                    {% if total_savings > 0 %}High{% else %}Medium{% endif %}
+                </div>
+                <div class="metric-subtitle">
+                    Based on ${{ total_savings|floatformat:0 }} annual savings potential
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Avg. Time to Value</div>
+                <div class="metric-value" style="font-size: 2.5rem;">2-4</div>
+                <div class="metric-subtitle">Weeks for most recommendations</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Risk Level</div>
+                <div class="metric-value" style="font-size: 2.5rem;">
+                    {% if high_impact_count > 10 %}High{% elif high_impact_count > 5 %}Med{% else %}Low{% endif %}
+                </div>
+                <div class="metric-subtitle">Based on high-priority items</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Complexity</div>
+                <div class="metric-value" style="font-size: 2.5rem;">Mixed</div>
+                <div class="metric-subtitle">Varies by recommendation type</div>
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 40px;">
+            <div class="info-box-icon">📊</div>
+            <h3>Analysis Summary</h3>
+            <div style="line-height: 2; margin-top: 15px;">
+                <p><strong>Total Optimization Opportunities:</strong> {{ total_recommendations }} recommendations across {{ category_distribution|length }} Azure Advisor categories</p>
+                <p><strong>Financial Impact:</strong> Potential annual savings of ${{ total_savings|floatformat:2 }} (${{ monthly_savings|floatformat:2 }}/month)</p>
+                <p><strong>Priority Distribution:</strong> {{ high_impact_count }} high-priority, {{ medium_impact_count }} medium-priority, and {{ low_impact_count }} low-priority items</p>
+                <p><strong>Implementation Effort:</strong> Estimated 4-8 weeks for comprehensive implementation of high and medium priority items</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js Initialization Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default chart options
+            Chart.defaults.font.family = "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif";
+            Chart.defaults.font.size = 12;
+
+            // Azure Color Palette
+            const azureColors = {
+                primary: '#0078D4',
+                cyan: '#00BCF2',
+                purple: '#8661C5',
+                green: '#107C10',
+                greenLight: '#9FDA3A',
+                orange: '#FF8C00',
+                yellow: '#FFB900',
+                red: '#D13438',
+                redLight: '#F25022',
+                gray: '#605E5C'
+            };
+
+            // Category colors
+            const categoryColors = {
+                'Cost': azureColors.green,
+                'Security': azureColors.orange,
+                'Reliability': azureColors.cyan,
+                'Operational Excellence': azureColors.purple,
+                'Performance': '#9966FF'
+            };
+
+            // Impact colors
+            const impactColors = {
+                'High': azureColors.red,
+                'Medium': azureColors.orange,
+                'Low': azureColors.green
+            };
+
+            // Category Distribution Chart
+            {% if category_distribution %}
+            const categoryCtx = document.getElementById('categoryChart');
+            if (categoryCtx) {
+                new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [{% for cat in category_distribution %}'{{ cat.category_display }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            data: [{% for cat in category_distribution %}{{ cat.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: [
+                                categoryColors['Cost'],
+                                categoryColors['Security'],
+                                categoryColors['Reliability'],
+                                categoryColors['Operational Excellence'],
+                                categoryColors['Performance']
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: { size: 12, weight: '600' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+
+            // Impact Distribution Chart
+            const impactCtx = document.getElementById('impactChart');
+            if (impactCtx) {
+                new Chart(impactCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['High Priority', 'Medium Priority', 'Low Priority'],
+                        datasets: [{
+                            data: [{{ high_impact_count }}, {{ medium_impact_count }}, {{ low_impact_count }}],
+                            backgroundColor: [
+                                impactColors['High'],
+                                impactColors['Medium'],
+                                impactColors['Low']
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: { size: 12, weight: '600' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.parsed} items`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Savings by Category Chart
+            {% if category_stats %}
+            const savingsCtx = document.getElementById('savingsChart');
+            if (savingsCtx) {
+                new Chart(savingsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for cat in category_stats %}'{{ cat.category }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: 'Potential Annual Savings ($)',
+                            data: [{% for cat in category_stats %}{{ cat.total_savings }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: [
+                                categoryColors['Cost'],
+                                categoryColors['Security'],
+                                categoryColors['Reliability'],
+                                categoryColors['Operational Excellence'],
+                                categoryColors['Performance']
+                            ].slice(0, {{ category_stats|length }}),
+                            borderRadius: 6,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Savings: $${context.parsed.x.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+
+            // Subscription Distribution Chart
+            {% if subscriptions %}
+            const subscriptionCtx = document.getElementById('subscriptionChart');
+            if (subscriptionCtx) {
+                new Chart(subscriptionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for sub in subscriptions %}'{{ sub.subscription_name|default:"Unnamed"|truncatechars:20 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: 'Recommendations',
+                            data: [{% for sub in subscriptions %}{{ sub.rec_count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: azureColors.primary,
+                            borderRadius: 6,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Recommendations: ${context.parsed.y}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+        });
+    </script>
+{% endblock %}
