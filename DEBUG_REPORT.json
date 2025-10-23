@@ -1,0 +1,444 @@
+{
+  "consoleMessages": [
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 73723,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.833Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - There is already an instance of MSAL.js in the window.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.886Z"
+    },
+    {
+      "type": "warning",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Warning - There is already an instance of MSAL.js in the window with the same client id.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106478,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.887Z"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106482,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.888Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.889Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.889Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.889Z"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Info - handleRedirectPromise called but there is no interaction in progress, returning null.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106482,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.890Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called for the first time, storing the promise",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.890Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.891Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called previously, returning the result from the first call",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.891Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.891Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:55 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:55.891Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : @azure/msal-browser@4.24.0 : Verbose - loginPopup called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.732Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : @azure/msal-browser@4.24.0 : Verbose - acquireTokenPopup called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.732Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.732Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Attempting to pick up pre-generated PKCE codes",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.732Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Did not find pre-generated PKCE codes",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - asyncPopup set to false, opening popup before acquiring token",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Default popup window width used. Window width not configured or invalid.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Default popup window height used. Window height not configured or invalid.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Default popup window top position used. Window top not configured or invalid.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Default popup window left position used. Window left not configured or invalid.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.733Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - acquireTokenPopupAsync called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.806Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - getRedirectUri called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.806Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Authentication Scheme wasn't explicitly set in request, defaulting to \"Bearer\" request",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.806Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - initializeServerTelemetryManager called",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.815Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Attempting to get cloud discovery metadata  from authority configuration",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.817Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Did not find cloud discovery metadata in the config... Attempting to get cloud discovery metadata from the hardcoded values.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.818Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Found cloud discovery metadata from hardcoded values.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.818Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Attempting to get endpoint metadata from authority configuration",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.818Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Did not find endpoint metadata in the config... Attempting to get endpoint metadata from the hardcoded values.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.819Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - Replacing tenant domain name 9acf6dd6-1978-4d9c-9a9c-c9be95245565 with id {tenantid}",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.819Z"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 12:52:58 GMT] : [019a1121-2eeb-750c-8ee2-78afc92ce570] : msal.js.browser@4.24.0 : Verbose - PopupHandler.monitorPopupForHash - polling started",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 106486,
+        "columnNumber": 20
+      },
+      "timestamp": "2025-10-23T12:52:58.828Z"
+    },
+    {
+      "type": "error",
+      "text": "Cross-Origin-Opener-Policy policy would block the window.closed call.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 8585,
+        "columnNumber": 0
+      },
+      "timestamp": "2025-10-23T12:52:59.480Z"
+    },
+    {
+      "type": "error",
+      "text": "Cross-Origin-Opener-Policy policy would block the window.closed call.",
+      "location": {
+        "url": "http://localhost:3000/static/js/bundle.js",
+        "lineNumber": 8585,
+        "columnNumber": 0
+      },
+      "timestamp": "2025-10-23T12:52:59.480Z"
+    }
+  ],
+  "pageErrors": [],
+  "networkRequests": [
+    {
+      "url": "http://localhost:3000/",
+      "method": "GET",
+      "headers": {
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\""
+      },
+      "postData": null,
+      "timestamp": "2025-10-23T12:52:55.582Z"
+    },
+    {
+      "url": "http://localhost:3000/static/js/bundle.js",
+      "method": "GET",
+      "headers": {
+        "sec-ch-ua-platform": "\"Windows\"",
+        "referer": "http://localhost:3000/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "postData": null,
+      "timestamp": "2025-10-23T12:52:55.590Z"
+    },
+    {
+      "url": "http://localhost:3000/static/js/vendors-node_modules_tanstack_query-devtools_build_chunk_2LDRPXKC_js.chunk.js",
+      "method": "GET",
+      "headers": {
+        "sec-ch-ua-platform": "\"Windows\"",
+        "referer": "http://localhost:3000/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "postData": null,
+      "timestamp": "2025-10-23T12:52:55.886Z"
+    },
+    {
+      "url": "http://localhost:3000/static/js/node_modules_tanstack_query-devtools_build_DevtoolsComponent_6ELMOJL2_js.chunk.js",
+      "method": "GET",
+      "headers": {
+        "sec-ch-ua-platform": "\"Windows\"",
+        "referer": "http://localhost:3000/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "postData": null,
+      "timestamp": "2025-10-23T12:52:55.886Z"
+    },
+    {
+      "url": "http://localhost:3000/static/js/src_pages_LoginPage_tsx.chunk.js",
+      "method": "GET",
+      "headers": {
+        "sec-ch-ua-platform": "\"Windows\"",
+        "referer": "http://localhost:3000/login",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"",
+        "sec-ch-ua-mobile": "?0"
+      },
+      "postData": null,
+      "timestamp": "2025-10-23T12:52:55.899Z"
+    }
+  ],
+  "failedRequests": [],
+  "responseErrors": [],
+  "timestamp": "2025-10-23T12:52:55.575Z",
+  "storageData": {
+    "localStorage": {
+      "msal.version": "4.24.0"
+    },
+    "sessionStorage": {
+      "msal.interaction.status": "{\"clientId\":\"a6401ee1-0c80-439a-9ca7-e1069fa770ba\",\"type\":\"signin\"}"
+    },
+    "cookies": "msal.cache.encryption=%7B%22id%22%3A%22019a1121-23ce-74f7-ae72-084808ed397f%22%2C%22key%22%3A%22vqwA0Jru-y59JLvro5b89Ot8pzgcUuXKSugcqfrO6JI%22%7D"
+  }
+}

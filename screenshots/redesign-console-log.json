@@ -1,0 +1,260 @@
+{
+  "messages": [
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - There is already an instance of MSAL.js in the window."
+    },
+    {
+      "type": "warning",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Warning - There is already an instance of MSAL.js in the window with the same client id."
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Info - handleRedirectPromise called but there is no interaction in progress, returning null."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:24 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called for the first time, storing the promise"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:25 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:25 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called previously, returning the result from the first call"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:25 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:25 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : @azure/msal-browser@4.24.0 : Verbose - loginRedirect called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : @azure/msal-browser@4.24.0 : Verbose - acquireTokenRedirect called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - getRedirectUri called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Authentication Scheme wasn't explicitly set in request, defaulting to \"Bearer\" request"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - initializeServerTelemetryManager called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Attempting to get cloud discovery metadata  from authority configuration"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Did not find cloud discovery metadata in the config... Attempting to get cloud discovery metadata from the hardcoded values."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Found cloud discovery metadata from hardcoded values."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Attempting to get endpoint metadata from authority configuration"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Did not find endpoint metadata in the config... Attempting to get endpoint metadata from the hardcoded values."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - Replacing tenant domain name 9acf6dd6-1978-4d9c-9a9c-c9be95245565 with id {tenantid}"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - RedirectHandler.initiateAuthRequest called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - RedirectHandler.initiateAuthRequest: Invoking onRedirectNavigate callback"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:27 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - RedirectHandler.initiateAuthRequest: onRedirectNavigate did not return false, navigating"
+    },
+    {
+      "type": "info",
+      "text": "BSSO Telemetry: {\"result\":\"Error\",\"error\":\"NoExtension\",\"type\":\"ChromeSsoTelemetry\",\"data\":{},\"traces\":[\"BrowserSSO Initialized\",\"Creating ChromeBrowserCore provider\",\"Sending message for method CreateProviderAsync\",\"Received message for method CreateProviderAsync\",\"Error: ChromeBrowserCore error NoExtension: Extension is not installed.\"]}"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "verbose",
+      "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - There is already an instance of MSAL.js in the window."
+    },
+    {
+      "type": "warning",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Warning - There is already an instance of MSAL.js in the window with the same client id."
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - initializeServerTelemetryManager called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Verbose - getRedirectResponseHash called"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [019a123d-7163-7fbf-8975-5b2b4b8c1249] : msal.js.browser@4.24.0 : Info - handleRedirectPromise did not detect a response as a result of a redirect. Cleaning temporary cache."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called for the first time, storing the promise"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called previously, returning the result from the first call"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:49 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - There is already an instance of MSAL.js in the window."
+    },
+    {
+      "type": "warning",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Warning - There is already an instance of MSAL.js in the window with the same client id."
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Info - MSAL.js was last initialized by version: 4.24.0"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - Claims-based caching is disabled. Clearing the previous cache with claims"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "info",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Info - handleRedirectPromise called but there is no interaction in progress, returning null."
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called for the first time, storing the promise"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - handleRedirectPromise has been called previously, returning the result from the first call"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    },
+    {
+      "type": "debug",
+      "text": "[Thu, 23 Oct 2025 18:03:54 GMT] : [] : @azure/msal-browser@4.24.0 : Verbose - getAllAccounts called"
+    }
+  ]
+}
