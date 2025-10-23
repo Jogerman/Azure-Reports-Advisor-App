@@ -21,7 +21,7 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
 
     def get_template_name(self):
         """Return cost optimization template."""
-        return 'reports/cost.html'
+        return 'reports/cost_redesigned.html'
 
     def get_context_data(self):
         """
@@ -62,12 +62,34 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
             total=Sum('potential_savings')
         )['total'] or 0
 
-        # Cost by resource type
+        # Cost by resource type with enhanced data
         from django.db.models import Count
         cost_by_resource = cost_recs.values('resource_type').annotate(
             count=Count('id'),
             total_savings=Sum('potential_savings')
         ).order_by('-total_savings')[:10]
+
+        # Calculate percentages and monthly savings for each resource type
+        cost_by_resource_enhanced = []
+        for item in cost_by_resource:
+            total_item_savings = item['total_savings'] or 0
+            percentage = (total_item_savings / total_savings * 100) if total_savings > 0 else 0
+            cost_by_resource_enhanced.append({
+                'resource_type': item['resource_type'],
+                'count': item['count'],
+                'total_savings': total_item_savings,
+                'monthly_savings': total_item_savings / 12,
+                'percentage': round(percentage, 1)
+            })
+
+        # Top cost savers for visualization (return as queryset for template access)
+        top_cost_savers = cost_recs.order_by('-potential_savings')[:10]
+        top_cost_savers_total = top_cost_savers.aggregate(
+            total=Sum('potential_savings')
+        )['total'] or 0
+
+        # Quick wins monthly total
+        quick_wins_monthly = quick_wins_total / 12 if quick_wins_total else 0
 
         # Cost by subscription
         cost_by_subscription = cost_recs.values(
@@ -89,10 +111,13 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
             'total_monthly_savings': monthly_savings,
             'quick_wins': quick_wins,
             'quick_wins_total': quick_wins_total,
+            'quick_wins_monthly': quick_wins_monthly,
             'long_term_opportunities': long_term,
             'long_term_total': long_term_total,
-            'cost_by_resource_type': cost_by_resource,
+            'cost_by_resource_type': cost_by_resource_enhanced,
             'cost_by_subscription': cost_by_subscription,
+            'top_cost_savers': top_cost_savers,
+            'top_cost_savers_total': top_cost_savers_total,
             'roi_analysis': {
                 'estimated_implementation_cost': total_implementation_cost,
                 'estimated_annual_savings': total_savings,

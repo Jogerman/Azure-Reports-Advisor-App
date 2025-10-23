@@ -11,6 +11,7 @@ from django.core.cache import cache
 
 from apps.clients.models import Client
 from apps.reports.models import Report, Recommendation
+from apps.analytics.models import UserActivity
 
 
 class AnalyticsService:
@@ -450,4 +451,245 @@ class AnalyticsService:
         }
 
         cache.set(cache_key, result, cls.CACHE_TTL)
+        return result
+
+    @classmethod
+    def get_activity_history(
+        cls,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        action: Optional[str] = None,
+        user_id: Optional[str] = None,
+        client_id: Optional[str] = None,
+        report_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get filtered and paginated activity history.
+
+        Args:
+            start_date: Filter activities after this date
+            end_date: Filter activities before this date
+            action: Filter by action type
+            user_id: Filter by user
+            client_id: Filter by client
+            report_id: Filter by report
+            limit: Number of results to return
+            offset: Number of results to skip (for pagination)
+
+        Returns:
+            Dictionary with results and pagination info
+        """
+        # Build query
+        query = UserActivity.objects.select_related('user', 'client', 'report')
+
+        # Apply filters
+        if start_date:
+            query = query.filter(created_at__gte=start_date)
+
+        if end_date:
+            query = query.filter(created_at__lte=end_date)
+
+        if action:
+            query = query.filter(action=action)
+
+        if user_id:
+            query = query.filter(user_id=user_id)
+
+        if client_id:
+            query = query.filter(client_id=client_id)
+
+        if report_id:
+            query = query.filter(report_id=report_id)
+
+        # Get total count before pagination
+        total_count = query.count()
+
+        # Apply ordering and pagination
+        activities = query.order_by('-created_at')[offset:offset + limit]
+
+        # Format results
+        results = []
+        for activity in activities:
+            results.append({
+                'id': str(activity.id),
+                'action': activity.action,
+                'description': activity.description,
+                'user': {
+                    'id': str(activity.user.id) if activity.user else None,
+                    'username': activity.user.username if activity.user else 'System',
+                    'email': activity.user.email if activity.user else None,
+                } if activity.user else {'id': None, 'username': 'System', 'email': None},
+                'client': {
+                    'id': str(activity.client.id),
+                    'company_name': activity.client.company_name,
+                } if activity.client else None,
+                'report': {
+                    'id': str(activity.report.id),
+                    'report_type': activity.report.report_type,
+                    'status': activity.report.status,
+                } if activity.report else None,
+                'ip_address': activity.ip_address,
+                'metadata': activity.metadata,
+                'created_at': activity.created_at.isoformat(),
+            })
+
+        return {
+            'results': results,
+            'total': total_count,
+            'limit': limit,
+            'offset': offset,
+            'has_next': (offset + limit) < total_count,
+            'has_previous': offset > 0,
+        }
+
+    @classmethod
+    def get_entity_history(
+        cls,
+        entity_type: str,
+        entity_id: str,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Get activity history for a specific entity (client or report).
+
+        Args:
+            entity_type: 'client' or 'report'
+            entity_id: UUID of the entity
+            limit: Maximum number of results
+
+        Returns:
+            List of activity items for the entity
+        """
+        query = UserActivity.objects.select_related('user')
+
+        if entity_type == 'client':
+            query = query.filter(client_id=entity_id)
+        elif entity_type == 'report':
+            query = query.filter(report_id=entity_id)
+        else:
+            return []
+
+        activities = query.order_by('-created_at')[:limit]
+
+        results = []
+        for activity in activities:
+            results.append({
+                'id': str(activity.id),
+                'action': activity.action,
+                'description': activity.description,
+                'user': {
+                    'username': activity.user.username if activity.user else 'System',
+                    'email': activity.user.email if activity.user else None,
+                } if activity.user else {'username': 'System', 'email': None},
+                'ip_address': activity.ip_address,
+                'metadata': activity.metadata,
+                'created_at': activity.created_at.isoformat(),
+            })
+
+        return results
+
+    @classmethod
+    def log_activity(
+        cls,
+        action: str,
+        description: str,
+        user=None,
+        client=None,
+        report=None,
+        ip_address: str = None,
+        user_agent: str = None,
+        metadata: dict = None
+    ) -> UserActivity:
+        """
+        Log a user activity.
+
+        Args:
+            action: Action type (login, logout, create_client, etc.)
+            description: Human-readable description
+            user: User who performed the action
+            client: Related client (optional)
+            report: Related report (optional)
+            ip_address: IP address of the user
+            user_agent: User agent string
+            metadata: Additional metadata as dict
+
+        Returns:
+            Created UserActivity instance
+        """
+        activity = UserActivity.objects.create(
+            action=action,
+            description=description,
+            user=user,
+            client=client,
+            report=report,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata=metadata or {}
+        )
+
+        # Invalidate recent activity cache
+        for limit in [5, 10, 15, 20]:
+            cache.delete(f'recent_activity_{limit}')
+
+        return activity
+
+    @classmethod
+    def get_activity_summary(cls, days: int = 7) -> Dict[str, Any]:
+        """
+        Get summary statistics of activities for the last N days.
+
+        Args:
+            days: Number of days to analyze
+
+        Returns:
+            Dictionary with activity summary statistics
+        """
+        cache_key = f'activity_summary_{days}'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return cached_data
+
+        # Calculate date range
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Get activities in period
+        activities = UserActivity.objects.filter(
+            created_at__gte=start_date,
+            created_at__lte=end_date
+        )
+
+        # Count by action type
+        action_counts = activities.values('action').annotate(
+            count=Count('id')
+        ).order_by('-count')
+
+        # Count by user
+        user_counts = activities.filter(user__isnull=False).values(
+            'user__username'
+        ).annotate(
+            count=Count('id')
+        ).order_by('-count')[:10]  # Top 10 users
+
+        # Daily activity counts
+        daily_counts = activities.extra(
+            select={'date': 'DATE(created_at)'}
+        ).values('date').annotate(
+            count=Count('id')
+        ).order_by('date')
+
+        result = {
+            'total_activities': activities.count(),
+            'by_action': list(action_counts),
+            'top_users': list(user_counts),
+            'daily_counts': list(daily_counts),
+            'period_days': days,
+        }
+
+        # Cache for 1 hour
+        cache.set(cache_key, result, 3600)
+
         return result
