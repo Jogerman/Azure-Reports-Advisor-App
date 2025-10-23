@@ -92,23 +92,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Use popup login
-      const response = await msalInstance.loginPopup(loginRequest);
+      // Use redirect login instead of popup to avoid COOP issues
+      await msalInstance.loginRedirect(loginRequest);
 
-      if (response) {
-        handleAuthenticationResponse(response);
-        showToast.success('Welcome! You have successfully signed in.');
-      }
+      // Note: After redirect, the page will reload and initialization will handle the response
     } catch (error: any) {
       console.error('Login error:', error);
 
       // Handle specific MSAL errors with user-friendly messages
       if (error.errorCode === 'user_cancelled') {
         showToast.info('Sign in was cancelled. You can try again anytime.');
-      } else if (error.errorCode === 'popup_window_error') {
-        showToast.error('Popup blocked! Please allow popups for this site and try again.');
-      } else if (error.errorCode === 'popup_blocked') {
-        showToast.error('Your browser blocked the login window. Please allow popups and try again.');
       } else if (error.errorCode === 'interaction_in_progress') {
         showToast.warning('A sign-in is already in progress. Please complete it or try again.');
       } else if (error.errorCode === 'no_network') {
@@ -120,7 +113,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           'Sign in failed. ' + (error.errorMessage || 'Please try again or contact support.')
         );
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -131,15 +123,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const account = msalInstance.getActiveAccount();
       if (account) {
-        await msalInstance.logoutPopup({
+        await msalInstance.logoutRedirect({
           account,
           postLogoutRedirectUri: msalConfig.auth.postLogoutRedirectUri,
         });
+      } else {
+        await msalInstance.logoutRedirect();
       }
 
-      setUser(null);
-      setIsAuthenticated(false);
-      showToast.success('You have been signed out successfully. See you soon!');
+      // Note: After redirect, local state will be cleared on page reload
     } catch (error: any) {
       console.error('Logout error:', error);
 
@@ -152,7 +144,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         showToast.error('Sign out encountered an issue, but your session has been cleared.');
       }
-    } finally {
       setIsLoading(false);
     }
   };

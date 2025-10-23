@@ -105,6 +105,14 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # ============================================================================
+# SECURITY HEADERS FOR AZURE AD AUTHENTICATION
+# ============================================================================
+
+# Allow popups for Azure AD authentication
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None  # Allows popup authentication
+CROSS_ORIGIN_OPENER_POLICY = None
+
+# ============================================================================
 # AZURE AD CONFIGURATION
 # ============================================================================
 
