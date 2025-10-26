@@ -24,8 +24,11 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
         return 'reports/cost_enhanced.html'
 
     def get_pdf_template_name(self):
-        """Return PDF-optimized cost template."""
-        return 'reports/cost_pdf.html'
+        """
+        Return PDF template for Playwright generation.
+        Uses the enhanced template for full Chart.js support.
+        """
+        return 'reports/cost_enhanced.html'
 
     def get_context_data(self):
         """

@@ -1,0 +1,584 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Cost Optimization Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Cost Optimization Executive Summary -->
+    <div class="executive-summary">
+        <div class="summary-header">
+            <h2 class="summary-title">Cost Optimization Analysis</h2>
+            <p class="summary-subtitle">Comprehensive financial impact assessment and savings opportunities</p>
+        </div>
+
+        <!-- Top-Level Cost Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card metric-cost">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Total Annual Savings</div>
+                <div class="metric-value">${{ total_annual_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">${{ total_monthly_savings|floatformat:0 }}/month opportunity</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-label">Cost Recommendations</div>
+                <div class="metric-value">{{ cost_recommendations.count }}</div>
+                <div class="metric-subtitle">Optimization opportunities</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-label">High-Value Opportunities</div>
+                <div class="metric-value">{{ quick_wins.count }}</div>
+                <div class="metric-subtitle">>$1,000/year savings each</div>
+            </div>
+
+            <div class="metric-card metric-critical">
+                <div class="metric-icon">⏱️</div>
+                <div class="metric-label">Payback Period</div>
+                <div class="metric-value">{{ roi_analysis.payback_months|floatformat:1 }}</div>
+                <div class="metric-subtitle">months to break even</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Impact Overview -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon icon-cost">💵</div>
+            <h2 class="section-title">Financial Impact Summary</h2>
+        </div>
+
+        <div class="success-box">
+            <div class="info-box-icon">📈</div>
+            <h3>Cost Optimization Opportunity</h3>
+            <p style="font-size: 1.1em; line-height: 1.8; margin-top: 15px;">
+                Azure Advisor has identified <strong>${{ total_annual_savings|floatformat:0 }} in annual cost savings</strong>
+                across {{ cost_recommendations.count }} optimization opportunities. This represents
+                <strong>${{ total_monthly_savings|floatformat:0 }} per month</strong> in potential savings.
+                Implementation of these recommendations will significantly reduce your Azure spending while maintaining or improving service quality.
+                {% if roi_analysis.roi_percentage > 100 %}
+                With an estimated ROI of <strong>{{ roi_analysis.roi_percentage|floatformat:0 }}%</strong>, this represents an exceptional investment opportunity.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- ROI Analysis Cards -->
+        <div class="metrics-grid" style="margin-top: 40px;">
+            <div class="metric-card">
+                <div class="metric-label">Estimated Implementation Cost</div>
+                <div class="metric-value text-warning" style="font-size: 2.5rem;">${{ roi_analysis.estimated_implementation_cost|floatformat:0 }}</div>
+                <div class="metric-subtitle">One-time engineering investment</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-label">First Year Net Benefit</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ roi_analysis.net_benefit|floatformat:0 }}</div>
+                <div class="metric-subtitle">After implementation costs</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-label">Return on Investment</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ roi_analysis.roi_percentage|floatformat:0 }}%</div>
+                <div class="metric-subtitle">Conservative estimate</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">3-Year Total Savings</div>
+                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ three_year_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">Projected cumulative savings</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Breakdown Chart -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon icon-cost">📊</div>
+            <h2 class="section-title">Savings Distribution Analysis</h2>
+        </div>
+
+        <div class="charts-grid">
+            <!-- Savings by Resource Type Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Savings by Resource Type</h3>
+                    <p class="chart-subtitle">Top opportunities by category</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="savingsByResourceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Savings by Subscription Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Savings by Subscription</h3>
+                    <p class="chart-subtitle">Distribution across subscriptions</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="savingsBySubscriptionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Cost-Saving Opportunities -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-success);">🎯</div>
+            <h2 class="section-title">Top Cost-Saving Opportunities</h2>
+            <span class="section-count">Highest Impact</span>
+        </div>
+
+        <p class="section-description" style="font-size: 1.05em; line-height: 1.7; margin-bottom: 30px;">
+            These recommendations offer the highest potential for cost reduction. Prioritize implementation based on
+            your organization's budget cycles, resource availability, and risk tolerance.
+        </p>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Recommendation</th>
+                        <th style="width: 200px;">Resource</th>
+                        <th style="width: 100px; text-align: center;">Impact</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">Monthly Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in top_cost_savers %}
+                    <tr>
+                        <td class="text-center">
+                            <strong class="text-primary text-xl">{{ forloop.counter }}</strong>
+                        </td>
+                        <td>
+                            <strong>{{ rec.recommendation|truncatewords:20 }}</strong>
+                            {% if rec.potential_benefits %}
+                            <div class="text-sm text-muted" style="margin-top: 5px;">
+                                {{ rec.potential_benefits|truncatewords:15 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:30 }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success">${{ rec.monthly_savings|floatformat:0 }}</strong>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted" style="padding: 30px;">
+                            No cost optimization recommendations available at this time.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if top_cost_savers %}
+                <tfoot>
+                    <tr style="background-color: var(--gray-50); font-weight: bold;">
+                        <td colspan="4" class="text-right" style="padding: 15px;">
+                            <strong>Total (Top {{ top_cost_savers.count }}):</strong>
+                        </td>
+                        <td class="text-right" style="font-size: 1.2em; color: var(--success-green); padding: 15px;">
+                            ${{ top_cost_savers_total|floatformat:0 }}
+                        </td>
+                        <td class="text-right" style="font-size: 1.1em; color: var(--success-green); padding: 15px;">
+                            ${% widthratio top_cost_savers_total 12 1 %}
+                        </td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Wins Section -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);">⚡</div>
+            <h2 class="section-title">Quick Wins - Easy Implementation</h2>
+            <span class="section-count">{{ quick_wins.count }} opportunities</span>
+        </div>
+
+        <div class="info-box">
+            <div class="info-box-icon">🚀</div>
+            <p><strong>Low Effort, High Impact:</strong> These {{ quick_wins.count }} recommendations can be implemented quickly with minimal disruption while providing immediate cost savings. Total potential: <strong>${{ quick_wins_total|floatformat:0 }}/year (${{ quick_wins_monthly|floatformat:0 }}/month)</strong>.</p>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recommendation</th>
+                        <th style="width: 200px;">Resource</th>
+                        <th style="width: 120px; text-align: center;">Effort</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in quick_wins %}
+                    <tr>
+                        <td>
+                            <strong>{{ rec.recommendation|truncatewords:20 }}</strong>
+                        </td>
+                        <td>
+                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-low">Low Effort</span>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted" style="padding: 30px;">
+                            No quick win opportunities identified at this time.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Savings Breakdown Table -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📊</div>
+            <h2 class="section-title">Savings Breakdown by Resource Type</h2>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Resource Type</th>
+                        <th style="text-align: center;">Count</th>
+                        <th style="text-align: right;">Total Annual Savings</th>
+                        <th style="text-align: right;">Monthly Savings</th>
+                        <th style="text-align: center;">% of Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cost_by_resource_type %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.resource_type|truncatechars:50 }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <strong class="text-lg">{{ item.count }}</strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ item.total_savings|floatformat:0 }}</strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success">${{ item.monthly_savings|floatformat:0 }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                                <div style="width: 100px; background-color: var(--gray-200); height: 20px; border-radius: 10px; overflow: hidden;">
+                                    <div style="width: {{ item.percentage }}%; background: var(--gradient-success); height: 100%;"></div>
+                                </div>
+                                <span class="font-semibold">{{ item.percentage }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted" style="padding: 30px;">
+                            No resource type breakdown available.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Long-term Opportunities -->
+    {% if long_term_opportunities %}
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #50E6FF 0%, #0078D4 100%);">📅</div>
+            <h2 class="section-title">Strategic Long-term Opportunities</h2>
+            <span class="section-count">{{ long_term_opportunities.count }} items</span>
+        </div>
+
+        <p class="section-description" style="margin-bottom: 30px;">
+            These optimization opportunities may require more planning and coordination but offer substantial long-term value.
+            Total potential: <strong>${{ long_term_total|floatformat:0 }}/year</strong>.
+        </p>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recommendation</th>
+                        <th style="width: 180px;">Resource</th>
+                        <th style="width: 100px; text-align: center;">Priority</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in long_term_opportunities %}
+                    <tr>
+                        <td>
+                            <strong>{{ rec.recommendation|truncatewords:20 }}</strong>
+                        </td>
+                        <td>
+                            <div class="font-semibold text-sm">{{ rec.resource_name|truncatechars:25 }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Implementation Roadmap -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #8661C5 0%, #9966FF 100%);">🗺️</div>
+            <h2 class="section-title">Implementation Roadmap</h2>
+        </div>
+
+        <div class="metrics-grid" style="margin-bottom: 40px;">
+            <div class="metric-card metric-critical">
+                <div class="metric-label">Phase 1 - Immediate</div>
+                <div class="metric-value text-danger" style="font-size: 2.5rem;">Week 1-2</div>
+                <div class="metric-subtitle">${{ quick_wins_total|floatformat:0 }} quick wins</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-label">Phase 2 - Short-term</div>
+                <div class="metric-value text-warning" style="font-size: 2.5rem;">Week 3-4</div>
+                <div class="metric-subtitle">Medium complexity items</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-label">Phase 3 - Long-term</div>
+                <div class="metric-value text-success" style="font-size: 2.5rem;">Month 2-3</div>
+                <div class="metric-subtitle">${{ long_term_total|floatformat:0 }} strategic optimizations</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Total Program Value</div>
+                <div class="metric-value text-primary" style="font-size: 2.5rem;">12-16</div>
+                <div class="metric-subtitle">weeks to full implementation</div>
+            </div>
+        </div>
+
+        <div class="danger-box">
+            <h3>Phase 1: Immediate Actions (Week 1-2) - Quick Wins</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2.2;">
+                <li><strong>Resource Right-sizing:</strong> Implement immediate VM and storage right-sizing recommendations</li>
+                <li><strong>Unused Resources:</strong> Identify and decommission or deallocate unused resources</li>
+                <li><strong>Low-hanging Fruit:</strong> Address simple configuration changes with immediate impact</li>
+                <li><strong>Estimated Savings:</strong> ${{ quick_wins_total|floatformat:0 }}/year (~{{ quick_wins.count }} recommendations)</li>
+                <li><strong>Implementation Time:</strong> 2-4 hours per recommendation</li>
+            </ol>
+        </div>
+
+        <div class="warning-box" style="margin-top: 20px;">
+            <h3>Phase 2: Short-term Implementation (Week 3-4)</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2.2;">
+                <li><strong>Reserved Instances:</strong> Analyze usage patterns and purchase appropriate reservations</li>
+                <li><strong>Storage Optimization:</strong> Implement tiering and lifecycle policies</li>
+                <li><strong>Network Optimization:</strong> Review and optimize data transfer and bandwidth usage</li>
+                <li><strong>Testing Required:</strong> May require validation in non-production environments</li>
+                <li><strong>Implementation Time:</strong> 1-2 weeks with proper planning</li>
+            </ol>
+        </div>
+
+        <div class="success-box" style="margin-top: 20px;">
+            <h3>Phase 3: Long-term Strategic Optimization (Month 2-3)</h3>
+            <ol style="margin-left: 20px; margin-top: 15px; line-height: 2.2;">
+                <li><strong>Architectural Changes:</strong> Implement significant architecture optimizations</li>
+                <li><strong>Hybrid Solutions:</strong> Evaluate on-premises vs. cloud cost-benefit analysis</li>
+                <li><strong>Automation:</strong> Deploy automated scaling and optimization policies</li>
+                <li><strong>Estimated Savings:</strong> ${{ long_term_total|floatformat:0 }}/year</li>
+                <li><strong>Implementation Time:</strong> 2-4 weeks with architectural review</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Next Steps & Governance -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-azure);">✅</div>
+            <h2 class="section-title">Next Steps & Governance</h2>
+        </div>
+
+        <div class="success-box">
+            <h3>Recommended Action Plan</h3>
+            <ol style="line-height: 2.5; font-size: 1.05em; margin: 20px 0 20px 20px;">
+                <li><strong>Executive Approval:</strong> Present ROI analysis to finance and IT leadership for budget approval</li>
+                <li><strong>Prioritize Implementation:</strong> Focus on quick wins first to demonstrate value and build momentum</li>
+                <li><strong>Assign Ownership:</strong> Designate cost optimization champions within each team/subscription</li>
+                <li><strong>Create Tracking Dashboard:</strong> Implement real-time cost tracking and savings monitoring</li>
+                <li><strong>Monthly Reviews:</strong> Schedule regular Azure Advisor cost reviews to catch new opportunities</li>
+                <li><strong>Establish Policies:</strong> Implement Azure Policy and governance to prevent cost overruns</li>
+                <li><strong>Enable FinOps:</strong> Build a culture of cloud financial management and accountability</li>
+                <li><strong>Measure & Report:</strong> Track actual vs. projected savings and report to stakeholders</li>
+            </ol>
+        </div>
+
+        <div class="info-box" style="margin-top: 30px;">
+            <h3>Cost Governance Best Practices</h3>
+            <div style="line-height: 2; margin-top: 15px;">
+                <p><strong>🔍 Continuous Monitoring:</strong> Set up Azure Cost Management alerts for anomaly detection</p>
+                <p><strong>📊 Tagging Strategy:</strong> Implement comprehensive resource tagging for cost allocation</p>
+                <p><strong>💰 Budget Controls:</strong> Establish budgets and spending limits at subscription/resource group level</p>
+                <p><strong>🤖 Automation:</strong> Deploy automated shutdown schedules for dev/test environments</p>
+                <p><strong>📈 Regular Reviews:</strong> Conduct monthly cost optimization reviews with all stakeholders</p>
+                <p><strong>🎓 Team Education:</strong> Train teams on cost-conscious cloud architecture patterns</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="section" style="margin-top: 40px;">
+        <div class="footer-disclaimer">
+            <strong>Cost Savings Disclaimer:</strong> Cost savings are estimates based on Azure Advisor recommendations and current pricing as of {{ generated_date|date:"F d, Y" }}. Actual savings may vary based on implementation approach, resource usage patterns, Azure pricing changes, and other factors. We recommend validating all cost estimates in a test environment and monitoring actual costs post-implementation. Some recommendations may require architectural changes or may not be applicable to your specific use case. Always consult with Azure architects and finance teams before making significant infrastructure changes.
+        </div>
+    </div>
+
+    <!-- Charts JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const azureGreen = '#107C10';
+            const azureBlue = '#0078D4';
+            const azureColors = ['#107C10', '#0078D4', '#00BCF2', '#8661C5', '#9966FF', '#50E6FF', '#FFB900', '#FF8C00'];
+
+            // Savings by Resource Type Chart
+            {% if cost_by_resource_type %}
+            const resourceCtx = document.getElementById('savingsByResourceChart');
+            if (resourceCtx) {
+                new Chart(resourceCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for item in cost_by_resource_type|slice:":10" %}'{{ item.resource_type|truncatechars:30 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: 'Annual Savings ($)',
+                            data: [{% for item in cost_by_resource_type|slice:":10" %}{{ item.total_savings }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: azureGreen,
+                            borderRadius: 6,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        return 'Annual Savings: $' + context.parsed.x.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                            },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+
+            // Savings by Subscription Chart
+            {% if cost_by_subscription %}
+            const subCtx = document.getElementById('savingsBySubscriptionChart');
+            if (subCtx) {
+                new Chart(subCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [{% for sub in cost_by_subscription|slice:":8" %}'{{ sub.subscription_name|default:"Unknown"|truncatechars:25 }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            data: [{% for sub in cost_by_subscription|slice:":8" %}{{ sub.total_savings|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: azureColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 12,
+                                    font: { size: 12, weight: '600', family: "'Segoe UI', sans-serif" },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    boxWidth: 12
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.label + ': $' + context.parsed.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+        });
+    </script>
+{% endblock %}
