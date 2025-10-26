@@ -24,7 +24,4 @@ export type {
   ReportListResponse,
   ReportStatusResponse,
 } from './reportService';
-export type {
-  DashboardMetrics,
-  AnalyticsData,
-} from './analyticsService';
+// Analytics types are exported from types/analytics.ts

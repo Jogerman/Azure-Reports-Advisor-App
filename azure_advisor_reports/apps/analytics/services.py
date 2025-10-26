@@ -693,3 +693,314 @@ class AnalyticsService:
         cache.set(cache_key, result, 3600)
 
         return result
+
+    @classmethod
+    def get_user_activity_detailed(
+        cls,
+        user_id: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        activity_type: Optional[str] = None,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get detailed user activity with filtering and pagination.
+
+        Args:
+            user_id: Filter by specific user UUID
+            date_from: Start date for filtering
+            date_to: End date for filtering
+            activity_type: Filter by action type
+            limit: Number of results per page
+            offset: Pagination offset
+
+        Returns:
+            Dictionary with activities and pagination info
+        """
+        # Build query
+        query = UserActivity.objects.select_related('user', 'client', 'report')
+
+        # Apply filters
+        if user_id:
+            query = query.filter(user_id=user_id)
+
+        if date_from:
+            query = query.filter(created_at__gte=date_from)
+
+        if date_to:
+            query = query.filter(created_at__lte=date_to)
+
+        if activity_type:
+            query = query.filter(action=activity_type)
+
+        # Get total count before pagination
+        total_count = query.count()
+
+        # Apply ordering and pagination
+        activities = query.order_by('-created_at')[offset:offset + limit]
+
+        # Format results
+        results = []
+        for activity in activities:
+            user_data = {
+                'id': str(activity.user.id) if activity.user else None,
+                'username': activity.user.username if activity.user else 'System',
+                'full_name': activity.user.full_name if activity.user and hasattr(activity.user, 'full_name') else (
+                    activity.user.username if activity.user else 'System'
+                ),
+            }
+
+            results.append({
+                'id': str(activity.id),
+                'user': user_data,
+                'activity_type': activity.action,
+                'description': activity.description,
+                'metadata': activity.metadata,
+                'timestamp': activity.created_at.isoformat(),
+            })
+
+        return {
+            'activities': results,
+            'total_count': total_count,
+            'limit': limit,
+            'offset': offset,
+            'has_next': (offset + limit) < total_count,
+            'has_previous': offset > 0,
+        }
+
+    @classmethod
+    def get_activity_summary_aggregated(
+        cls,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        group_by: str = 'activity_type'
+    ) -> Dict[str, Any]:
+        """
+        Get aggregated activity summary grouped by specified field.
+
+        Args:
+            date_from: Start date for filtering
+            date_to: End date for filtering
+            group_by: Field to group by ('activity_type', 'user', 'day')
+
+        Returns:
+            Dictionary with aggregated summary data
+        """
+        # Build base query
+        query = UserActivity.objects.all()
+
+        # Apply date filters
+        if date_from:
+            query = query.filter(created_at__gte=date_from)
+
+        if date_to:
+            query = query.filter(created_at__lte=date_to)
+
+        # Get total activities
+        total_activities = query.count()
+
+        # Group and aggregate based on group_by parameter
+        if group_by == 'activity_type':
+            aggregated = query.values('action').annotate(
+                count=Count('id')
+            ).order_by('-count')
+
+            summary = []
+            for item in aggregated:
+                count = item['count']
+                percentage = round((count / total_activities * 100), 1) if total_activities > 0 else 0
+
+                summary.append({
+                    'activity_type': item['action'],
+                    'count': count,
+                    'percentage': percentage
+                })
+
+        elif group_by == 'user':
+            aggregated = query.filter(user__isnull=False).values(
+                'user__username', 'user__id'
+            ).annotate(
+                count=Count('id')
+            ).order_by('-count')[:20]  # Top 20 users
+
+            summary = []
+            for item in aggregated:
+                count = item['count']
+                percentage = round((count / total_activities * 100), 1) if total_activities > 0 else 0
+
+                summary.append({
+                    'user_id': str(item['user__id']),
+                    'username': item['user__username'],
+                    'count': count,
+                    'percentage': percentage
+                })
+
+        elif group_by == 'day':
+            aggregated = query.extra(
+                select={'date': 'DATE(created_at)'}
+            ).values('date').annotate(
+                count=Count('id')
+            ).order_by('date')
+
+            summary = []
+            for item in aggregated:
+                count = item['count']
+                percentage = round((count / total_activities * 100), 1) if total_activities > 0 else 0
+
+                summary.append({
+                    'date': item['date'].strftime('%Y-%m-%d') if item['date'] else None,
+                    'count': count,
+                    'percentage': percentage
+                })
+
+        else:
+            summary = []
+
+        # Build response
+        result = {
+            'summary': summary,
+            'total_activities': total_activities,
+            'date_range': {
+                'from': date_from.strftime('%Y-%m-%d') if date_from else None,
+                'to': date_to.strftime('%Y-%m-%d') if date_to else None,
+            },
+            'group_by': group_by
+        }
+
+        return result
+
+    @classmethod
+    def get_system_health(cls) -> Dict[str, Any]:
+        """
+        Get current system health metrics.
+
+        Returns:
+            Dictionary with comprehensive system health information
+        """
+        from apps.reports.models import Report
+        from django.db import connection
+        import os
+        import psutil
+        from datetime import timedelta
+
+        cache_key = 'system_health'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return cached_data
+
+        # Database size calculation
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT pg_database_size(current_database())"
+            )
+            db_size_bytes = cursor.fetchone()[0]
+
+        # Format database size
+        db_size_mb = db_size_bytes / (1024 * 1024)
+        db_size_gb = db_size_bytes / (1024 * 1024 * 1024)
+
+        if db_size_gb >= 1:
+            db_size_formatted = f"{db_size_gb:.2f} GB"
+        else:
+            db_size_formatted = f"{db_size_mb:.2f} MB"
+
+        # Total reports
+        total_reports = Report.objects.count()
+
+        # Active users today and this week
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today_start - timedelta(days=7)
+
+        active_users_today = UserActivity.objects.filter(
+            created_at__gte=today_start,
+            user__isnull=False
+        ).values('user').distinct().count()
+
+        active_users_this_week = UserActivity.objects.filter(
+            created_at__gte=week_start,
+            user__isnull=False
+        ).values('user').distinct().count()
+
+        # Average report generation time
+        completed_reports = Report.objects.filter(
+            status='completed',
+            processing_started_at__isnull=False,
+            processing_completed_at__isnull=False
+        )
+
+        avg_processing_time = 0
+        if completed_reports.exists():
+            processing_times = [
+                (r.processing_completed_at - r.processing_started_at).total_seconds()
+                for r in completed_reports[:100]  # Sample last 100
+            ]
+            if processing_times:
+                avg_processing_time = sum(processing_times) / len(processing_times)
+
+        # Error rate (last 24 hours)
+        last_24h_start = now - timedelta(hours=24)
+        reports_last_24h = Report.objects.filter(created_at__gte=last_24h_start)
+        failed_reports_24h = reports_last_24h.filter(status='failed').count()
+        total_reports_24h = reports_last_24h.count()
+
+        error_rate = 0
+        if total_reports_24h > 0:
+            error_rate = (failed_reports_24h / total_reports_24h) * 100
+
+        # Storage usage (approximate)
+        try:
+            # Get Django media root size
+            from django.conf import settings
+            media_root = getattr(settings, 'MEDIA_ROOT', None)
+
+            storage_used_bytes = 0
+            if media_root and os.path.exists(media_root):
+                for dirpath, dirnames, filenames in os.walk(media_root):
+                    for filename in filenames:
+                        filepath = os.path.join(dirpath, filename)
+                        if os.path.exists(filepath):
+                            storage_used_bytes += os.path.getsize(filepath)
+
+            storage_gb = storage_used_bytes / (1024 * 1024 * 1024)
+            storage_mb = storage_used_bytes / (1024 * 1024)
+
+            if storage_gb >= 1:
+                storage_formatted = f"{storage_gb:.2f} GB"
+            else:
+                storage_formatted = f"{storage_mb:.2f} MB"
+
+        except Exception:
+            storage_used_bytes = 0
+            storage_formatted = "N/A"
+
+        # System uptime (process uptime approximation)
+        try:
+            process = psutil.Process(os.getpid())
+            uptime_seconds = (now - datetime.fromtimestamp(process.create_time())).total_seconds()
+            uptime_days = int(uptime_seconds // 86400)
+            uptime_hours = int((uptime_seconds % 86400) // 3600)
+            uptime = f"{uptime_days} days, {uptime_hours} hours"
+        except Exception:
+            uptime = "N/A"
+
+        result = {
+            'database_size': db_size_bytes,
+            'database_size_formatted': db_size_formatted,
+            'total_reports': total_reports,
+            'active_users_today': active_users_today,
+            'active_users_this_week': active_users_this_week,
+            'avg_report_generation_time': round(avg_processing_time, 1),
+            'error_rate': round(error_rate, 2),
+            'storage_used': storage_used_bytes,
+            'storage_used_formatted': storage_formatted,
+            'uptime': uptime,
+            'last_calculated': now.isoformat()
+        }
+
+        # Cache for 5 minutes
+        cache.set(cache_key, result, 300)
+
+        return result

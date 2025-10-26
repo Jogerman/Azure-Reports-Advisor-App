@@ -14,13 +14,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (including WeasyPrint dependencies)
+# Install system dependencies (including WeasyPrint and Playwright dependencies)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
         curl \
         git \
+        wget \
         # WeasyPrint dependencies for PDF generation
         libpango-1.0-0 \
         libpangocairo-1.0-0 \
@@ -29,6 +30,26 @@ RUN apt-get update \
         shared-mime-info \
         libcairo2 \
         libglib2.0-0 \
+        # Playwright/Chromium dependencies
+        libnss3 \
+        libnspr4 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libdbus-1-3 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libatspi2.0-0 \
+        # Fonts for PDF rendering
+        fonts-liberation \
+        fonts-noto-color-emoji \
+        fonts-dejavu-core \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -49,7 +70,13 @@ RUN mkdir -p /app/media /app/staticfiles
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' django \
     && chown -R django:django /app
+
+# Switch to django user BEFORE installing Playwright
 USER django
+
+# Install Playwright browsers (Chromium for PDF generation) as django user
+# Skip deps since we already installed all required dependencies manually above
+RUN python -m playwright install chromium
 
 # Expose port
 EXPOSE 8000

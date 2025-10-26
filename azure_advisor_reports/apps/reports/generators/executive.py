@@ -19,8 +19,12 @@ class ExecutiveReportGenerator(BaseReportGenerator):
     """
 
     def get_template_name(self):
-        """Return executive summary template."""
-        return 'reports/executive.html'
+        """Return executive summary template (HTML version)."""
+        return 'reports/executive_enhanced.html'
+
+    def get_pdf_template_name(self):
+        """Return PDF-optimized executive template."""
+        return 'reports/executive_pdf.html'
 
     def get_context_data(self):
         """

@@ -20,8 +20,12 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
     """
 
     def get_template_name(self):
-        """Return cost optimization template."""
-        return 'reports/cost_redesigned.html'
+        """Return cost optimization template (HTML version)."""
+        return 'reports/cost_enhanced.html'
+
+    def get_pdf_template_name(self):
+        """Return PDF-optimized cost template."""
+        return 'reports/cost_pdf.html'
 
     def get_context_data(self):
         """
@@ -105,10 +109,15 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
         total_implementation_cost = cost_recs.count() * avg_implementation_hours * avg_hourly_cost
         roi_percentage = ((total_savings - total_implementation_cost) / total_implementation_cost * 100) if total_implementation_cost > 0 else 0
 
+        # Additional calculations for PDF templates
+        three_year_savings = total_savings * 3
+        top_cost_savers_monthly = top_cost_savers_total / 12 if top_cost_savers_total else 0
+
         return {
             'cost_recommendations': cost_recs,
             'total_annual_savings': total_savings,
             'total_monthly_savings': monthly_savings,
+            'three_year_savings': three_year_savings,
             'quick_wins': quick_wins,
             'quick_wins_total': quick_wins_total,
             'quick_wins_monthly': quick_wins_monthly,
@@ -118,6 +127,7 @@ class CostOptimizationReportGenerator(BaseReportGenerator):
             'cost_by_subscription': cost_by_subscription,
             'top_cost_savers': top_cost_savers,
             'top_cost_savers_total': top_cost_savers_total,
+            'top_cost_savers_monthly': top_cost_savers_monthly,
             'roi_analysis': {
                 'estimated_implementation_cost': total_implementation_cost,
                 'estimated_annual_savings': total_savings,

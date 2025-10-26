@@ -106,3 +106,69 @@ class ClientPerformanceSerializer(serializers.Serializer):
     totalRecommendations = serializers.IntegerField()
     totalPotentialSavings = serializers.FloatField()
     categoryBreakdown = CategoryBreakdownSerializer(many=True)
+
+
+class UserInfoSerializer(serializers.Serializer):
+    """Serializer for user information in activities."""
+    id = serializers.CharField(max_length=36, allow_null=True)
+    username = serializers.CharField(max_length=255)
+    full_name = serializers.CharField(max_length=500, required=False)
+
+
+class UserActivityItemSerializer(serializers.Serializer):
+    """Serializer for individual user activity items."""
+    id = serializers.CharField(max_length=36)
+    user = UserInfoSerializer()
+    activity_type = serializers.CharField(max_length=30)
+    description = serializers.CharField(max_length=255)
+    metadata = serializers.JSONField()
+    timestamp = serializers.DateTimeField()
+
+
+class UserActivityResponseSerializer(serializers.Serializer):
+    """Complete user activity response with pagination."""
+    activities = UserActivityItemSerializer(many=True)
+    total_count = serializers.IntegerField()
+    limit = serializers.IntegerField()
+    offset = serializers.IntegerField()
+    has_next = serializers.BooleanField()
+    has_previous = serializers.BooleanField()
+
+
+class ActivitySummaryItemSerializer(serializers.Serializer):
+    """Serializer for activity summary items."""
+    activity_type = serializers.CharField(max_length=30, required=False)
+    user_id = serializers.CharField(max_length=36, required=False)
+    username = serializers.CharField(max_length=255, required=False)
+    date = serializers.CharField(max_length=10, required=False)
+    count = serializers.IntegerField()
+    percentage = serializers.FloatField()
+
+
+class DateRangeSerializer(serializers.Serializer):
+    """Serializer for date range information."""
+    from_ = serializers.CharField(max_length=10, source='from', allow_null=True)
+    to = serializers.CharField(max_length=10, allow_null=True)
+
+
+class ActivitySummaryResponseSerializer(serializers.Serializer):
+    """Complete activity summary response."""
+    summary = ActivitySummaryItemSerializer(many=True)
+    total_activities = serializers.IntegerField()
+    date_range = DateRangeSerializer()
+    group_by = serializers.CharField(max_length=20)
+
+
+class SystemHealthSerializer(serializers.Serializer):
+    """Serializer for system health metrics."""
+    database_size = serializers.IntegerField()
+    database_size_formatted = serializers.CharField(max_length=50)
+    total_reports = serializers.IntegerField()
+    active_users_today = serializers.IntegerField()
+    active_users_this_week = serializers.IntegerField()
+    avg_report_generation_time = serializers.FloatField()
+    error_rate = serializers.FloatField()
+    storage_used = serializers.IntegerField()
+    storage_used_formatted = serializers.CharField(max_length=50)
+    uptime = serializers.CharField(max_length=100)
+    last_calculated = serializers.CharField(max_length=50)

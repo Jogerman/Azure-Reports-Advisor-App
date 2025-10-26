@@ -26,28 +26,11 @@ import SessionTimeoutWarning from './components/auth/SessionTimeoutWarning';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ClientsPage = lazy(() => import('./pages/ClientsPage'));
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
-
-// Placeholder pages
-const HistoryPage: React.FC = () => {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">History</h1>
-      <p className="text-gray-600">Report history page coming soon...</p>
-    </div>
-  );
-};
-
-const AnalyticsPage: React.FC = () => {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Analytics</h1>
-      <p className="text-gray-600">Analytics dashboard coming soon...</p>
-    </div>
-  );
-};
 
 const App: React.FC = () => {
   return (

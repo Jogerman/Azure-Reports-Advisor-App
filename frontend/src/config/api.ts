@@ -32,9 +32,14 @@ export const API_ENDPOINTS = {
   // Analytics
   ANALYTICS: {
     DASHBOARD: '/analytics/dashboard/',
+    METRICS: '/analytics/metrics/',
     TRENDS: '/analytics/trends/',
     CATEGORIES: '/analytics/categories/',
     RECENT_ACTIVITY: '/analytics/recent-activity/',
+    USER_ACTIVITY: '/analytics/user-activity/',
+    ACTIVITY_SUMMARY: '/analytics/activity-summary/',
+    SYSTEM_HEALTH: '/analytics/system-health/',
+    COST_INSIGHTS: '/analytics/cost-insights/',
     CLIENT_PERFORMANCE: '/analytics/client-performance/',
   },
 

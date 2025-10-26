@@ -1,5 +1,12 @@
 import apiClient from './apiClient';
 import { API_ENDPOINTS } from '../config/api';
+import {
+  HistoryStatistics,
+  TrendsResponse,
+  TrendsParams,
+  UsersResponse,
+  HistoryFilterParams,
+} from '../types/history';
 
 export type ReportType = 'detailed' | 'executive' | 'cost' | 'security' | 'operations';
 export type ReportStatus = 'pending' | 'uploaded' | 'processing' | 'generating' | 'completed' | 'failed' | 'cancelled';
@@ -37,8 +44,11 @@ export interface ReportListParams {
   page?: number;
   page_size?: number;
   client_id?: string;
-  report_type?: ReportType;
-  status?: ReportStatus;
+  report_type?: ReportType | ReportType[];
+  status?: ReportStatus | ReportStatus[];
+  created_by?: string | string[];
+  date_from?: string;
+  date_to?: string;
   ordering?: string;
   search?: string;
 }
@@ -199,6 +209,64 @@ class ReportService {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     }
+  }
+
+  /**
+   * Get history statistics with filters
+   */
+  async getHistoryStatistics(filters?: HistoryFilterParams): Promise<HistoryStatistics> {
+    const response = await apiClient.get<HistoryStatistics>(
+      '/reports/history/statistics/',
+      { params: filters }
+    );
+    return response.data;
+  }
+
+  /**
+   * Get history trends data
+   */
+  async getHistoryTrends(params?: TrendsParams): Promise<TrendsResponse> {
+    const response = await apiClient.get<TrendsResponse>(
+      '/reports/history/trends/',
+      { params }
+    );
+    return response.data;
+  }
+
+  /**
+   * Get list of users who have created reports
+   */
+  async getReportUsers(): Promise<UsersResponse> {
+    const response = await apiClient.get<UsersResponse>('/reports/users/');
+    return response.data;
+  }
+
+  /**
+   * Export reports to CSV with filters
+   */
+  async exportToCSV(filters?: HistoryFilterParams): Promise<Blob> {
+    const response = await apiClient.post(
+      '/reports/export-csv/',
+      filters,
+      {
+        responseType: 'blob',
+      }
+    );
+    return response.data;
+  }
+
+  /**
+   * Helper method to download CSV file
+   */
+  downloadCSV(blob: Blob, filename: string = 'reports-export.csv'): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 }
 

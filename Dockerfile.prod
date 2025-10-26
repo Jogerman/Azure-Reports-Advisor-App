@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # GCC compiler for building Python packages
     gcc \
     g++ \
+    wget \
     # WeasyPrint dependencies
     libcairo2 \
     libpango-1.0-0 \
@@ -33,6 +34,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf2.0-0 \
     libffi-dev \
     shared-mime-info \
+    # Playwright/Chromium dependencies for PDF generation
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libatspi2.0-0 \
     # Git for version control (optional)
     git \
     && rm -rf /var/lib/apt/lists/*
@@ -43,6 +60,9 @@ COPY azure_advisor_reports/requirements.txt .
 # Install Python dependencies to user directory
 # This allows us to copy only the installed packages to the runtime stage
 RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Install Playwright browsers (Chromium for PDF generation)
+RUN /root/.local/bin/playwright install chromium --with-deps
 
 # ============================================================================
 # Stage 2: Runtime - Final production image
@@ -69,9 +89,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpangocairo-1.0-0 \
     libgdk-pixbuf2.0-0 \
     shared-mime-info \
+    # Playwright/Chromium runtime dependencies
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libatspi2.0-0 \
     # Fonts for PDF generation
     fonts-liberation \
     fonts-dejavu-core \
+    fonts-noto-color-emoji \
     # Curl for health checks
     curl \
     && rm -rf /var/lib/apt/lists/*
