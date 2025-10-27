@@ -11,6 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'azure_advisor_reports.settings')
+# Default to production settings for WSGI deployment (Azure Container Apps)
+# Can be overridden by setting DJANGO_SETTINGS_MODULE environment variable
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'azure_advisor_reports.settings.production')
 
 application = get_wsgi_application()

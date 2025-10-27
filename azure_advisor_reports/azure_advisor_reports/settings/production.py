@@ -69,6 +69,7 @@ SECURE_HSTS_PRELOAD = True
 
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -99,22 +100,55 @@ CORS_ALLOW_HEADERS = [
 # DATABASE CONFIGURATION - Azure PostgreSQL
 # ============================================================================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT', default='5432'),
-        'OPTIONS': {
-            'sslmode': 'require',  # Required for Azure PostgreSQL
-            'connect_timeout': 10,
-        },
-        'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
-        'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
+import sys
+import os
+
+# Use SQLite for testing to avoid PostgreSQL dependency
+if 'test' in sys.argv or 'pytest' in sys.modules:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
     }
-}
+else:
+    # Try DATABASE_URL first (for Azure Container Apps), fallback to individual vars
+    database_url = os.environ.get('DATABASE_URL')
+
+    if database_url:
+        # Use DATABASE_URL if provided (preferred for Azure Container Apps)
+        DATABASES = {
+            'default': dj_database_url.parse(
+                database_url,
+                conn_max_age=600,
+                conn_health_checks=True,
+            )
+        }
+
+        # Ensure SSL is required for Azure PostgreSQL
+        DATABASES['default'].setdefault('OPTIONS', {})
+        DATABASES['default']['OPTIONS']['sslmode'] = 'require'
+        DATABASES['default']['OPTIONS']['connect_timeout'] = 10
+        DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+    else:
+        # Fallback to individual environment variables
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': config('DB_NAME'),
+                'USER': config('DB_USER'),
+                'PASSWORD': config('DB_PASSWORD'),
+                'HOST': config('DB_HOST'),
+                'PORT': config('DB_PORT', default='5432'),
+                'OPTIONS': {
+                    'sslmode': 'require',  # Required for Azure PostgreSQL
+                    'connect_timeout': 10,
+                },
+                'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
+                'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
+            }
+        }
 
 # ============================================================================
 # CACHE CONFIGURATION - Azure Redis

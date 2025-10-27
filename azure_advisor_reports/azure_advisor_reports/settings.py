@@ -102,16 +102,24 @@ if 'test' in sys.argv or 'pytest' in sys.modules:
         }
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='azure_advisor_reports'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='postgres'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
+    # Try DATABASE_URL first (for production), fallback to individual vars (for local dev)
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        DATABASES = {
+            'default': dj_database_url.parse(database_url)
         }
-    }
+    else:
+        # Fallback to individual env vars (for local development)
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='azure_advisor_reports')),
+                'USER': os.environ.get('DB_USER', config('DB_USER', default='postgres')),
+                'PASSWORD': os.environ.get('DB_PASSWORD', config('DB_PASSWORD', default='postgres')),
+                'HOST': os.environ.get('DB_HOST', config('DB_HOST', default='localhost')),
+                'PORT': os.environ.get('DB_PORT', config('DB_PORT', default='5432')),
+            }
+        }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
