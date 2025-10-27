@@ -258,8 +258,10 @@ Thumbs.db
 # Local development
 media/
 staticfiles/
-reports/
+/reports/
 uploads/
+# Allow Django reports app
+!azure_advisor_reports/apps/reports/
 
 # Temporary files
 *.tmp
