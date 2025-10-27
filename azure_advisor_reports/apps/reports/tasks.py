@@ -1,31 +1,31 @@
 """
-Celery tasks for Reports app.
+Celery tasks for asynchronous report processing.
 """
 
 import logging
 from celery import shared_task
-from django.db import models
 from django.utils import timezone
-from django.core.files.base import ContentFile
-from .models import Report
-from .services.csv_processor import process_csv_file as process_csv_sync, CSVProcessingError
+from django.db import transaction
+
+from apps.reports.models import Report, Recommendation
+from apps.reports.services.csv_processor import AzureAdvisorCSVProcessor, CSVProcessingError
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
-def process_csv_file(self, report_id, csv_file_path):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_csv_file(self, report_id):
     """
-    Process uploaded CSV file and extract recommendations.
+    Process uploaded CSV file asynchronously and create recommendations.
 
     Args:
-        self: Task instance
-        report_id: UUID of the report
-        csv_file_path: Path to the CSV file
+        report_id: UUID of the Report instance
 
     Returns:
-        Dictionary with processing results
+        dict: Processing result with status and details
     """
+    logger.info(f"Starting CSV processing task for report {report_id}")
+
     try:
         # Get report instance
         report = Report.objects.get(id=report_id)
@@ -33,232 +33,272 @@ def process_csv_file(self, report_id, csv_file_path):
         # Update status to processing
         report.status = 'processing'
         report.processing_started_at = timezone.now()
-        report.celery_task_id = self.request.id
-        report.save()
+        report.save(update_fields=['status', 'processing_started_at'])
 
-        logger.info(f"Processing CSV file for report {report_id}")
+        # Check if CSV file exists
+        if not report.csv_file:
+            raise ValueError("No CSV file attached to report")
 
-        # Process the CSV file
-        result = process_csv_sync(csv_file_path, report)
+        # Initialize CSV processor
+        processor = AzureAdvisorCSVProcessor(report.csv_file.path)
 
-        # Update report with results
-        report.status = 'completed'
-        report.processing_completed_at = timezone.now()
-        report.total_recommendations = result.get('total_recommendations', 0)
-        report.high_impact_count = result.get('high_impact_count', 0)
-        report.medium_impact_count = result.get('medium_impact_count', 0)
-        report.low_impact_count = result.get('low_impact_count', 0)
-        report.estimated_savings = result.get('estimated_savings', 0)
-        report.save()
+        # Process CSV
+        recommendations_data, statistics = processor.process()
 
-        logger.info(f"Successfully processed CSV for report {report_id}")
+        # Save recommendations to database
+        with transaction.atomic():
+            # Create recommendation instances
+            recommendation_instances = []
+            for rec_data in recommendations_data:
+                recommendation = Recommendation(
+                    report=report,
+                    category=rec_data['category'],
+                    business_impact=rec_data['business_impact'],
+                    recommendation=rec_data['recommendation'][:5000] if rec_data['recommendation'] else '',
+                    subscription_id=str(rec_data.get('subscription_id', ''))[:255],
+                    subscription_name=str(rec_data.get('subscription_name', ''))[:255],
+                    resource_group=str(rec_data.get('resource_group', ''))[:255],
+                    resource_name=str(rec_data.get('resource_name', ''))[:255],
+                    resource_type=str(rec_data.get('resource_type', ''))[:255],
+                    potential_savings=rec_data.get('potential_savings', 0),
+                    currency=str(rec_data.get('currency', 'USD'))[:3],
+                    potential_benefits=str(rec_data.get('potential_benefits', ''))[:5000],
+                    retirement_date=rec_data.get('retirement_date'),
+                    retiring_feature=str(rec_data.get('retiring_feature', ''))[:255],
+                    advisor_score_impact=rec_data.get('advisor_score_impact', 0),
+                    csv_row_number=rec_data.get('csv_row_number'),
+                )
+                recommendation_instances.append(recommendation)
+
+            # Bulk create recommendations
+            if recommendation_instances:
+                Recommendation.objects.bulk_create(recommendation_instances, batch_size=1000)
+                logger.info(f"Created {len(recommendation_instances)} recommendations for report {report_id}")
+
+            # Update report with statistics and mark as completed
+            report.analysis_data = statistics
+            report.status = 'completed'
+            report.processing_completed_at = timezone.now()
+            report.error_message = ''
+            report.save(update_fields=[
+                'analysis_data', 'status', 'processing_completed_at', 'error_message'
+            ])
+
+        logger.info(f"CSV processing completed successfully for report {report_id}")
 
         return {
             'status': 'success',
             'report_id': str(report_id),
-            'total_recommendations': result.get('total_recommendations', 0),
-            'estimated_savings': float(result.get('estimated_savings', 0))
+            'recommendations_count': len(recommendations_data),
+            'statistics': statistics,
         }
 
     except Report.DoesNotExist:
-        logger.error(f"Report {report_id} not found")
-        return {
-            'status': 'error',
-            'message': f"Report {report_id} not found"
-        }
+        error_msg = f"Report with ID {report_id} not found"
+        logger.error(error_msg)
+        return {'status': 'error', 'error': error_msg}
 
     except CSVProcessingError as e:
-        logger.error(f"CSV processing error for report {report_id}: {str(e)}")
+        error_msg = f"CSV processing error: {str(e)}"
+        logger.error(f"CSV processing failed for report {report_id}: {error_msg}")
 
+        # Update report status to failed
         try:
             report = Report.objects.get(id=report_id)
-            report.mark_as_failed(str(e))
-        except Report.DoesNotExist:
+            report.status = 'failed'
+            report.error_message = error_msg
+            report.processing_completed_at = timezone.now()
+            report.retry_count += 1
+            report.save(update_fields=['status', 'error_message', 'processing_completed_at', 'retry_count'])
+        except:
             pass
 
-        return {
-            'status': 'error',
-            'report_id': str(report_id),
-            'message': str(e)
-        }
+        # Retry if not exceeded max retries
+        if report.retry_count < 3:
+            raise self.retry(exc=e, countdown=60 * (report.retry_count + 1))
+
+        return {'status': 'error', 'error': error_msg, 'report_id': str(report_id)}
 
     except Exception as e:
-        logger.exception(f"Unexpected error processing CSV for report {report_id}")
+        error_msg = f"Unexpected error: {str(e)}"
+        logger.error(f"Unexpected error processing CSV for report {report_id}: {error_msg}", exc_info=True)
 
+        # Update report status to failed
         try:
             report = Report.objects.get(id=report_id)
-            report.mark_as_failed(f"Unexpected error: {str(e)}")
-        except Report.DoesNotExist:
+            report.status = 'failed'
+            report.error_message = error_msg
+            report.processing_completed_at = timezone.now()
+            report.retry_count += 1
+            report.save(update_fields=['status', 'error_message', 'processing_completed_at', 'retry_count'])
+        except:
             pass
 
-        # Retry the task
-        try:
-            raise self.retry(exc=e, countdown=60)
-        except self.MaxRetriesExceededError:
-            return {
-                'status': 'error',
-                'report_id': str(report_id),
-                'message': f"Max retries exceeded: {str(e)}"
-            }
+        # Retry on unexpected errors
+        raise self.retry(exc=e, countdown=60)
 
 
-@shared_task(bind=True, max_retries=3)
-def generate_report(self, report_id, report_type='detailed'):
+@shared_task
+def cleanup_old_csv_files():
     """
-    Generate PDF report from recommendations.
+    Periodic task to cleanup old CSV files and failed reports.
+
+    This task should be scheduled to run daily via Celery Beat.
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+
+    # Delete failed reports older than 7 days
+    cutoff_date = timezone.now() - timedelta(days=7)
+    old_failed_reports = Report.objects.filter(
+        status='failed',
+        created_at__lt=cutoff_date
+    )
+
+    count = old_failed_reports.count()
+    if count > 0:
+        old_failed_reports.delete()
+        logger.info(f"Cleaned up {count} old failed reports")
+
+    return {'deleted_reports': count}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def generate_report(self, report_id, report_type=None, format_type='both'):
+    """
+    Generate HTML and/or PDF report files asynchronously.
 
     Args:
-        self: Task instance
-        report_id: UUID of the report
-        report_type: Type of report to generate
+        report_id: UUID of the Report instance
+        report_type: Type of report to generate (optional, uses report.report_type if not provided)
+        format_type: 'html', 'pdf', or 'both' (default: 'both')
 
     Returns:
-        Dictionary with generation results
+        dict: Generation result with status and file paths
     """
+    logger.info(f"Starting report generation task for report {report_id}")
+
     try:
         # Get report instance
         report = Report.objects.get(id=report_id)
 
-        # Update status to processing
-        report.status = 'processing'
-        report.processing_started_at = timezone.now()
-        report.celery_task_id = self.request.id
-        report.save()
+        # Validate report state
+        if report.status != 'completed':
+            error_msg = f'Report must be completed before generation. Current status: {report.status}'
+            logger.error(error_msg)
+            return {'status': 'error', 'error': error_msg}
 
-        logger.info(f"Generating {report_type} report for {report_id}")
+        if report.recommendations.count() == 0:
+            error_msg = 'Report has no recommendations to include'
+            logger.error(error_msg)
+            return {'status': 'error', 'error': error_msg}
+
+        # Validate format type
+        if format_type not in ['html', 'pdf', 'both']:
+            error_msg = f'Invalid format type: {format_type}'
+            logger.error(error_msg)
+            return {'status': 'error', 'error': error_msg}
+
+        # Update status
+        report.status = 'generating'
+        report.save(update_fields=['status'])
+
+        # Import generator module here to avoid circular imports
+        from apps.reports.generators import get_generator_for_report
 
         # Get the appropriate generator
-        from .generators import get_generator_for_report
-        generator = get_generator_for_report(report_type)
+        generator = get_generator_for_report(report)
 
-        # Generate the report
-        pdf_content = generator.generate(report)
+        files_generated = []
+        file_paths = {}
 
-        # Save the PDF file
-        filename = f"report_{report.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        report.pdf_file.save(filename, ContentFile(pdf_content), save=False)
+        # Generate HTML
+        if format_type in ['html', 'both']:
+            logger.info(f"Generating HTML report for {report_id}")
+            html_path = generator.generate_html()
+            report.html_file = html_path
+            files_generated.append('HTML')
+            file_paths['html'] = str(html_path) if html_path else None
+            logger.info(f"HTML report generated successfully: {html_path}")
 
-        # Update report status
+        # Generate PDF
+        if format_type in ['pdf', 'both']:
+            logger.info(f"Generating PDF report for {report_id}")
+            pdf_path = generator.generate_pdf()
+            report.pdf_file = pdf_path
+            files_generated.append('PDF')
+            file_paths['pdf'] = str(pdf_path) if pdf_path else None
+            logger.info(f"PDF report generated successfully: {pdf_path}")
+
+        # Update report status back to completed
         report.status = 'completed'
-        report.processing_completed_at = timezone.now()
-        report.file_size = len(pdf_content)
-        report.save()
+        report.save(update_fields=['html_file', 'pdf_file', 'status', 'updated_at'])
 
-        logger.info(f"Successfully generated report {report_id}")
+        logger.info(f"Report generation completed for {report_id}: {', '.join(files_generated)}")
 
         return {
             'status': 'success',
             'report_id': str(report_id),
-            'file_size': len(pdf_content),
-            'file_url': report.pdf_file.url if report.pdf_file else None
+            'files_generated': files_generated,
+            'file_paths': file_paths,
         }
 
     except Report.DoesNotExist:
-        logger.error(f"Report {report_id} not found")
-        return {
-            'status': 'error',
-            'message': f"Report {report_id} not found"
-        }
+        error_msg = f"Report with ID {report_id} not found"
+        logger.error(error_msg)
+        return {'status': 'error', 'error': error_msg}
 
     except Exception as e:
-        logger.exception(f"Error generating report {report_id}")
+        error_msg = f"Report generation error: {str(e)}"
+        logger.error(f"Report generation failed for {report_id}: {error_msg}", exc_info=True)
 
+        # Update report status back to completed (generation is optional)
         try:
             report = Report.objects.get(id=report_id)
-            report.mark_as_failed(f"Report generation error: {str(e)}")
-        except Report.DoesNotExist:
+            report.status = 'completed'
+            report.save(update_fields=['status'])
+        except:
             pass
 
-        # Retry the task
-        try:
-            raise self.retry(exc=e, countdown=60)
-        except self.MaxRetriesExceededError:
-            return {
-                'status': 'error',
-                'report_id': str(report_id),
-                'message': f"Max retries exceeded: {str(e)}"
-            }
+        # Retry on errors
+        if self.request.retries < 3:
+            raise self.retry(exc=e, countdown=60 * (self.request.retries + 1))
+
+        return {'status': 'error', 'error': error_msg, 'report_id': str(report_id)}
 
 
 @shared_task
-def cleanup_old_reports(days=90):
+def retry_failed_report(report_id):
     """
-    Cleanup old reports and their files.
+    Retry processing a failed report.
 
     Args:
-        days: Number of days to keep reports
+        report_id: UUID of the failed report
 
     Returns:
-        Dictionary with cleanup results
+        dict: Result of retry attempt
     """
-    from datetime import timedelta
+    try:
+        report = Report.objects.get(id=report_id)
 
-    cutoff_date = timezone.now() - timedelta(days=days)
+        if report.status != 'failed':
+            return {'status': 'error', 'error': 'Report is not in failed status'}
 
-    logger.info(f"Cleaning up reports older than {cutoff_date}")
+        if not report.can_retry():
+            return {'status': 'error', 'error': 'Maximum retry attempts exceeded'}
 
-    old_reports = Report.objects.filter(
-        created_at__lt=cutoff_date,
-        status__in=['completed', 'failed']
-    )
+        # Reset status and trigger processing
+        report.status = 'uploaded'
+        report.error_message = ''
+        report.save(update_fields=['status', 'error_message'])
 
-    count = old_reports.count()
+        # Trigger processing task
+        result = process_csv_file.delay(str(report_id))
 
-    # Delete files and reports
-    for report in old_reports:
-        try:
-            if report.csv_file:
-                report.csv_file.delete(save=False)
-            if report.pdf_file:
-                report.pdf_file.delete(save=False)
-        except Exception as e:
-            logger.error(f"Error deleting files for report {report.id}: {str(e)}")
+        return {'status': 'success', 'task_id': result.id}
 
-    old_reports.delete()
-
-    logger.info(f"Cleaned up {count} old reports")
-
-    return {
-        'status': 'success',
-        'deleted_count': count,
-        'cutoff_date': cutoff_date.isoformat()
-    }
-
-
-@shared_task
-def update_report_statistics():
-    """
-    Update statistics for all completed reports.
-
-    Returns:
-        Dictionary with update results
-    """
-    logger.info("Updating report statistics")
-
-    reports = Report.objects.filter(status='completed')
-    updated_count = 0
-
-    for report in reports:
-        try:
-            recommendations = report.recommendations.all()
-
-            report.total_recommendations = recommendations.count()
-            report.high_impact_count = recommendations.filter(impact='High').count()
-            report.medium_impact_count = recommendations.filter(impact='Medium').count()
-            report.low_impact_count = recommendations.filter(impact='Low').count()
-            report.estimated_savings = recommendations.aggregate(
-                total=models.Sum('potential_savings')
-            )['total'] or 0
-
-            report.save()
-            updated_count += 1
-
-        except Exception as e:
-            logger.error(f"Error updating statistics for report {report.id}: {str(e)}")
-
-    logger.info(f"Updated statistics for {updated_count} reports")
-
-    return {
-        'status': 'success',
-        'updated_count': updated_count
-    }
+    except Report.DoesNotExist:
+        return {'status': 'error', 'error': f'Report {report_id} not found'}
+    except Exception as e:
+        logger.error(f"Error retrying report {report_id}: {str(e)}", exc_info=True)
+        return {'status': 'error', 'error': str(e)}
