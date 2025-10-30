@@ -1,15 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { PublicClientApplication, AccountInfo, AuthenticationResult } from '@azure/msal-browser';
 import { msalConfig, loginRequest } from '../config/authConfig';
 import { showToast } from '../components/common/Toast';
+import authService from '../services/authService';
 
 // Initialize MSAL instance
 export const msalInstance = new PublicClientApplication(msalConfig);
 
 interface User {
   id: string;
-  name: string;
+  name?: string;
   email: string;
+  role?: string;
   roles?: string[];
 }
 
@@ -33,33 +35,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
-  const loadUserProfile = async (account: AccountInfo) => {
+  const loadUserProfile = async (account: AccountInfo, azureToken: string) => {
     try {
-      // Set basic user info from account
+      console.log('Authenticating with backend using Azure AD token...');
+
+      // Call backend login endpoint with Azure AD token
+      const backendResponse = await authService.login(azureToken);
+
+      console.log('Backend authentication successful:', backendResponse);
+
+      // Store backend JWT tokens
+      localStorage.setItem('access_token', backendResponse.access_token);
+      localStorage.setItem('refresh_token', backendResponse.refresh_token);
+
+      // Set user data from backend response
       const userData: User = {
-        id: account.homeAccountId,
-        name: account.name || account.username,
-        email: account.username,
-        roles: [], // Will be populated from backend
+        id: backendResponse.user.id,
+        name: backendResponse.user.full_name || backendResponse.user.name,
+        email: backendResponse.user.email,
+        role: backendResponse.user.role,
+        roles: backendResponse.user.role ? [backendResponse.user.role] : [],
       };
 
       setUser(userData);
       setIsAuthenticated(true);
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-      showToast.error('Failed to load user profile');
+    } catch (error: any) {
+      console.error('Error loading user profile from backend:', error);
+      showToast.error('Failed to authenticate with backend: ' + (error.response?.data?.error || error.message));
+      // Clear any partial authentication state
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      throw error;
     }
   };
 
   const handleAuthenticationResponse = async (response: AuthenticationResult) => {
     if (response.account) {
       msalInstance.setActiveAccount(response.account);
-      await loadUserProfile(response.account);
+      // Use the Azure AD token to authenticate with backend
+      const azureToken = response.idToken || response.accessToken;
+      if (azureToken) {
+        await loadUserProfile(response.account, azureToken);
+      } else {
+        console.error('No Azure AD token received');
+        showToast.error('Authentication failed: No token received');
+      }
     }
   };
 
+  // Prevent double initialization in React.StrictMode
+  const isInitializingRef = useRef(false);
+
   // Initialize MSAL and check for existing authentication
   useEffect(() => {
+    // Prevent double initialization in React.StrictMode
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
+
     const initializeMsal = async () => {
       try {
         await msalInstance.initialize();
@@ -67,13 +101,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle redirect response
         const response = await msalInstance.handleRedirectPromise();
         if (response) {
-          handleAuthenticationResponse(response);
+          await handleAuthenticationResponse(response);
         } else {
           // Check if user is already signed in
           const accounts = msalInstance.getAllAccounts();
-          if (accounts.length > 0) {
+          const backendToken = localStorage.getItem('access_token');
+
+          if (accounts.length > 0 && backendToken) {
+            // User has both Azure AD session and backend token
             msalInstance.setActiveAccount(accounts[0]);
-            await loadUserProfile(accounts[0]);
+
+            // Try to load user profile from backend
+            try {
+              const userProfile = await authService.getCurrentUser();
+              const userData: User = {
+                id: userProfile.id,
+                name: userProfile.full_name || userProfile.name,
+                email: userProfile.email,
+                role: userProfile.role,
+                roles: userProfile.role ? [userProfile.role] : [],
+              };
+              setUser(userData);
+              setIsAuthenticated(true);
+            } catch (error) {
+              // Backend token might be expired, get new token from Azure AD
+              console.log('Backend token expired, re-authenticating...');
+              try {
+                const azureToken = await msalInstance.acquireTokenSilent({
+                  ...loginRequest,
+                  account: accounts[0],
+                });
+                await loadUserProfile(accounts[0], azureToken.idToken || azureToken.accessToken);
+              } catch (silentError) {
+                // Silent token acquisition failed, clear cache and require interactive login
+                console.log('Silent token refresh failed, clearing cache');
+                await msalInstance.clearCache();
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+              }
+            }
+          } else if (accounts.length > 0) {
+            // User has Azure AD session but no backend token
+            console.log('Azure AD session found, authenticating with backend...');
+            try {
+              const azureToken = await msalInstance.acquireTokenSilent({
+                ...loginRequest,
+                account: accounts[0],
+              });
+              msalInstance.setActiveAccount(accounts[0]);
+              await loadUserProfile(accounts[0], azureToken.idToken || azureToken.accessToken);
+            } catch (silentError: any) {
+              // Silent token acquisition failed (iframe timeout, etc.)
+              console.log('Silent token acquisition failed, will require interactive login:', silentError);
+              // Clear the partial Azure AD session
+              await msalInstance.clearCache();
+              // User will need to click login button for interactive authentication
+            }
           }
         }
       } catch (error) {
@@ -121,6 +204,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
+      // Clear backend session
+      try {
+        await authService.logout();
+      } catch (error) {
+        console.error('Backend logout error:', error);
+      }
+
+      // Clear local storage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+
+      // Clear local state
+      setUser(null);
+      setIsAuthenticated(false);
+
+      // Logout from Azure AD
       const account = msalInstance.getActiveAccount();
       if (account) {
         await msalInstance.logoutRedirect({
@@ -138,6 +237,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Even if logout fails, clear local state
       setUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
 
       if (error.errorCode === 'user_cancelled') {
         showToast.info('Sign out was cancelled.');
@@ -150,31 +251,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const getAccessToken = async (): Promise<string | null> => {
     try {
+      // Return backend JWT token
+      const backendToken = localStorage.getItem('access_token');
+      if (backendToken) {
+        return backendToken;
+      }
+
+      // If no backend token, try to get one using Azure AD
       const account = msalInstance.getActiveAccount();
       if (!account) {
         return null;
       }
 
-      const response = await msalInstance.acquireTokenSilent({
+      const azureToken = await msalInstance.acquireTokenSilent({
         ...loginRequest,
         account,
       });
 
-      // Return idToken for backend authentication (contains user identity)
-      // For production, consider using custom API scopes and access tokens
-      return response.idToken || response.accessToken;
+      // Authenticate with backend to get JWT
+      const backendResponse = await authService.login(azureToken.idToken || azureToken.accessToken);
+
+      // Store backend tokens
+      localStorage.setItem('access_token', backendResponse.access_token);
+      localStorage.setItem('refresh_token', backendResponse.refresh_token);
+
+      return backendResponse.access_token;
     } catch (error) {
       console.error('Token acquisition error:', error);
-
-      // Try to acquire token interactively
-      try {
-        const response = await msalInstance.acquireTokenPopup(loginRequest);
-        return response.idToken || response.accessToken;
-      } catch (popupError) {
-        console.error('Interactive token acquisition failed:', popupError);
-        showToast.error('Failed to acquire authentication token');
-        return null;
-      }
+      showToast.error('Failed to acquire authentication token');
+      return null;
     }
   };
 

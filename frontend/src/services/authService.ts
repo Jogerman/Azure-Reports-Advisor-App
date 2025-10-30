@@ -3,18 +3,28 @@ import { API_ENDPOINTS } from '../config/api';
 
 export interface User {
   id: string;
-  name: string;
+  name?: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
-  roles: string[];
+  role?: string;
+  roles?: string[];
+  is_active?: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
 }
 
 export interface LoginRequest {
-  accessToken: string;
+  access_token: string;
 }
 
 export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
   user: User;
-  token: string;
 }
 
 /**
@@ -27,7 +37,7 @@ class AuthService {
   async login(accessToken: string): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
-      { accessToken }
+      { access_token: accessToken }
     );
     return response.data;
   }

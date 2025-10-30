@@ -4,7 +4,9 @@ Django admin configuration for authentication.
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
 from django.utils.html import format_html
+from django.contrib import messages
 
 from .models import User, UserSession
 
@@ -22,6 +24,17 @@ class UserAdmin(BaseUserAdmin):
         'is_staff',
         'last_login',
         'created_at'
+    ]
+
+    actions = [
+        'assign_admin_role',
+        'assign_manager_role',
+        'assign_analyst_role',
+        'assign_viewer_role',
+        'activate_users',
+        'deactivate_users',
+        'grant_staff_access',
+        'revoke_staff_access',
     ]
     list_filter = [
         'role',
@@ -108,6 +121,101 @@ class UserAdmin(BaseUserAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related()
+
+    # ========================================================================
+    # ADMIN ACTIONS for Bulk Permission Management
+    # ========================================================================
+
+    def _assign_role_and_group(self, request, queryset, role, group_name):
+        """Helper method to assign role and permission group."""
+        try:
+            group = Group.objects.get(name=group_name)
+        except Group.DoesNotExist:
+            self.message_user(
+                request,
+                f'Permission group "{group_name}" not found. Run "python manage.py init_permissions" first.',
+                level=messages.ERROR
+            )
+            return
+
+        updated_count = 0
+        for user in queryset:
+            # Update role
+            user.role = role
+            user.save()
+
+            # Clear existing permission groups and add the new one
+            user.groups.clear()
+            user.groups.add(group)
+            updated_count += 1
+
+        self.message_user(
+            request,
+            f'Successfully assigned {group_name} role to {updated_count} user(s).',
+            level=messages.SUCCESS
+        )
+
+    @admin.action(description='Assign Administrator role (full access)')
+    def assign_admin_role(self, request, queryset):
+        """Assign Administrator role and permissions."""
+        self._assign_role_and_group(request, queryset, 'admin', 'Administrator')
+
+    @admin.action(description='Assign Manager role')
+    def assign_manager_role(self, request, queryset):
+        """Assign Manager role and permissions."""
+        self._assign_role_and_group(request, queryset, 'manager', 'Manager')
+
+    @admin.action(description='Assign Analyst role')
+    def assign_analyst_role(self, request, queryset):
+        """Assign Analyst role and permissions."""
+        self._assign_role_and_group(request, queryset, 'analyst', 'Analyst')
+
+    @admin.action(description='Assign Viewer role (read-only)')
+    def assign_viewer_role(self, request, queryset):
+        """Assign Viewer role and permissions."""
+        self._assign_role_and_group(request, queryset, 'viewer', 'Viewer')
+
+    @admin.action(description='Activate selected users')
+    def activate_users(self, request, queryset):
+        """Activate user accounts."""
+        updated = queryset.update(is_active=True)
+        self.message_user(
+            request,
+            f'Successfully activated {updated} user(s).',
+            level=messages.SUCCESS
+        )
+
+    @admin.action(description='Deactivate selected users')
+    def deactivate_users(self, request, queryset):
+        """Deactivate user accounts."""
+        updated = queryset.update(is_active=False)
+        self.message_user(
+            request,
+            f'Successfully deactivated {updated} user(s).',
+            level=messages.WARNING
+        )
+
+    @admin.action(description='Grant Django admin access')
+    def grant_staff_access(self, request, queryset):
+        """Grant staff access for Django admin."""
+        updated = queryset.update(is_staff=True)
+        self.message_user(
+            request,
+            f'Successfully granted staff access to {updated} user(s).',
+            level=messages.SUCCESS
+        )
+
+    @admin.action(description='Revoke Django admin access')
+    def revoke_staff_access(self, request, queryset):
+        """Revoke staff access from Django admin."""
+        # Don't revoke from superusers
+        queryset = queryset.filter(is_superuser=False)
+        updated = queryset.update(is_staff=False)
+        self.message_user(
+            request,
+            f'Successfully revoked staff access from {updated} user(s).',
+            level=messages.WARNING
+        )
 
 
 @admin.register(UserSession)

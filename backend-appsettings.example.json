@@ -1,0 +1,125 @@
+{
+  "name": "AZURE_TENANT_ID",
+  "value": "9acf6dd6-1978-4d9c-9a9c-c9be95245565",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_CLIENT_ID",
+  "value": "YOUR_AZURE_CLIENT_ID_HERE",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_CLIENT_SECRET",
+  "value": "YOUR_AZURE_CLIENT_SECRET_HERE",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_REDIRECT_URI",
+  "value": "https://your-frontend.azurewebsites.net",
+  "slotSetting": false
+}
+{
+  "name": "SECRET_KEY",
+  "value": "GENERATE_STRONG_RANDOM_KEY_HERE",
+  "slotSetting": false
+}
+{
+  "name": "DEBUG",
+  "value": "False",
+  "slotSetting": false
+}
+{
+  "name": "DJANGO_ENVIRONMENT",
+  "value": "production",
+  "slotSetting": false
+}
+{
+  "name": "DJANGO_SETTINGS_MODULE",
+  "value": "azure_advisor_reports.settings.production",
+  "slotSetting": false
+}
+{
+  "name": "ALLOWED_HOSTS",
+  "value": "your-backend.azurewebsites.net,advisor-reports-backend.nicefield-788f351e.eastus.azurecontainerapps.io",
+  "slotSetting": false
+}
+{
+  "name": "CORS_ALLOWED_ORIGINS",
+  "value": "https://your-frontend.azurewebsites.net,https://advisor-reports-frontend.nicefield-788f351e.eastus.azurecontainerapps.io",
+  "slotSetting": false
+}
+{
+  "name": "CSRF_TRUSTED_ORIGINS",
+  "value": "https://your-backend.azurewebsites.net,https://your-frontend.azurewebsites.net,https://advisor-reports-backend.nicefield-788f351e.eastus.azurecontainerapps.io,https://advisor-reports-frontend.nicefield-788f351e.eastus.azurecontainerapps.io",
+  "slotSetting": false
+}
+{
+  "name": "DATABASE_URL",
+  "value": "postgresql://username:password@hostname:5432/dbname?sslmode=require",
+  "slotSetting": false
+}
+{
+  "name": "REDIS_URL",
+  "value": "rediss://your-cache.redis.cache.windows.net:6380",
+  "slotSetting": false
+}
+{
+  "name": "REDIS_PASSWORD",
+  "value": "YOUR_REDIS_ACCESS_KEY",
+  "slotSetting": false
+}
+{
+  "name": "CELERY_BROKER_URL",
+  "value": "rediss://your-cache.redis.cache.windows.net:6380",
+  "slotSetting": false
+}
+{
+  "name": "CELERY_RESULT_BACKEND",
+  "value": "rediss://your-cache.redis.cache.windows.net:6380",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_STORAGE_ACCOUNT_NAME",
+  "value": "yourstorageaccount",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_STORAGE_ACCOUNT_KEY",
+  "value": "YOUR_STORAGE_ACCESS_KEY",
+  "slotSetting": false
+}
+{
+  "name": "AZURE_STORAGE_CONTAINER",
+  "value": "media",
+  "slotSetting": false
+}
+{
+  "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+  "value": "InstrumentationKey=YOUR_KEY;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/",
+  "slotSetting": false
+}
+{
+  "name": "GUNICORN_WORKERS",
+  "value": "4",
+  "slotSetting": false
+}
+{
+  "name": "GUNICORN_THREADS",
+  "value": "2",
+  "slotSetting": false
+}
+{
+  "name": "GUNICORN_TIMEOUT",
+  "value": "120",
+  "slotSetting": false
+}
+{
+  "name": "PDF_ENGINE",
+  "value": "playwright",
+  "slotSetting": false
+}
+{
+  "name": "PDF_WAIT_FOR_CHARTS",
+  "value": "True",
+  "slotSetting": false
+}

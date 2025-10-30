@@ -3,7 +3,7 @@ import React from 'react';
 interface UserProfileProps {
   user: {
     id: string;
-    name: string;
+    name?: string;
     email: string;
     roles?: string[];
   };
@@ -46,13 +46,22 @@ const UserProfile: React.FC<UserProfileProps> = ({
   const classes = sizeClasses[size];
 
   // Get user initials for avatar
-  const getInitials = (name: string): string => {
+  const getInitials = (name?: string): string => {
+    if (!name) {
+      // Fallback to email initial if name is not available
+      return user.email[0].toUpperCase();
+    }
     return name
       .split(' ')
       .map(part => part[0])
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  // Get display name with fallback to email
+  const getDisplayName = (): string => {
+    return user.name || user.email.split('@')[0];
   };
 
   // Format roles for display
@@ -76,7 +85,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         {/* User Info */}
         <div className="flex-1 min-w-0">
           <h3 className={`${classes.name} font-semibold text-gray-900 truncate`}>
-            {user.name}
+            {getDisplayName()}
           </h3>
           <div className="flex items-center text-gray-500 mt-1">
             <svg className={`${classes.email} mr-1 flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Authentication Cache - Azure Advisor Reports</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #1f2937;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #f3f4f6;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .info-box h3 {
+            color: #1f2937;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            color: #4b5563;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .cache-items {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .cache-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .cache-item:last-child {
+            border-bottom: none;
+        }
+
+        .cache-item-name {
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .cache-item-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .status-found {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-cleared {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .status-none {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-message {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">AZ</div>
+            <h1>Clear Authentication Cache</h1>
+            <p class="subtitle">Azure Advisor Reports Platform</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Why clear the cache?</h3>
+            <p>
+                If you're experiencing authentication errors (like "Tenant not found"),
+                clearing the authentication cache can resolve issues caused by outdated
+                configuration stored in your browser.
+            </p>
+        </div>
+
+        <div class="cache-items" id="cacheStatus">
+            <div class="cache-item">
+                <span class="cache-item-name">localStorage (MSAL)</span>
+                <span class="cache-item-status status-none" id="localStorageStatus">Checking...</span>
+            </div>
+            <div class="cache-item">
+                <span class="cache-item-name">sessionStorage</span>
+                <span class="cache-item-status status-none" id="sessionStorageStatus">Checking...</span>
+            </div>
+            <div class="cache-item">
+                <span class="cache-item-name">Cookies</span>
+                <span class="cache-item-status status-none" id="cookiesStatus">Checking...</span>
+            </div>
+            <div class="cache-item">
+                <span class="cache-item-name">Service Worker Cache</span>
+                <span class="cache-item-status status-none" id="swCacheStatus">Checking...</span>
+            </div>
+        </div>
+
+        <button id="clearButton" onclick="clearAllCache()">
+            🗑️ Clear All Authentication Cache
+        </button>
+
+        <button id="returnButton" onclick="returnToApp()" style="background: #6b7280; display: none;">
+            ← Return to Application
+        </button>
+
+        <div class="footer">
+            <p>Need help? <a href="mailto:support@example.com">Contact Support</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Check cache status on page load
+        window.addEventListener('DOMContentLoaded', checkCacheStatus);
+
+        function checkCacheStatus() {
+            // Check localStorage
+            const localStorageKeys = Object.keys(localStorage).filter(key =>
+                key.includes('msal') || key.includes('access_token') || key.includes('refresh_token')
+            );
+            updateStatus('localStorageStatus', localStorageKeys.length > 0);
+
+            // Check sessionStorage
+            const sessionStorageKeys = Object.keys(sessionStorage).filter(key =>
+                key.includes('msal')
+            );
+            updateStatus('sessionStorageStatus', sessionStorageKeys.length > 0);
+
+            // Check cookies
+            const hasCookies = document.cookie.includes('msal');
+            updateStatus('cookiesStatus', hasCookies);
+
+            // Check service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    updateStatus('swCacheStatus', registrations.length > 0);
+                });
+            } else {
+                document.getElementById('swCacheStatus').textContent = 'Not supported';
+                document.getElementById('swCacheStatus').className = 'cache-item-status status-none';
+            }
+        }
+
+        function updateStatus(elementId, hasData) {
+            const element = document.getElementById(elementId);
+            if (hasData) {
+                element.textContent = 'Data found';
+                element.className = 'cache-item-status status-found';
+            } else {
+                element.textContent = 'Clear';
+                element.className = 'cache-item-status status-none';
+            }
+        }
+
+        async function clearAllCache() {
+            const button = document.getElementById('clearButton');
+            button.disabled = true;
+            button.textContent = '⏳ Clearing cache...';
+
+            try {
+                // Clear localStorage (MSAL and JWT tokens)
+                const localStorageKeys = Object.keys(localStorage);
+                const msalKeys = localStorageKeys.filter(key =>
+                    key.includes('msal') ||
+                    key.includes('access_token') ||
+                    key.includes('refresh_token') ||
+                    key.includes('azure')
+                );
+                msalKeys.forEach(key => localStorage.removeItem(key));
+                console.log('Cleared localStorage:', msalKeys.length, 'items');
+                document.getElementById('localStorageStatus').textContent = 'Cleared';
+                document.getElementById('localStorageStatus').className = 'cache-item-status status-cleared';
+
+                // Clear sessionStorage
+                const sessionStorageKeys = Object.keys(sessionStorage);
+                const msalSessionKeys = sessionStorageKeys.filter(key => key.includes('msal'));
+                msalSessionKeys.forEach(key => sessionStorage.removeItem(key));
+                console.log('Cleared sessionStorage:', msalSessionKeys.length, 'items');
+                document.getElementById('sessionStorageStatus').textContent = 'Cleared';
+                document.getElementById('sessionStorageStatus').className = 'cache-item-status status-cleared';
+
+                // Clear cookies
+                document.cookie.split(";").forEach(cookie => {
+                    const name = cookie.split("=")[0].trim();
+                    if (name.includes('msal')) {
+                        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                    }
+                });
+                console.log('Cleared MSAL cookies');
+                document.getElementById('cookiesStatus').textContent = 'Cleared';
+                document.getElementById('cookiesStatus').className = 'cache-item-status status-cleared';
+
+                // Unregister service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    console.log('Unregistered', registrations.length, 'service workers');
+                    document.getElementById('swCacheStatus').textContent = 'Cleared';
+                    document.getElementById('swCacheStatus').className = 'cache-item-status status-cleared';
+                }
+
+                // Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
+                    console.log('Cleared', cacheNames.length, 'cache storages');
+                }
+
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success-message';
+                successDiv.innerHTML = '✅ Authentication cache cleared successfully!<br><small>You can now return to the application.</small>';
+                document.querySelector('.cache-items').after(successDiv);
+
+                button.style.display = 'none';
+                document.getElementById('returnButton').style.display = 'block';
+
+                console.log('✅ All authentication cache cleared successfully');
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                alert('Error clearing cache. Please try manually clearing your browser data.');
+                button.disabled = false;
+                button.textContent = '🗑️ Clear All Authentication Cache';
+            }
+        }
+
+        function returnToApp() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

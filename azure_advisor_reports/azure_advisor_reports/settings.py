@@ -22,9 +22,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+# Read DEBUG from environment - default to False in production
+DEBUG = config('DEBUG', default='True', cast=lambda x: x.lower() in ('true', '1', 'yes', 'on'))
+
+# Force DEBUG to False if DJANGO_ENVIRONMENT is production
+if os.environ.get('DJANGO_ENVIRONMENT', '').lower() == 'production':
+    DEBUG = False
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
+
+# CSRF Trusted Origins
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
+
+# Additional CSRF configuration for production
+if not DEBUG:
+    # Ensure Azure Container Apps URLs are always trusted in production
+    production_origins = [
+        'https://advisor-reports-backend.nicefield-788f351e.eastus.azurecontainerapps.io',
+        'https://advisor-reports-frontend.nicefield-788f351e.eastus.azurecontainerapps.io',
+    ]
+    # Merge with existing trusted origins (avoid duplicates)
+    CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS + production_origins))
 
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
@@ -208,8 +230,8 @@ AZURE_AD = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

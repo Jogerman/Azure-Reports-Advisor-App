@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserMenuProps {
   user: {
-    name: string;
+    name?: string;
     email: string;
     roles?: string[];
   };
@@ -28,13 +28,22 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
   }, []);
 
   // Get user initials for avatar
-  const getInitials = (name: string): string => {
+  const getInitials = (name?: string): string => {
+    if (!name) {
+      // Fallback to email initial if name is not available
+      return user.email[0].toUpperCase();
+    }
     return name
       .split(' ')
       .map(part => part[0])
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  // Get display name with fallback to email
+  const getDisplayName = (): string => {
+    return user.name || user.email.split('@')[0];
   };
 
   // Format role for display
@@ -64,7 +73,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
         {/* User info - hidden on mobile */}
         <div className="hidden md:block text-right">
           <p className="text-sm font-medium text-gray-900 leading-tight">
-            {user.name}
+            {getDisplayName()}
           </p>
           <p className="text-xs text-gray-500">{user.email}</p>
         </div>
@@ -107,7 +116,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user.name}
+                    {getDisplayName()}
                   </p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   {getRoleBadge() && (

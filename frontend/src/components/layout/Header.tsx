@@ -7,7 +7,7 @@ interface HeaderProps {
   onMenuClick: () => void;
   isSidebarOpen: boolean;
   user?: {
-    name: string;
+    name?: string;
     email: string;
     roles?: string[];
   } | null;

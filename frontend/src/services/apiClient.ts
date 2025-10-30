@@ -19,31 +19,37 @@ const apiClient: AxiosInstance = axios.create({
 /**
  * Request interceptor to add authentication token
  *
- * Note: Using idToken for backend authentication. The idToken contains user identity
- * and is issued by Azure AD with the client application as the audience.
- * For production, consider implementing custom API scopes.
+ * Note: Using backend JWT tokens for authentication. These are obtained after
+ * authenticating with Azure AD and calling the backend login endpoint.
  */
 apiClient.interceptors.request.use(
   async (config) => {
     try {
+      // First, try to use backend JWT token
+      const backendToken = localStorage.getItem('access_token');
+
+      if (backendToken) {
+        config.headers.Authorization = `Bearer ${backendToken}`;
+        console.log('Using backend JWT token for authentication');
+        return config;
+      }
+
+      // Fallback: If no backend token, try Azure AD token
+      // This can happen during initial authentication
       const account = msalInstance.getActiveAccount();
 
       if (account) {
-        // Try to acquire token silently
         const response = await msalInstance.acquireTokenSilent({
           ...tokenRequest,
           account,
         });
 
-        // Use idToken instead of accessToken for backend authentication
-        // The idToken is designed for user authentication and contains user identity claims
         if (response.idToken) {
           config.headers.Authorization = `Bearer ${response.idToken}`;
-          console.log('Using idToken for authentication');
+          console.log('Using Azure AD idToken for authentication (fallback)');
         } else if (response.accessToken) {
-          // Fallback to accessToken if idToken is not available (shouldn't happen)
           config.headers.Authorization = `Bearer ${response.accessToken}`;
-          console.warn('idToken not available, falling back to accessToken');
+          console.warn('Using Azure AD accessToken for authentication (fallback)');
         }
       }
     } catch (error) {
@@ -72,22 +78,44 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
+        console.log('Received 401 error, attempting token refresh...');
+
+        // Clear expired backend token
+        localStorage.removeItem('access_token');
+
+        // Try to get new token from Azure AD and re-authenticate with backend
         const account = msalInstance.getActiveAccount();
 
         if (account) {
-          // Try to acquire token interactively
-          const response = await msalInstance.acquireTokenPopup(tokenRequest);
+          // Get fresh Azure AD token
+          const azureResponse = await msalInstance.acquireTokenSilent({
+            ...tokenRequest,
+            account,
+          });
 
-          // Use idToken for retry as well
-          const token = response.idToken || response.accessToken;
-          if (token && originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+          const azureToken = azureResponse.idToken || azureResponse.accessToken;
+
+          // Re-authenticate with backend to get new JWT
+          const authService = await import('./authService');
+          const backendResponse = await authService.default.login(azureToken);
+
+          // Store new backend tokens
+          localStorage.setItem('access_token', backendResponse.access_token);
+          localStorage.setItem('refresh_token', backendResponse.refresh_token);
+
+          // Retry original request with new token
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${backendResponse.access_token}`;
             return apiClient(originalRequest);
           }
         }
       } catch (tokenError) {
         console.error('Token refresh failed:', tokenError);
         showToast.error('Session expired. Please sign in again.');
+
+        // Clear all auth data
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
 
         // Redirect to login
         window.location.href = '/login';

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db.models import Q
 
 from .serializers import (
     UserSerializer,
@@ -231,10 +232,10 @@ class UserViewSet(viewsets.ModelViewSet):
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
-                models.Q(first_name__icontains=search) |
-                models.Q(last_name__icontains=search) |
-                models.Q(email__icontains=search) |
-                models.Q(username__icontains=search)
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(username__icontains=search)
             )
 
         return queryset
@@ -340,9 +341,10 @@ class UserViewSet(viewsets.ModelViewSet):
             'total_users': User.objects.count(),
             'active_users': User.objects.filter(is_active=True).count(),
             'inactive_users': User.objects.filter(is_active=False).count(),
-            'users_by_role': dict(
-                User.objects.values_list('role').annotate(count=Count('role'))
-            ),
+            'users_by_role': {
+                item['role']: item['count']
+                for item in User.objects.values('role').annotate(count=Count('role'))
+            },
         }
 
         return Response(stats, status=status.HTTP_200_OK)

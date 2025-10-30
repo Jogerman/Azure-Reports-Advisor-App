@@ -188,22 +188,26 @@ CELERY_REDIS_BACKEND_USE_SSL = {
 }
 
 # ============================================================================
-# STATIC FILES - Azure Blob Storage
+# STATIC FILES - WhiteNoise (Local) and Azure Blob Storage (Media)
 # ============================================================================
 
-# Use Azure Blob Storage for static files in production
+# Use WhiteNoise for static files (more efficient for Container Apps)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+
+# Use Azure Blob Storage only for media files (user uploads, reports, etc.)
 DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
-STATICFILES_STORAGE = 'storages.backends.azure_storage.AzureStorage'
 
 AZURE_ACCOUNT_NAME = config('AZURE_STORAGE_ACCOUNT_NAME')
 AZURE_ACCOUNT_KEY = config('AZURE_STORAGE_ACCOUNT_KEY')
-AZURE_CONTAINER = config('AZURE_STORAGE_CONTAINER', default='static')
+AZURE_CONTAINER = config('AZURE_STORAGE_CONTAINER', default='media')
 AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
 AZURE_SSL = True
 
-# Override static URL to use Azure Blob Storage
-STATIC_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/static/'
-MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/media/'
+# Media files URL (reports, uploads, etc.)
+MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # ============================================================================
 # AZURE AD CONFIGURATION

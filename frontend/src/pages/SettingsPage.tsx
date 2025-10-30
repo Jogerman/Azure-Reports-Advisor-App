@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiSettings, FiUser, FiBell, FiShield, FiGlobe } from 'react-icons/fi';
+import { FiSettings, FiUser, FiBell, FiShield, FiGlobe, FiUsers } from 'react-icons/fi';
 import Card from '../components/common/Card';
 import { useAuth } from '../hooks/useAuth';
 import UserProfile from '../components/auth/UserProfile';
+import UserManagement from '../components/settings/UserManagement';
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'users'>('overview');
+
+  // For now, show user management to all authenticated users
+  // The backend will enforce permissions based on actual roles
+  const isAdmin = !!user; // TODO: Update once we fetch user details from backend
 
   const settingsSections = [
     {
@@ -49,18 +55,64 @@ const SettingsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* User Profile Card */}
-      {user && (
+      {/* Tabs (only show if admin) */}
+      {isAdmin && (
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`${
+                  activeTab === 'overview'
+                    ? 'border-azure-500 text-azure-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <FiSettings className="mr-2" />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`${
+                  activeTab === 'users'
+                    ? 'border-azure-500 text-azure-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+              >
+                <FiUsers className="mr-2" />
+                User Management
+              </button>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Tab */}
+      {activeTab === 'users' && isAdmin && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
+          transition={{ duration: 0.3 }}
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Profile</h2>
-          <UserProfile user={user} size="lg" />
+          <UserManagement />
         </motion.div>
       )}
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <>
+          {/* User Profile Card */}
+          {user && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Profile</h2>
+              <UserProfile user={user} size="lg" />
+            </motion.div>
+          )}
 
       {/* Settings Sections */}
       <motion.div
@@ -103,32 +155,34 @@ const SettingsPage: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Additional Info */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="mt-8"
-      >
-        <Card>
-          <div className="p-6 bg-azure-50">
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-azure-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <FiSettings className="w-5 h-5 text-white" />
+          {/* Additional Info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-8"
+          >
+            <Card>
+              <div className="p-6 bg-azure-50">
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-azure-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FiSettings className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Advanced Settings Coming Soon
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Additional settings and customization options will be available in future updates.
+                      This includes API access, webhook configurations, and advanced reporting preferences.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  Advanced Settings Coming Soon
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Additional settings and customization options will be available in future updates.
-                  This includes API access, webhook configurations, and advanced reporting preferences.
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </motion.div>
+            </Card>
+          </motion.div>
+        </>
+      )}
     </motion.div>
   );
 };
