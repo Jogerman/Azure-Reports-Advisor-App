@@ -175,6 +175,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
+      // Check if there's already an interaction in progress
+      const interactionStatus = msalInstance.getActiveAccount();
+      const inProgress = sessionStorage.getItem('msal.interaction.status');
+
+      if (inProgress) {
+        console.warn('Interaction already in progress, clearing stale state...');
+        // Clear potentially stale interaction state (older than 60 seconds)
+        const timestamp = sessionStorage.getItem('msal.interaction.timestamp');
+        const now = Date.now();
+
+        if (timestamp && (now - parseInt(timestamp)) > 60000) {
+          // Interaction is stale (>60 seconds old), clear it
+          sessionStorage.removeItem('msal.interaction.status');
+          sessionStorage.removeItem('msal.interaction.timestamp');
+          console.log('Cleared stale interaction state');
+        } else {
+          // Interaction is recent, show warning
+          showToast.warning('A sign-in is already in progress. Please wait or refresh the page.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Mark interaction start
+      sessionStorage.setItem('msal.interaction.timestamp', Date.now().toString());
+
       // Use redirect login instead of popup to avoid COOP issues
       await msalInstance.loginRedirect(loginRequest);
 
@@ -182,11 +208,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Login error:', error);
 
+      // Clear interaction tracking on error
+      sessionStorage.removeItem('msal.interaction.timestamp');
+
       // Handle specific MSAL errors with user-friendly messages
       if (error.errorCode === 'user_cancelled') {
         showToast.info('Sign in was cancelled. You can try again anytime.');
       } else if (error.errorCode === 'interaction_in_progress') {
-        showToast.warning('A sign-in is already in progress. Please complete it or try again.');
+        showToast.warning('A sign-in is already in progress. Please complete it, wait a moment, or refresh the page to clear the state.');
+        // Try to clear the interaction state after showing the warning
+        setTimeout(() => {
+          sessionStorage.removeItem('msal.interaction.status');
+          sessionStorage.removeItem('msal.interaction.timestamp');
+        }, 3000);
       } else if (error.errorCode === 'no_network') {
         showToast.error('No internet connection. Please check your network and try again.');
       } else if (error.errorCode === 'consent_required') {
