@@ -403,7 +403,8 @@
 
     <!-- Charts JavaScript -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        (function() {
             // Azure Color Palette
             const azureColors = {
                 cost: '#107C10',
@@ -526,6 +527,6 @@
                     }
                 });
             }
-        });
+        })();
     </script>
 {% endblock %}

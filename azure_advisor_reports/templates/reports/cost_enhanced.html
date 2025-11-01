@@ -466,7 +466,8 @@
 
     <!-- Charts JavaScript -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        (function() {
             const azureGreen = '#107C10';
             const azureBlue = '#0078D4';
             const azureColors = ['#107C10', '#0078D4', '#00BCF2', '#8661C5', '#9966FF', '#50E6FF', '#FFB900', '#FF8C00'];
@@ -579,6 +580,6 @@
                 });
             }
             {% endif %}
-        });
+        })();
     </script>
 {% endblock %}

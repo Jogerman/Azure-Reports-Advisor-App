@@ -640,7 +640,8 @@
 
     <!-- Charts JavaScript -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        (function() {
             // Severity Distribution Chart
             const severityCtx = document.getElementById('severityChart');
             if (severityCtx) {
@@ -736,6 +737,6 @@
                 });
             }
             {% endif %}
-        });
+        })();
     </script>
 {% endblock %}
