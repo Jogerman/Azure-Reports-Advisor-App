@@ -3,9 +3,12 @@ Celery tasks for asynchronous report processing.
 """
 
 import logging
+import tempfile
+import os
 from celery import shared_task
 from django.utils import timezone
 from django.db import transaction
+from django.core.files.storage import default_storage
 
 from apps.reports.models import Report, Recommendation
 from apps.reports.services.csv_processor import AzureAdvisorCSVProcessor, CSVProcessingError
@@ -39,11 +42,43 @@ def process_csv_file(self, report_id):
         if not report.csv_file:
             raise ValueError("No CSV file attached to report")
 
-        # Initialize CSV processor
-        processor = AzureAdvisorCSVProcessor(report.csv_file.path)
+        # Download file from Azure Blob Storage to a temporary location
+        temp_file = None
+        temp_file_path = None
+        try:
+            # Create a temporary file
+            temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False)
+            temp_file_path = temp_file.name
 
-        # Process CSV
-        recommendations_data, statistics = processor.process()
+            logger.info(f"Downloading CSV file from storage to temporary file: {temp_file_path}")
+
+            # Open the file from storage and copy it to the temp file
+            with report.csv_file.open('rb') as storage_file:
+                # Read and write in chunks (Azure Blob Storage doesn't have .chunks() method)
+                chunk_size = 8192
+                while True:
+                    chunk = storage_file.read(chunk_size)
+                    if not chunk:
+                        break
+                    temp_file.write(chunk)
+
+            temp_file.close()
+            logger.info(f"CSV file downloaded successfully to: {temp_file_path}")
+
+            # Initialize CSV processor with temporary file path
+            processor = AzureAdvisorCSVProcessor(temp_file_path)
+
+            # Process CSV
+            recommendations_data, statistics = processor.process()
+
+        finally:
+            # Clean up temporary file
+            if temp_file and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                    logger.info(f"Temporary file deleted: {temp_file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temporary file {temp_file_path}: {e}")
 
         # Save recommendations to database
         with transaction.atomic():

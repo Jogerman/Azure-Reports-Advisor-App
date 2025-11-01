@@ -122,8 +122,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'apps.authentication.authentication.AzureADAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'apps.authentication.authentication.JWTAuthentication',  # Backend-generated JWT tokens (primary)
+        'apps.authentication.authentication.AzureADAuthentication',  # Azure AD tokens (for login)
+        'rest_framework.authentication.SessionAuthentication',  # Django session (fallback)
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

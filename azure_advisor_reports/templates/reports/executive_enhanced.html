@@ -1,0 +1,531 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Executive Summary - Azure Advisor Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Executive Summary Dashboard -->
+    <div class="executive-summary">
+        <div class="summary-header">
+            <h2 class="summary-title">Executive Summary</h2>
+            <p class="summary-subtitle">Strategic insights and key findings from your Azure environment analysis</p>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-label">Total Recommendations</div>
+                <div class="metric-value">{{ summary_metrics.total_recommendations }}</div>
+                <div class="metric-subtitle">Optimization opportunities identified</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Annual Savings Potential</div>
+                <div class="metric-value">${{ summary_metrics.total_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">${{ summary_metrics.monthly_savings|floatformat:0 }}/month average</div>
+            </div>
+
+            <div class="metric-card metric-critical">
+                <div class="metric-icon">⚠️</div>
+                <div class="metric-label">High Priority Items</div>
+                <div class="metric-value">{{ summary_metrics.high_priority_count }}</div>
+                <div class="metric-subtitle">Require immediate attention</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-label">Categories Impacted</div>
+                <div class="metric-value">{{ summary_metrics.categories_affected }}</div>
+                <div class="metric-subtitle">Azure Advisor pillars</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Insights with Visual Impact - COMPACTED -->
+    <div class="section" style="page-break-after: avoid; margin-bottom: 20px;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon">💡</div>
+            <h2 class="section-title">Key Insights</h2>
+        </div>
+
+        <div class="success-box" style="padding: 20px; margin: 0;">
+            <div class="info-box-icon">📈</div>
+            <h3 style="margin-bottom: 8px;">Strategic Overview</h3>
+            <p style="font-size: 1em; line-height: 1.6; margin-top: 8px; margin-bottom: 0;">
+                Azure Advisor has identified <strong>{{ summary_metrics.total_recommendations }} optimization opportunities</strong>
+                across your Azure environment, representing <strong>{{ summary_metrics.categories_affected }} key areas</strong> for improvement.
+                {% if summary_metrics.total_savings > 0 %}
+                Implementing these recommendations could result in annual cost savings of
+                <strong>${{ summary_metrics.total_savings|floatformat:0 }}</strong>
+                while improving security, reliability, and operational performance.
+                {% endif %}
+                <strong>{{ summary_metrics.high_priority_count }} high-priority items</strong> have been flagged for immediate executive attention.
+            </p>
+        </div>
+    </div>
+
+    <!-- Category Distribution Visualization - COMPACTED -->
+    <div class="section" style="page-break-inside: avoid; margin-top: 20px;">
+        <div class="section-header" style="margin-bottom: 15px;">
+            <div class="section-icon">📈</div>
+            <h2 class="section-title">Recommendations Distribution</h2>
+        </div>
+
+        <div class="charts-grid" style="margin: 15px 0;">
+            <!-- Category Distribution Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">By Azure Advisor Category</h3>
+                    <p class="chart-subtitle">Distribution across optimization pillars</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="categoryDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Impact Distribution Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">By Business Impact</h3>
+                    <p class="chart-subtitle">Priority classification</p>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="impactDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Summary Table -->
+        <div class="table-container" style="margin-top: 15px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th style="text-align: center;">Count</th>
+                        <th style="text-align: center;">% of Total</th>
+                        <th style="text-align: center;">Distribution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in category_chart_data %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-{{ cat.category|lower|cut:' ' }}">{{ cat.category }}</span>
+                        </td>
+                        <td class="text-center">
+                            <strong class="text-lg">{{ cat.count }}</strong>
+                        </td>
+                        <td class="text-center">
+                            <strong>{{ cat.percentage }}%</strong>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="flex: 1; background-color: var(--gray-200); height: 20px; border-radius: 10px; overflow: hidden;">
+                                    <div style="width: {{ cat.percentage }}%; background-color: {{ cat.color }}; height: 100%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Wins - Top Priority Actions - COMPACTED -->
+    <div class="section" style="page-break-inside: avoid; margin-top: 25px;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon" style="background: var(--gradient-success);">⚡</div>
+            <h2 class="section-title">Quick Wins - High Value Opportunities</h2>
+            <span class="section-count">{{ quick_wins.count }} items</span>
+        </div>
+
+        <div class="warning-box" style="padding: 15px; margin: 10px 0;">
+            <div class="info-box-icon">🎯</div>
+            <p style="margin: 0;"><strong>High Impact, High Value:</strong> These {{ quick_wins.count }} recommendations offer the best combination of business impact and financial return. Prioritize these for immediate implementation to demonstrate quick wins to stakeholders.</p>
+        </div>
+
+        <div class="table-container" style="margin: 10px 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th>Recommendation</th>
+                        <th style="width: 150px;">Category</th>
+                        <th style="width: 200px;">Resource</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in quick_wins %}
+                    <tr>
+                        <td class="text-center">
+                            <strong class="text-primary text-xl">{{ forloop.counter }}</strong>
+                        </td>
+                        <td>
+                            <strong>{{ rec.recommendation|truncatewords:15 }}</strong>
+                            {% if rec.potential_benefits %}
+                            <div class="text-sm text-muted" style="margin-top: 4px;">
+                                {{ rec.potential_benefits|truncatewords:20 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ rec.category }}">{{ rec.get_category_display }}</span>
+                        </td>
+                        <td>
+                            {% if rec.resource_name %}
+                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:30 }}</div>
+                            {% else %}
+                            <span class="text-muted">General Recommendation</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                            <div class="text-xs text-muted">${{ rec.monthly_savings|floatformat:0 }}/month</div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted" style="padding: 30px;">
+                            No high-priority quick wins identified at this time.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if quick_wins %}
+                <tfoot>
+                    <tr style="background-color: var(--gray-50); font-weight: bold;">
+                        <td colspan="4" class="text-right" style="padding: 15px;">
+                            <strong>Total Quick Wins Potential:</strong>
+                        </td>
+                        <td class="text-right" style="font-size: 1.2em; color: var(--success-green); padding: 15px;">
+                            ${% widthratio quick_wins.0.potential_savings 1 quick_wins.count %}+
+                        </td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Top 10 Recommendations by Value - COMPACTED -->
+    <div class="section" style="page-break-inside: avoid; margin-top: 25px;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon icon-cost">💎</div>
+            <h2 class="section-title">Top 10 Recommendations by Potential Value</h2>
+        </div>
+
+        <div class="table-container" style="margin: 10px 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">Impact</th>
+                        <th style="width: 140px;">Category</th>
+                        <th>Recommendation</th>
+                        <th style="width: 150px; text-align: right;">Potential Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in top_10_recommendations %}
+                    <tr>
+                        <td class="text-center">
+                            <strong class="text-primary">{{ forloop.counter }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ rec.business_impact }}">{{ rec.get_business_impact_display|upper }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ rec.category }}">{{ rec.get_category_display }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ rec.recommendation|truncatewords:18 }}</strong>
+                            {% if rec.resource_name %}
+                            <div class="text-sm text-muted" style="margin-top: 4px;">
+                                Resource: {{ rec.resource_name|truncatechars:40 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if rec.potential_savings > 0 %}
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:2 }}</strong>
+                            {% else %}
+                            <span class="text-muted font-medium">Non-financial benefit</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted" style="padding: 30px;">
+                            No recommendations available at this time.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Strategic Action Plan - COMPACTED -->
+    <div class="section" style="page-break-before: always; margin-top: 0;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon" style="background: linear-gradient(135deg, #8661C5 0%, #9966FF 100%);">🗓️</div>
+            <h2 class="section-title">Strategic Implementation Roadmap</h2>
+        </div>
+
+        <div class="metrics-grid" style="margin-bottom: 15px;">
+            <div class="metric-card metric-critical">
+                <div class="metric-label">Immediate Actions</div>
+                <div class="metric-value" style="font-size: 2.5rem;">Week 1-2</div>
+                <div class="metric-subtitle">{{ summary_metrics.high_priority_count }} critical items</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-label">Short-term Goals</div>
+                <div class="metric-value" style="font-size: 2.5rem;">Month 1</div>
+                <div class="metric-subtitle">Quick wins & medium priority</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-label">Long-term Planning</div>
+                <div class="metric-value" style="font-size: 2.5rem;">Quarter 1</div>
+                <div class="metric-subtitle">Strategic optimizations</div>
+            </div>
+        </div>
+
+        <div class="danger-box" style="margin-bottom: 12px; padding: 15px;">
+            <div class="info-box-icon">🔴</div>
+            <h3 style="margin-bottom: 8px;">Phase 1: Immediate Response (Week 1-2)</h3>
+            <ol style="margin-left: 20px; margin-top: 8px; margin-bottom: 0; line-height: 1.6;">
+                <li><strong>Convene Leadership Team:</strong> Review {{ summary_metrics.high_priority_count }} high-priority items with key stakeholders</li>
+                <li><strong>Security First:</strong> Address all critical security vulnerabilities immediately</li>
+                <li><strong>Assign Ownership:</strong> Designate executive sponsors and technical leads for each critical area</li>
+                <li><strong>Emergency Budget:</strong> Secure approvals for immediate remediation activities</li>
+            </ol>
+        </div>
+
+        <div class="warning-box" style="margin-bottom: 12px; padding: 15px;">
+            <div class="info-box-icon">🟡</div>
+            <h3 style="margin-bottom: 8px;">Phase 2: Strategic Implementation (Month 1)</h3>
+            <ol style="margin-left: 20px; margin-top: 8px; margin-bottom: 0; line-height: 1.6;">
+                <li><strong>Quick Wins Execution:</strong> Implement high-value, low-risk optimizations to demonstrate ROI</li>
+                <li><strong>Cost Optimization Initiative:</strong> Launch formal program to capture ${{ summary_metrics.total_savings|floatformat:0 }} in annual savings</li>
+                <li><strong>Architecture Review:</strong> Conduct deep-dive technical assessments with Azure architects</li>
+                <li><strong>Progress Reporting:</strong> Establish weekly executive dashboards to track implementation</li>
+            </ol>
+        </div>
+
+        <div class="success-box" style="padding: 15px; margin-bottom: 0;">
+            <div class="info-box-icon">🟢</div>
+            <h3 style="margin-bottom: 8px;">Phase 3: Continuous Excellence (Quarter 1 & Ongoing)</h3>
+            <ol style="margin-left: 20px; margin-top: 8px; margin-bottom: 0; line-height: 1.6;">
+                <li><strong>Complete Remediation:</strong> Address all medium and low priority recommendations</li>
+                <li><strong>Optimize Architecture:</strong> Implement strategic improvements for long-term efficiency</li>
+                <li><strong>Governance Framework:</strong> Establish policies and automation to prevent future issues</li>
+                <li><strong>Continuous Monitoring:</strong> Schedule monthly Azure Advisor reviews with automated tracking</li>
+                <li><strong>Team Enablement:</strong> Conduct training and establish Centers of Excellence</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Financial Impact Summary - COMPACTED -->
+    <div class="section" style="page-break-inside: avoid; margin-top: 25px;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon icon-cost">💵</div>
+            <h2 class="section-title">Financial Impact Analysis</h2>
+        </div>
+
+        <div class="metrics-grid" style="margin: 15px 0;">
+            <div class="metric-card metric-cost">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Total Annual Savings</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ summary_metrics.total_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">Through optimization & right-sizing</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon">⏱️</div>
+                <div class="metric-label">Estimated Implementation</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{% widthratio summary_metrics.total_recommendations 1 8 %}h</div>
+                <div class="metric-subtitle">~8 hours per recommendation</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-icon">📊</div>
+                <div class="metric-label">ROI Projection</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{% if summary_metrics.total_savings > 10000 %}High{% elif summary_metrics.total_savings > 5000 %}Medium{% else %}Moderate{% endif %}</div>
+                <div class="metric-subtitle">Conservative 12-month estimate</div>
+            </div>
+
+            <div class="metric-card metric-critical">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-label">Business Value</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ summary_metrics.categories_affected }}x</div>
+                <div class="metric-subtitle">Multiple improvement areas</div>
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 15px; padding: 15px;">
+            <h3 style="margin-bottom: 8px;">ROI Breakdown & Business Case</h3>
+            <div style="line-height: 1.5; margin-top: 8px;">
+                <p style="margin-bottom: 6px;"><strong>Direct Financial Benefits:</strong> ${{ summary_metrics.total_savings|floatformat:0 }} in annual cost savings through resource optimization, right-sizing, and reserved instance purchases</p>
+                <p style="margin-bottom: 6px;"><strong>Operational Efficiency:</strong> Reduced management overhead, improved reliability, and automated operations leading to productivity gains</p>
+                <p style="margin-bottom: 6px;"><strong>Risk Mitigation:</strong> Enhanced security posture reduces potential breach costs (industry average: $4.24M per incident)</p>
+                <p style="margin-bottom: 6px;"><strong>Performance Improvements:</strong> Better customer experience, reduced latency, increased availability supporting revenue growth</p>
+                <p style="margin-bottom: 0;"><strong>Strategic Value:</strong> Cloud modernization positions organization for digital transformation and competitive advantage</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Executive Summary & Next Steps - COMPACTED -->
+    <div class="section" style="page-break-inside: avoid; margin-top: 25px;">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-icon" style="background: var(--gradient-azure);">✅</div>
+            <h2 class="section-title">Executive Action Items</h2>
+        </div>
+
+        <div class="success-box" style="padding: 15px;">
+            <h3 style="margin-bottom: 8px;">Recommended Next Steps for Leadership</h3>
+            <ol style="line-height: 1.6; font-size: 0.95em; margin: 10px 0 0 20px;">
+                <li><strong>Board/C-Suite Briefing:</strong> Present this executive summary to leadership team within 48 hours</li>
+                <li><strong>Secure Resources:</strong> Allocate budget and engineering resources for implementation phases</li>
+                <li><strong>Establish Governance:</strong> Create steering committee with executive sponsors for each pillar</li>
+                <li><strong>Set KPIs:</strong> Define success metrics and ROI targets for each phase</li>
+                <li><strong>Communication Plan:</strong> Develop stakeholder communication strategy for organization-wide changes</li>
+                <li><strong>Vendor Engagement:</strong> Schedule strategic review with Microsoft Azure representatives</li>
+                <li><strong>Track Progress:</strong> Implement executive dashboard for real-time visibility into optimization progress</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Charts JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Azure Color Palette
+            const azureColors = {
+                cost: '#107C10',
+                security: '#FF8C00',
+                reliability: '#00BCF2',
+                operational_excellence: '#8661C5',
+                performance: '#9966FF',
+                high: '#D13438',
+                medium: '#FFB900',
+                low: '#107C10'
+            };
+
+            // Category Distribution Chart
+            {% if category_chart_data %}
+            const categoryCtx = document.getElementById('categoryDistributionChart');
+            if (categoryCtx) {
+                new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [{% for cat in category_chart_data %}'{{ cat.category }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            data: [{% for cat in category_chart_data %}{{ cat.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: [{% for cat in category_chart_data %}'{{ cat.color }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 12,
+                                    font: { size: 12, weight: '600', family: "'Segoe UI', sans-serif" },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    boxWidth: 12
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const dataset = context.dataset;
+                                        const total = dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${value} recommendations (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            {% endif %}
+
+            // Impact Distribution Chart
+            const impactCtx = document.getElementById('impactDistributionChart');
+            if (impactCtx) {
+                new Chart(impactCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['High Priority', 'Medium Priority', 'Low Priority'],
+                        datasets: [{
+                            data: [{{ high_impact_count }}, {{ medium_impact_count }}, {{ low_impact_count }}],
+                            backgroundColor: [azureColors.high, azureColors.medium, azureColors.low],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 12,
+                                    font: { size: 12, weight: '600', family: "'Segoe UI', sans-serif" },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    boxWidth: 12
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.parsed} items`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

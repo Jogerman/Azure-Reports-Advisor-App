@@ -1,0 +1,287 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Cost Optimization Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Cost Summary Cards -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Annual Savings</div>
+            <div class="stat-value text-success">${{ cost_metrics.total_annual_savings|floatformat:0 }}</div>
+            <div class="stat-subtitle">${{ cost_metrics.monthly_savings|floatformat:0 }} per month</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Cost Recommendations</div>
+            <div class="stat-value">{{ cost_metrics.total_cost_recommendations }}</div>
+            <div class="stat-subtitle">{{  cost_metrics.percentage_of_total|floatformat:1 }}% of all recommendations</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">High-Value Opportunities</div>
+            <div class="stat-value text-warning">{{ cost_metrics.high_value_count }}</div>
+            <div class="stat-subtitle">> $1,000/year savings each</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Average ROI</div>
+            <div class="stat-value">{{ cost_metrics.average_roi }}%</div>
+            <div class="stat-subtitle">Return on implementation</div>
+        </div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="section">
+        <h2 class="section-title">💰 Cost Optimization Overview</h2>
+
+        <div class="success-box">
+            <h3 style="margin-bottom: 15px;">Financial Impact Summary</h3>
+            <p style="font-size: 1.1em; line-height: 1.8;">
+                Azure Advisor has identified <strong>${{ cost_metrics.total_annual_savings|floatformat:0 }} in annual cost savings</strong>
+                across {{ cost_metrics.total_cost_recommendations }} cost optimization opportunities. This represents
+                <strong>${{ cost_metrics.monthly_savings|floatformat:0 }} per month</strong> in potential savings.
+                Implementation of these recommendations can significantly reduce your Azure spending while maintaining or improving service quality.
+            </p>
+        </div>
+    </div>
+
+    <!-- Top Cost-Saving Opportunities -->
+    <div class="section">
+        <h2 class="section-title">🎯 Top Cost-Saving Opportunities</h2>
+
+        <p class="section-description">
+            These recommendations offer the highest potential for cost reduction. Prioritize implementation based on
+            your organization's budget cycles and resource availability.
+        </p>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 40%;">Recommendation</th>
+                    <th style="width: 20%;">Resource</th>
+                    <th style="width: 15%;">Impact</th>
+                    <th style="width: 20%; text-align: right;">Annual Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in top_cost_savers %}
+                <tr>
+                    <td><strong>{{ forloop.counter }}</strong></td>
+                    <td>
+                        {{ rec.recommendation|truncatewords:15 }}
+                    </td>
+                    <td>
+                        <div style="font-size: 0.9em;">
+                            <div style="font-weight: 600;">{{ rec.resource_name|truncatewords:3 }}</div>
+                            <div style="color: #666;">{{ rec.resource_type|truncatewords:3 }}</div>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-impact-{{ rec.business_impact|lower }}">
+                            {{ rec.business_impact|title }}
+                        </span>
+                    </td>
+                    <td class="text-right">
+                        <strong class="text-success" style="font-size: 1.1em;">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        <div style="font-size: 0.85em; color: #666;">${{ rec.monthly_savings|floatformat:0 }}/month</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f8f9fa; font-weight: bold;">
+                    <td colspan="4" class="text-right">Total Potential Savings:</td>
+                    <td class="text-right" style="font-size: 1.2em; color: #28a745;">
+                        ${{ top_cost_savers_total|floatformat:0 }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Cost Savings by Category -->
+    <div class="section">
+        <h2 class="section-title">📊 Savings Breakdown by Category</h2>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align: center;">Count</th>
+                    <th style="text-align: right;">Total Annual Savings</th>
+                    <th style="text-align: center;">% of Total Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in savings_by_category %}
+                <tr>
+                    <td>
+                        <span class="badge" style="background-color: {{ cat.color }};">
+                            {{ cat.category }}
+                        </span>
+                    </td>
+                    <td class="text-center"><strong>{{ cat.count }}</strong></td>
+                    <td class="text-right">
+                        <strong class="text-success">${{ cat.total_savings|floatformat:0 }}</strong>
+                    </td>
+                    <td class="text-center">
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                            <div style="width: 120px; background-color: #e0e0e0; height: 24px; border-radius: 12px; margin-right: 10px;">
+                                <div style="width: {{ cat.savings_percentage }}%; background-color: #28a745; height: 100%; border-radius: 12px;"></div>
+                            </div>
+                            <span>{{ cat.savings_percentage|floatformat:1 }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Wins -->
+    <div class="section">
+        <h2 class="section-title">⚡ Quick Wins - Easy Implementation</h2>
+
+        <div class="info-box">
+            <p><strong>Low Effort, High Impact:</strong> These {{ quick_wins|length }} recommendations can be implemented quickly with minimal disruption while providing immediate cost savings.</p>
+        </div>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Recommendation</th>
+                    <th style="width: 20%;">Resource</th>
+                    <th style="width: 15%;">Effort</th>
+                    <th style="width: 15%; text-align: right;">Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in quick_wins %}
+                <tr>
+                    <td>{{ rec.recommendation|truncatewords:20 }}</td>
+                    <td style="font-size: 0.9em;">{{ rec.resource_name|truncatewords:2 }}</td>
+                    <td class="text-center">
+                        <span class="badge badge-success">Low</span>
+                    </td>
+                    <td class="text-right">
+                        <strong class="text-success">${{ rec.potential_savings|floatformat:0 }}</strong>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- All Cost Recommendations -->
+    <div class="section">
+        <h2 class="section-title">📋 Complete Cost Optimization Recommendations</h2>
+
+        <p class="section-description">
+            Below is the complete list of all cost-related recommendations. Each recommendation includes detailed
+            information about the resource, potential savings, and implementation guidance.
+        </p>
+
+        {% for rec in cost_recommendations %}
+        <div class="recommendation-card">
+            <div class="recommendation-header">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1em; color: #1a1a1a;">
+                        {{ rec.recommendation }}
+                    </h3>
+                    <div style="display: flex; gap: 12px; font-size: 0.9em; color: #666;">
+                        <span><strong>Resource:</strong> {{ rec.resource_name|truncatewords:5 }}</span>
+                        <span><strong>Type:</strong> {{ rec.resource_type|truncatewords:3 }}</span>
+                        {% if rec.resource_group %}
+                        <span><strong>Resource Group:</strong> {{ rec.resource_group }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="cost-badge">
+                        <div class="cost-amount">${{ rec.potential_savings|floatformat:0 }}</div>
+                        <div class="cost-period">Annual Savings</div>
+                    </div>
+                    <span class="badge badge-impact-{{ rec.business_impact|lower }}" style="margin-top: 8px;">
+                        {{ rec.business_impact|title }} Impact
+                    </span>
+                </div>
+            </div>
+
+            {% if rec.potential_benefits %}
+            <div class="recommendation-body">
+                <p><strong>Benefits:</strong> {{ rec.potential_benefits }}</p>
+            </div>
+            {% endif %}
+
+            <div class="recommendation-footer">
+                <div style="display: flex; gap: 20px; font-size: 0.85em; color: #666;">
+                    <span><strong>Subscription:</strong> {{ rec.subscription_name|default:rec.subscription_id|truncatewords:4 }}</span>
+                    <span><strong>Monthly Savings:</strong> ${{ rec.monthly_savings|floatformat:0 }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="info-box">
+            <p>No cost optimization recommendations found in this report.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Implementation Roadmap -->
+    <div class="section">
+        <h2 class="section-title">🗺️ Implementation Roadmap</h2>
+
+        <div class="warning-box">
+            <h3 style="margin-bottom: 15px;">Recommended Implementation Phases</h3>
+
+            <div style="margin-top: 20px;">
+                <h4 style="color: #dc3545;">Phase 1: Immediate (Week 1-2) - ${{ phase1_savings|floatformat:0 }} savings</h4>
+                <ul>
+                    <li>Implement quick wins with low effort and high return</li>
+                    <li>Focus on high-impact, high-savings recommendations</li>
+                    <li>Estimated implementation time: 2-4 hours</li>
+                </ul>
+
+                <h4 style="color: #fd7e14; margin-top: 20px;">Phase 2: Short-term (Week 3-4) - ${{ phase2_savings|floatformat:0 }} savings</h4>
+                <ul>
+                    <li>Medium-complexity optimizations</li>
+                    <li>May require planning and testing</li>
+                    <li>Estimated implementation time: 1-2 weeks</li>
+                </ul>
+
+                <h4 style="color: #ffc107; margin-top: 20px;">Phase 3: Long-term (Month 2-3) - ${{ phase3_savings|floatformat:0 }} savings</h4>
+                <ul>
+                    <li>Complex optimizations requiring significant changes</li>
+                    <li>May require architectural review</li>
+                    <li>Estimated implementation time: 2-4 weeks</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="section">
+        <h2 class="section-title">✅ Next Steps</h2>
+
+        <div class="success-box">
+            <ol style="line-height: 2; font-size: 1.05em;">
+                <li><strong>Review and Prioritize:</strong> Assess each recommendation based on business impact and resource availability</li>
+                <li><strong>Start with Quick Wins:</strong> Implement low-effort, high-value optimizations first to build momentum</li>
+                <li><strong>Create Implementation Plan:</strong> Develop a phased approach with timelines and ownership</li>
+                <li><strong>Monitor and Measure:</strong> Track actual savings achieved vs. projected savings</li>
+                <li><strong>Regular Reviews:</strong> Schedule monthly Azure Advisor reviews to catch new optimization opportunities</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="section" style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+        <p style="font-size: 0.9em; color: #666; font-style: italic;">
+            <strong>Note:</strong> Cost savings are estimates based on Azure Advisor recommendations. Actual savings may vary based on
+            implementation approach, resource usage patterns, and other factors. We recommend validating savings in a test
+            environment before implementing in production. Some recommendations may require architectural changes or may not be
+            applicable to your specific use case.
+        </p>
+    </div>
+{% endblock %}

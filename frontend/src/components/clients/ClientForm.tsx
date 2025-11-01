@@ -29,20 +29,17 @@ const clientSchema = Yup.object().shape({
     .oneOf(['active', 'inactive'], 'Invalid status'),
 });
 
-// Industry options
+// Industry options - must match backend choices (lowercase)
 const industries = [
-  'Technology',
-  'Healthcare',
-  'Finance',
-  'Retail',
-  'Manufacturing',
-  'Education',
-  'Government',
-  'Energy',
-  'Transportation',
-  'Telecommunications',
-  'Real Estate',
-  'Other',
+  { value: 'technology', label: 'Technology' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'education', label: 'Education' },
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'government', label: 'Government' },
+  { value: 'consulting', label: 'Consulting' },
+  { value: 'other', label: 'Other' },
 ];
 
 const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) => {
@@ -152,8 +149,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) 
             >
               <option value="">Select industry</option>
               {industries.map((industry) => (
-                <option key={industry} value={industry}>
-                  {industry}
+                <option key={industry.value} value={industry.value}>
+                  {industry.label}
                 </option>
               ))}
             </Field>

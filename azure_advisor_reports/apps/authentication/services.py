@@ -47,16 +47,19 @@ class AzureADService:
 
     def validate_token(self, access_token: str) -> Tuple[bool, Optional[Dict]]:
         """
-        Validate Azure AD access token.
+        Validate Azure AD token (both idToken and accessToken).
+
+        This method validates the token by verifying its JWT signature using Azure AD's
+        public keys, then extracts user information from the token claims.
 
         Args:
-            access_token: The Azure AD access token to validate
+            access_token: The Azure AD token (idToken or accessToken) to validate
 
         Returns:
             Tuple of (is_valid, user_info_dict or None)
         """
         try:
-            # Get Microsoft's public signing keys
+            # Get Microsoft's public signing keys (JWKS)
             jwks_uri = f"https://login.microsoftonline.com/{self.tenant_id}/discovery/v2.0/keys"
 
             # Check cache first
@@ -64,40 +67,90 @@ class AzureADService:
             jwks = cache.get(cache_key)
 
             if not jwks:
+                logger.info("Fetching Azure AD JWKS keys...")
                 response = requests.get(jwks_uri, timeout=10)
                 response.raise_for_status()
                 jwks = response.json()
                 cache.set(cache_key, jwks, 3600)  # Cache for 1 hour
 
-            # Decode and validate token
-            # Note: For production, implement full JWT validation with public key
+            # Get the key ID from token header
             unverified_header = jwt.get_unverified_header(access_token)
+            kid = unverified_header.get('kid')
 
-            # Get user info from Microsoft Graph API
-            graph_url = "https://graph.microsoft.com/v1.0/me"
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            response = requests.get(graph_url, headers=headers, timeout=10)
-
-            if response.status_code == 200:
-                user_info = response.json()
-                logger.info(f"Successfully validated token for user: {user_info.get('mail')}")
-                return True, user_info
-            else:
-                logger.warning(f"Token validation failed: {response.status_code}")
+            if not kid:
+                logger.error("Token missing 'kid' (key ID) in header")
                 return False, None
+
+            # Find the matching public key from JWKS
+            rsa_key = None
+            for key in jwks.get('keys', []):
+                if key.get('kid') == kid:
+                    rsa_key = key
+                    break
+
+            if not rsa_key:
+                logger.error(f"Unable to find matching public key for kid: {kid}")
+                return False, None
+
+            # Convert JWK to PEM format for PyJWT
+            from jwt.algorithms import RSAAlgorithm
+            import json
+
+            public_key = RSAAlgorithm.from_jwk(json.dumps(rsa_key))
+
+            # Decode and validate the token with full signature verification
+            # Note: audience validation for idToken uses the client_id
+            decoded_token = jwt.decode(
+                access_token,
+                key=public_key,
+                algorithms=['RS256'],
+                audience=self.client_id,  # idToken audience is the client_id
+                issuer=f"https://login.microsoftonline.com/{self.tenant_id}/v2.0",
+                options={
+                    'verify_signature': True,
+                    'verify_exp': True,
+                    'verify_aud': True,
+                    'verify_iss': True,
+                }
+            )
+
+            # Extract user information from token claims
+            # Both idToken and accessToken contain these claims
+            user_info = {
+                'id': decoded_token.get('oid') or decoded_token.get('sub'),  # Azure AD Object ID
+                'mail': decoded_token.get('email') or decoded_token.get('preferred_username') or decoded_token.get('upn'),
+                'userPrincipalName': decoded_token.get('preferred_username') or decoded_token.get('upn'),
+                'givenName': decoded_token.get('given_name', ''),
+                'surname': decoded_token.get('family_name', ''),
+                'displayName': decoded_token.get('name', ''),
+            }
+
+            # Ensure we have at least an email/UPN for user identification
+            if not user_info.get('mail'):
+                logger.error("Token missing email/UPN claim")
+                return False, None
+
+            logger.info(f"Successfully validated token for user: {user_info.get('mail')}")
+            return True, user_info
 
         except jwt.ExpiredSignatureError:
             logger.warning("Token has expired")
+            return False, None
+        except jwt.InvalidAudienceError as e:
+            logger.warning(f"Token audience validation failed: {str(e)}")
+            return False, None
+        except jwt.InvalidIssuerError as e:
+            logger.warning(f"Token issuer validation failed: {str(e)}")
             return False, None
         except jwt.InvalidTokenError as e:
             logger.error(f"Invalid token: {str(e)}")
             return False, None
         except requests.RequestException as e:
-            logger.error(f"Request error during token validation: {str(e)}")
+            logger.error(f"Request error fetching JWKS: {str(e)}")
             return False, None
         except Exception as e:
             logger.error(f"Unexpected error validating token: {str(e)}")
+            logger.exception(e)  # Log full stack trace for debugging
             return False, None
 
     def create_or_update_user(self, azure_user_info: Dict) -> Optional[User]:

@@ -1,0 +1,1139 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Cost Optimization Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Hero Metric Cards -->
+    <div class="metrics-grid">
+        <!-- Card 1: Total Annual Savings (Primary Hero) -->
+        <div class="metric-card metric-card-primary">
+            <div class="metric-icon" style="background: linear-gradient(135deg, rgba(16, 124, 16, 0.15), rgba(159, 218, 58, 0.15));">
+                💰
+            </div>
+            <div class="metric-label">Total Annual Savings</div>
+            <div class="metric-value" style="font-size: 3rem; color: var(--success-color);">
+                ${{ total_annual_savings|floatformat:0 }}
+            </div>
+            <div class="metric-subtitle" style="color: var(--success-color); font-weight: 600;">
+                ${{ total_monthly_savings|floatformat:0 }} per month
+            </div>
+        </div>
+
+        <!-- Card 2: Cost Recommendations -->
+        <div class="metric-card">
+            <div class="metric-icon">📊</div>
+            <div class="metric-label">Cost Recommendations</div>
+            <div class="metric-value">{{ cost_recommendations.count }}</div>
+            <div class="metric-subtitle">
+                Optimization opportunities
+            </div>
+        </div>
+
+        <!-- Card 3: High-Value Opportunities -->
+        <div class="metric-card">
+            <div class="metric-icon">🎯</div>
+            <div class="metric-label">High-Value Opportunities</div>
+            <div class="metric-value text-warning">{{ quick_wins.count }}</div>
+            <div class="metric-subtitle">
+                Savings > $1,000/year each
+            </div>
+        </div>
+
+        <!-- Card 4: Average ROI -->
+        <div class="metric-card">
+            <div class="metric-icon">📈</div>
+            <div class="metric-label">Estimated ROI</div>
+            <div class="metric-value text-success">{{ roi_analysis.roi_percentage|floatformat:0 }}%</div>
+            <div class="metric-subtitle">
+                Return on implementation
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Impact Summary -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-success);">💰</div>
+            <h2 class="section-title">Cost Optimization Overview</h2>
+        </div>
+
+        <div class="success-box">
+            <h3 style="margin-bottom: 15px;">💡 Financial Impact Summary</h3>
+            <p style="font-size: 1.1em; line-height: 1.8;">
+                Azure Advisor has identified <strong>${{ total_annual_savings|floatformat:0 }} in annual cost savings</strong>
+                across <strong>{{ cost_recommendations.count }} cost optimization opportunities</strong>. This represents
+                <strong>${{ total_monthly_savings|floatformat:0 }} per month</strong> in potential savings.
+                Implementation of these recommendations can significantly reduce your Azure spending while maintaining or improving service quality.
+            </p>
+        </div>
+    </div>
+
+    <!-- Savings Visualizations -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📊</div>
+            <h2 class="section-title">Savings Distribution Analysis</h2>
+        </div>
+
+        <div class="charts-grid">
+            <!-- Left: Savings by Resource Type Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Savings by Resource Type</h3>
+                    <p class="chart-subtitle">Annual cost reduction breakdown</p>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="savingsByResourceChart" style="max-height: 350px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Right: Top 10 Cost Savers Bar Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Top 10 Cost Reduction Opportunities</h3>
+                    <p class="chart-subtitle">Highest-value individual recommendations</p>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="topCostSaversChart" style="max-height: 350px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown Table -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📋</div>
+            <h2 class="section-title">Savings Breakdown by Resource Type</h2>
+            <span class="section-count">{{ cost_by_resource_type|length }} Types</span>
+        </div>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th style="width: 35%;">Resource Type</th>
+                    <th style="text-align: center; width: 12%;">Count</th>
+                    <th style="text-align: right; width: 20%;">Annual Savings</th>
+                    <th style="text-align: right; width: 15%;">Monthly Savings</th>
+                    <th style="text-align: center; width: 18%;">% of Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cost_by_resource_type %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); opacity: 0.8; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
+                                {{ item.resource_type|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: var(--text-primary);">{{ item.resource_type|default:"Other Resources" }}</div>
+                                <div style="font-size: 0.85em; color: var(--text-secondary);">Azure resource optimization</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="badge badge-count">{{ item.count }}</span>
+                    </td>
+                    <td style="text-align: right;">
+                        <strong class="text-success" style="font-size: 1.15em;">${{ item.total_savings|floatformat:0 }}</strong>
+                    </td>
+                    <td style="text-align: right;">
+                        <span style="color: var(--text-secondary);">${{ item.monthly_savings|floatformat:0 }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <div style="width: 100px; background-color: #e0e0e0; height: 20px; border-radius: 10px;">
+                                <div style="width: {{ item.percentage }}%; background: linear-gradient(90deg, var(--success-color), var(--success-light)); height: 100%; border-radius: 10px;"></div>
+                            </div>
+                            <span style="font-weight: 600; min-width: 45px;">{{ item.percentage|floatformat:1 }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-top: 3px solid var(--success-color);">
+                    <td style="padding: 1.25rem 1rem;"><strong style="font-size: 1.1em;">TOTAL</strong></td>
+                    <td style="text-align: center; padding: 1.25rem 1rem;"><strong>{{ cost_recommendations.count }}</strong></td>
+                    <td style="text-align: right; padding: 1.25rem 1rem;"><strong style="font-size: 1.25em; color: var(--success-color);">${{ total_annual_savings|floatformat:0 }}</strong></td>
+                    <td style="text-align: right; padding: 1.25rem 1rem;"><strong>${{ total_monthly_savings|floatformat:0 }}</strong></td>
+                    <td style="text-align: center; padding: 1.25rem 1rem;"><strong>100%</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Quick Wins Section -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #FFB900, #FF8C00);">⚡</div>
+            <h2 class="section-title">Quick Wins - Immediate Actions</h2>
+            <span class="section-count">${{ quick_wins_total|floatformat:0 }} Potential</span>
+        </div>
+
+        <div class="warning-box" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: start; gap: 1.5rem;">
+                <div style="font-size: 2.5rem;">🎯</div>
+                <div>
+                    <h3 style="margin-bottom: 10px;">High-Impact, Low-Effort Optimizations</h3>
+                    <p style="line-height: 1.8;">
+                        These <strong>{{ quick_wins.count }} recommendations</strong> can be implemented within
+                        <strong>1-2 hours each</strong> with minimal risk, delivering
+                        <strong>${{ quick_wins_total|floatformat:0 }} in annual savings</strong>
+                        (${{ quick_wins_monthly|floatformat:0 }}/month). Prioritize these for immediate implementation.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-wins-grid">
+            {% for rec in quick_wins %}
+            <div class="quick-win-card">
+                <div class="quick-win-header">
+                    <div class="quick-win-rank">{{ forloop.counter }}</div>
+                    <div class="quick-win-savings">
+                        <span style="font-size: 0.7em; vertical-align: super;">$</span>{{ rec.potential_savings|floatformat:0 }}
+                        <span style="font-size: 0.6em; color: var(--text-secondary); font-weight: 500;">/year</span>
+                    </div>
+                </div>
+                <h4 class="quick-win-title">{{ rec.recommendation|truncatewords:12 }}</h4>
+                <div class="quick-win-meta">
+                    <div style="font-size: 0.85em; color: var(--text-secondary);">
+                        <strong>Resource:</strong> {{ rec.resource_name|truncatechars:35 }}
+                    </div>
+                </div>
+                <div class="quick-win-footer">
+                    <span class="badge badge-success">Low Effort</span>
+                    <span style="font-size: 0.75em; color: var(--text-secondary); font-weight: 600;">
+                        ⏱ ~1 hour
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Top Cost-Saving Opportunities -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">🎯</div>
+            <h2 class="section-title">Top Cost-Saving Opportunities</h2>
+        </div>
+
+        <p class="section-description">
+            These recommendations offer the highest potential for cost reduction. Prioritize implementation based on
+            your organization's budget cycles and resource availability.
+        </p>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 40%;">Recommendation</th>
+                    <th style="width: 20%;">Resource</th>
+                    <th style="width: 15%;">Impact</th>
+                    <th style="width: 20%; text-align: right;">Annual Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in top_cost_savers %}
+                <tr>
+                    <td><strong style="font-size: 1.2em; color: var(--primary-color);">{{ forloop.counter }}</strong></td>
+                    <td>
+                        <strong>{{ rec.recommendation|truncatewords:15 }}</strong>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.9em;">
+                            <div style="font-weight: 600;">{{ rec.resource_name|truncatewords:3 }}</div>
+                            <div style="color: #666;">{{ rec.resource_type|truncatewords:3 }}</div>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-impact-{{ rec.business_impact|lower }}">
+                            {{ rec.business_impact|title }}
+                        </span>
+                    </td>
+                    <td class="text-right">
+                        <strong class="text-success" style="font-size: 1.2em;">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        <div style="font-size: 0.85em; color: #666;">${{ rec.monthly_savings|floatformat:0 }}/month</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f8f9fa; font-weight: bold; border-top: 2px solid var(--success-color);">
+                    <td colspan="4" class="text-right" style="padding: 1rem;">Total Top 10 Savings:</td>
+                    <td class="text-right" style="font-size: 1.3em; color: var(--success-color); padding: 1rem;">
+                        ${{ top_cost_savers_total|floatformat:0 }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Implementation Roadmap -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #9966FF, #8661C5);">🗺️</div>
+            <h2 class="section-title">Implementation Roadmap</h2>
+        </div>
+
+        <div class="roadmap-container">
+            <!-- Phase 1: Immediate -->
+            <div class="roadmap-phase">
+                <div class="phase-marker">
+                    <div class="phase-number phase-immediate">1</div>
+                    <div class="phase-line"></div>
+                </div>
+                <div class="phase-content">
+                    <div class="phase-header">
+                        <div>
+                            <h3 class="phase-title">
+                                <span style="font-size: 1.5rem;">🚀</span>
+                                Phase 1: Immediate Actions
+                            </h3>
+                            <div class="phase-timeline">Week 1-2</div>
+                        </div>
+                        <div class="phase-savings">
+                            <div class="phase-savings-amount">${{ quick_wins_total|floatformat:0 }}</div>
+                            <div class="phase-savings-label">Quick Win Savings</div>
+                        </div>
+                    </div>
+                    <div class="phase-body">
+                        <div class="phase-highlights">
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>{{ quick_wins.count }} quick-win optimizations</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>Estimated implementation: 2-4 hours total</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>Zero downtime required</span>
+                            </div>
+                        </div>
+                        <div class="phase-recommendations">
+                            <strong>Key Actions:</strong>
+                            <ul>
+                                <li>Delete unused resources and orphaned disks</li>
+                                <li>Right-size over-provisioned VMs</li>
+                                <li>Enable auto-shutdown for dev/test environments</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 2: Short-term -->
+            <div class="roadmap-phase">
+                <div class="phase-marker">
+                    <div class="phase-number phase-short-term">2</div>
+                    <div class="phase-line"></div>
+                </div>
+                <div class="phase-content">
+                    <div class="phase-header">
+                        <div>
+                            <h3 class="phase-title">
+                                <span style="font-size: 1.5rem;">🎯</span>
+                                Phase 2: Short-term Strategy
+                            </h3>
+                            <div class="phase-timeline">Week 3-4</div>
+                        </div>
+                        <div class="phase-savings">
+                            <div class="phase-savings-amount">${{ long_term_total|floatformat:0 }}</div>
+                            <div class="phase-savings-label">Additional Savings</div>
+                        </div>
+                    </div>
+                    <div class="phase-body">
+                        <div class="phase-highlights">
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>{{ long_term_opportunities.count }} medium-complexity optimizations</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>Requires testing and validation</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>1-2 weeks implementation time</span>
+                            </div>
+                        </div>
+                        <div class="phase-recommendations">
+                            <strong>Key Actions:</strong>
+                            <ul>
+                                <li>Purchase Azure Reserved Instances for stable workloads</li>
+                                <li>Implement Azure Hybrid Benefit for licensing</li>
+                                <li>Optimize storage tiers and configure lifecycle policies</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 3: Long-term -->
+            <div class="roadmap-phase">
+                <div class="phase-marker">
+                    <div class="phase-number phase-long-term">3</div>
+                </div>
+                <div class="phase-content">
+                    <div class="phase-header">
+                        <div>
+                            <h3 class="phase-title">
+                                <span style="font-size: 1.5rem;">🏗️</span>
+                                Phase 3: Long-term Architecture
+                            </h3>
+                            <div class="phase-timeline">Month 2-3</div>
+                        </div>
+                        <div class="phase-savings">
+                            <div class="phase-savings-amount">${{ total_annual_savings|floatformat:0 }}</div>
+                            <div class="phase-savings-label">Total Potential</div>
+                        </div>
+                    </div>
+                    <div class="phase-body">
+                        <div class="phase-highlights">
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>Complete architectural review and optimization</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>May require significant changes</span>
+                            </div>
+                            <div class="highlight-item">
+                                <span class="check-icon">✓</span>
+                                <span>2-4 weeks implementation</span>
+                            </div>
+                        </div>
+                        <div class="phase-recommendations">
+                            <strong>Key Actions:</strong>
+                            <ul>
+                                <li>Refactor applications for serverless/PaaS services</li>
+                                <li>Implement auto-scaling and dynamic resource allocation</li>
+                                <li>Consolidate subscriptions and optimize governance</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roadmap Summary -->
+        <div class="roadmap-summary">
+            <div class="summary-card">
+                <div class="summary-value">${{ total_annual_savings|floatformat:0 }}</div>
+                <div class="summary-label">Total Annual Savings</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">6-12</div>
+                <div class="summary-label">Weeks to Full Implementation</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{ cost_recommendations.count }}</div>
+                <div class="summary-label">Total Recommendations</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Cost Recommendations -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📋</div>
+            <h2 class="section-title">Complete Cost Optimization Recommendations</h2>
+            <span class="section-count">{{ cost_recommendations.count }} Items</span>
+        </div>
+
+        <p class="section-description">
+            Below is the complete list of all cost-related recommendations. Each recommendation includes detailed
+            information about the resource, potential savings, and implementation guidance.
+        </p>
+
+        {% for rec in cost_recommendations %}
+        <div class="recommendation-card">
+            <div class="recommendation-header">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1em; color: #1a1a1a;">
+                        {{ rec.recommendation }}
+                    </h3>
+                    <div style="display: flex; gap: 12px; font-size: 0.9em; color: #666;">
+                        <span><strong>Resource:</strong> {{ rec.resource_name|truncatewords:5 }}</span>
+                        <span><strong>Type:</strong> {{ rec.resource_type|truncatewords:3 }}</span>
+                        {% if rec.resource_group %}
+                        <span><strong>Resource Group:</strong> {{ rec.resource_group }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="cost-badge">
+                        <div class="cost-amount">${{ rec.potential_savings|floatformat:0 }}</div>
+                        <div class="cost-period">Annual Savings</div>
+                    </div>
+                    <span class="badge badge-impact-{{ rec.business_impact|lower }}" style="margin-top: 8px;">
+                        {{ rec.business_impact|title }} Impact
+                    </span>
+                </div>
+            </div>
+
+            {% if rec.potential_benefits %}
+            <div class="recommendation-body">
+                <p><strong>Benefits:</strong> {{ rec.potential_benefits }}</p>
+            </div>
+            {% endif %}
+
+            <div class="recommendation-footer">
+                <div style="display: flex; gap: 20px; font-size: 0.85em; color: #666;">
+                    <span><strong>Subscription:</strong> {{ rec.subscription_name|default:rec.subscription_id|truncatewords:4 }}</span>
+                    <span><strong>Monthly Savings:</strong> ${{ rec.monthly_savings|floatformat:0 }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="info-box">
+            <p>No cost optimization recommendations found in this report.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Next Steps -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: var(--gradient-success);">✅</div>
+            <h2 class="section-title">Next Steps</h2>
+        </div>
+
+        <div class="success-box">
+            <ol style="line-height: 2.2; font-size: 1.05em; margin-left: 1.5rem;">
+                <li><strong>Review and Prioritize:</strong> Assess each recommendation based on business impact and resource availability</li>
+                <li><strong>Start with Quick Wins:</strong> Implement low-effort, high-value optimizations first to build momentum</li>
+                <li><strong>Create Implementation Plan:</strong> Develop a phased approach with timelines and ownership</li>
+                <li><strong>Monitor and Measure:</strong> Track actual savings achieved vs. projected savings</li>
+                <li><strong>Regular Reviews:</strong> Schedule monthly Azure Advisor reviews to catch new optimization opportunities</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- ROI Summary -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">💹</div>
+            <h2 class="section-title">Return on Investment Analysis</h2>
+        </div>
+
+        <div class="roi-grid">
+            <div class="roi-card">
+                <h4 class="roi-title">Implementation Cost</h4>
+                <div class="roi-value">${{ roi_analysis.estimated_implementation_cost|floatformat:0 }}</div>
+                <p class="roi-description">
+                    Estimated effort cost based on {{ cost_recommendations.count }} recommendations
+                    at ~8 hours each ($100/hour average)
+                </p>
+            </div>
+
+            <div class="roi-card roi-card-highlight">
+                <h4 class="roi-title">Annual Savings</h4>
+                <div class="roi-value text-success">${{ roi_analysis.estimated_annual_savings|floatformat:0 }}</div>
+                <p class="roi-description">
+                    Total potential cost reduction from all recommendations
+                </p>
+            </div>
+
+            <div class="roi-card">
+                <h4 class="roi-title">Net Benefit (Year 1)</h4>
+                <div class="roi-value text-success">${{ roi_analysis.net_benefit|floatformat:0 }}</div>
+                <p class="roi-description">
+                    Annual savings minus implementation costs
+                </p>
+            </div>
+
+            <div class="roi-card roi-card-highlight">
+                <h4 class="roi-title">ROI Percentage</h4>
+                <div class="roi-value text-success">{{ roi_analysis.roi_percentage|floatformat:0 }}%</div>
+                <p class="roi-description">
+                    Return on investment percentage
+                </p>
+            </div>
+
+            <div class="roi-card">
+                <h4 class="roi-title">Payback Period</h4>
+                <div class="roi-value">{{ roi_analysis.payback_months|floatformat:1 }}</div>
+                <p class="roi-description">
+                    Months to recover implementation costs
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="section" style="margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e0e0e0;">
+        <p style="font-size: 0.9em; color: #666; font-style: italic; line-height: 1.8;">
+            <strong>Note:</strong> Cost savings are estimates based on Azure Advisor recommendations. Actual savings may vary based on
+            implementation approach, resource usage patterns, and other factors. We recommend validating savings in a test
+            environment before implementing in production. Some recommendations may require architectural changes or may not be
+            applicable to your specific use case.
+        </p>
+    </div>
+
+    <!-- Chart.js Scripts -->
+    <script>
+        // Savings by Resource Type Donut Chart
+        const savingsByResourceCtx = document.getElementById('savingsByResourceChart');
+        if (savingsByResourceCtx) {
+            new Chart(savingsByResourceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        {% for item in cost_by_resource_type|slice:":6" %}
+                        '{{ item.resource_type|default:"Other" }}'{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    ],
+                    datasets: [{
+                        label: 'Annual Savings',
+                        data: [
+                            {% for item in cost_by_resource_type|slice:":6" %}
+                            {{ item.total_savings }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        ],
+                        backgroundColor: [
+                            '#107C10',
+                            '#9FDA3A',
+                            '#FFB900',
+                            '#FF8C00',
+                            '#00BCF2',
+                            '#8661C5'
+                        ],
+                        borderWidth: 4,
+                        borderColor: '#ffffff',
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    weight: '600',
+                                    family: "'Segoe UI', sans-serif"
+                                },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        return {
+                                            text: `${label}: $${value.toLocaleString()}`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return [
+                                        `Annual Savings: $${value.toLocaleString()}`,
+                                        `Percentage: ${percentage}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Top Cost Savers Horizontal Bar Chart
+        const topCostSaversCtx = document.getElementById('topCostSaversChart');
+        if (topCostSaversCtx) {
+            new Chart(topCostSaversCtx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        {% for rec in top_cost_savers|slice:":10" %}
+                        '{{ rec.resource_name|truncatechars:25 }}'{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    ],
+                    datasets: [{
+                        label: 'Annual Savings ($)',
+                        data: [
+                            {% for rec in top_cost_savers|slice:":10" %}
+                            {{ rec.potential_savings }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        ],
+                        backgroundColor: function(context) {
+                            const value = context.parsed.x;
+                            if (value > 5000) return '#107C10';
+                            if (value > 2000) return '#9FDA3A';
+                            return '#FFB900';
+                        },
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return `Annual Savings: $${context.parsed.x.toLocaleString()}`;
+                                },
+                                afterLabel: function(context) {
+                                    const monthly = (context.parsed.x / 12).toFixed(0);
+                                    return `Monthly: $${monthly}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                },
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: { size: 10, weight: '600' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
+    <style>
+        /* Quick Wins Grid */
+        .quick-wins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .quick-win-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-win-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #9FDA3A, #107C10);
+        }
+
+        .quick-win-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+            border-color: var(--success-color);
+        }
+
+        .quick-win-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .quick-win-rank {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #0078D4, #00BCF2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+        }
+
+        .quick-win-savings {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--success-color);
+            line-height: 1;
+        }
+
+        .quick-win-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+            min-height: 48px;
+        }
+
+        .quick-win-meta {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .quick-win-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Roadmap Timeline */
+        .roadmap-container {
+            margin: 2rem 0;
+        }
+
+        .roadmap-phase {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .roadmap-phase:last-child {
+            margin-bottom: 0;
+        }
+
+        .phase-marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .phase-number {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #0078D4, #00BCF2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+            z-index: 2;
+        }
+
+        .phase-immediate {
+            background: linear-gradient(135deg, #D13438, #F25022) !important;
+        }
+
+        .phase-short-term {
+            background: linear-gradient(135deg, #FFB900, #FF8C00) !important;
+        }
+
+        .phase-long-term {
+            background: linear-gradient(135deg, #9FDA3A, #107C10) !important;
+        }
+
+        .phase-line {
+            width: 4px;
+            flex: 1;
+            background: linear-gradient(180deg, #0078D4, #e0e0e0);
+            margin-top: 0.5rem;
+        }
+
+        .phase-content {
+            flex: 1;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .phase-content:hover {
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .phase-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .phase-timeline {
+            font-size: 0.85rem;
+            color: #0078D4;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .phase-savings {
+            text-align: right;
+        }
+
+        .phase-savings-amount {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--success-color);
+            line-height: 1;
+        }
+
+        .phase-savings-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 0.25rem;
+        }
+
+        .phase-body {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .phase-highlights {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .highlight-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .check-icon {
+            width: 20px;
+            height: 20px;
+            background: var(--success-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .phase-recommendations ul {
+            margin: 0.75rem 0 0 1.5rem;
+            line-height: 1.8;
+        }
+
+        .phase-recommendations li {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .roadmap-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 3px solid #e0e0e0;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, white 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .summary-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #0078D4;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ROI Grid */
+        .roi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .roi-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .roi-card-highlight {
+            background: linear-gradient(135deg, rgba(16, 124, 16, 0.05), rgba(159, 218, 58, 0.05));
+            border-color: var(--success-color);
+        }
+
+        .roi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .roi-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .roi-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.75rem;
+            line-height: 1;
+        }
+
+        .roi-description {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* Badge Enhancements */
+        .badge-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 28px;
+            padding: 0 0.75rem;
+            background: linear-gradient(135deg, #0078D4, #00BCF2);
+            color: white;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        /* Chart Container Enhancements */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .chart-canvas-wrapper {
+            padding: 1rem 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .quick-wins-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .roadmap-phase {
+                gap: 1rem;
+            }
+
+            .phase-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .phase-savings {
+                text-align: left;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .quick-win-card:hover,
+            .phase-content:hover,
+            .roi-card:hover {
+                transform: none !important;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .phase-line {
+                display: none;
+            }
+        }
+    </style>
+{% endblock %}

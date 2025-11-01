@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Executive Summary - Azure Advisor Report - {{ client.company_name }}</title>
+
+    <style>
+        /* WeasyPrint-Compatible PDF Styles for Executive Report */
+
+        /* Page setup for PDF generation */
+        @page {
+            size: A4;
+            margin: 2cm 1.5cm;
+            @top-center {
+                content: "Azure Advisor Executive Report - {{ client.company_name }}";
+                font-size: 9pt;
+                color: #605E5C;
+            }
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 9pt;
+                color: #605E5C;
+            }
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #201F1E;
+            background-color: #ffffff;
+            font-size: 10pt;
+        }
+
+        /* Cover page */
+        .cover-page {
+            page-break-after: always;
+            text-align: center;
+            padding: 100px 40px;
+            background: linear-gradient(135deg, #00BCF2 0%, #0078D4 50%, #8661C5 100%);
+            color: white;
+            min-height: 24cm;
+        }
+
+        .cover-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            padding: 15px;
+        }
+
+        .cover-company {
+            font-size: 14pt;
+            margin-bottom: 10px;
+            opacity: 0.95;
+        }
+
+        .cover-title {
+            font-size: 36pt;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            line-height: 1.2;
+        }
+
+        .cover-subtitle {
+            font-size: 18pt;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .cover-footer {
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .cover-footer table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cover-footer td {
+            padding: 15px;
+            text-align: center;
+        }
+
+        .cover-footer-label {
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .cover-footer-value {
+            font-size: 16pt;
+            font-weight: 500;
+        }
+
+        /* Report header */
+        .report-header {
+            background: linear-gradient(to right, #FAFAFA, #ffffff);
+            border-left: 6px solid #0078D4;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+
+        .report-title {
+            color: #0078D4;
+            font-size: 24pt;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .report-meta {
+            font-size: 9pt;
+            color: #484644;
+        }
+
+        .report-meta table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-meta td {
+            padding: 5px 10px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #484644;
+        }
+
+        /* Metric cards */
+        .metrics-container {
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 10px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #0078D4;
+            text-align: center;
+        }
+
+        .metric-card.metric-cost {
+            border-top-color: #107C10;
+        }
+
+        .metric-card.metric-critical {
+            border-top-color: #D13438;
+        }
+
+        .metric-card.metric-security {
+            border-top-color: #FF8C00;
+        }
+
+        .metric-icon {
+            font-size: 28pt;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-size: 8pt;
+            color: #605E5C;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 32pt;
+            font-weight: 700;
+            color: #201F1E;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .metric-card.metric-cost .metric-value {
+            color: #107C10;
+        }
+
+        .metric-card.metric-critical .metric-value {
+            color: #D13438;
+        }
+
+        .metric-card.metric-security .metric-value {
+            color: #FF8C00;
+        }
+
+        .metric-subtitle {
+            font-size: 9pt;
+            color: #605E5C;
+        }
+
+        /* Section headers */
+        .section {
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #E1DFDD;
+        }
+
+        .section-title {
+            font-size: 18pt;
+            font-weight: 700;
+            color: #201F1E;
+            display: inline-block;
+        }
+
+        .section-icon {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00BCF2 0%, #0078D4 100%);
+            border-radius: 6px;
+            text-align: center;
+            line-height: 40px;
+            color: white;
+            font-size: 18pt;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+
+        .section-icon.icon-cost {
+            background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);
+        }
+
+        /* Info boxes */
+        .info-box {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 6px solid #00BCF2;
+            background: rgba(0, 188, 242, 0.05);
+            page-break-inside: avoid;
+        }
+
+        .success-box {
+            border-left-color: #107C10;
+            background: rgba(16, 124, 16, 0.05);
+        }
+
+        .warning-box {
+            border-left-color: #FF8C00;
+            background: rgba(255, 140, 0, 0.05);
+        }
+
+        .danger-box {
+            border-left-color: #D13438;
+            background: rgba(209, 52, 56, 0.05);
+        }
+
+        .info-box h3 {
+            color: #00BCF2;
+            font-size: 12pt;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .success-box h3 {
+            color: #107C10;
+        }
+
+        .warning-box h3 {
+            color: #FF8C00;
+        }
+
+        .danger-box h3 {
+            color: #D13438;
+        }
+
+        .info-box p, .info-box ol {
+            line-height: 1.8;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 9pt;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
+        }
+
+        .data-table thead {
+            background: #0078D4;
+            color: white;
+        }
+
+        .data-table thead th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background-color: rgba(0, 120, 212, 0.02);
+        }
+
+        .data-table tbody td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #E1DFDD;
+            vertical-align: top;
+        }
+
+        .data-table tfoot {
+            background-color: #FAFAFA;
+            font-weight: bold;
+        }
+
+        .data-table tfoot td {
+            padding: 12px 8px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-high {
+            background: #D13438;
+            color: white;
+        }
+
+        .badge-medium {
+            background: #FF8C00;
+            color: white;
+        }
+
+        .badge-low {
+            background: #107C10;
+            color: white;
+        }
+
+        .badge-cost {
+            background: #107C10;
+            color: white;
+        }
+
+        .badge-security {
+            background: #FF8C00;
+            color: white;
+        }
+
+        .badge-reliability {
+            background: #00BCF2;
+            color: white;
+        }
+
+        .badge-operational_excellence {
+            background: #8661C5;
+            color: white;
+        }
+
+        .badge-performance {
+            background: #9966FF;
+            color: white;
+        }
+
+        /* Progress bar for distribution */
+        .progress-bar {
+            width: 100%;
+            background-color: #E1DFDD;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);
+            float: left;
+        }
+
+        /* Chart replacement - CSS bars */
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        .chart-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #201F1E;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .chart-subtitle {
+            font-size: 9pt;
+            color: #605E5C;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .bar-chart-item {
+            margin-bottom: 12px;
+        }
+
+        .bar-chart-label {
+            font-size: 9pt;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .bar-chart-bar {
+            background-color: #E1DFDD;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-chart-fill {
+            height: 100%;
+            float: left;
+        }
+
+        .bar-chart-value {
+            position: absolute;
+            right: 10px;
+            top: 3px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #201F1E;
+        }
+
+        /* Utility classes */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-muted { color: #605E5C; }
+        .text-primary { color: #0078D4; }
+        .text-success { color: #107C10; }
+        .text-danger { color: #D13438; }
+        .font-semibold { font-weight: 600; }
+        .text-sm { font-size: 9pt; }
+        .text-lg { font-size: 11pt; }
+        .text-xl { font-size: 12pt; }
+
+        /* Footer */
+        .footer-disclaimer {
+            background: #FAFAFA;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 30px 0 15px;
+            font-size: 8pt;
+            color: #484644;
+            line-height: 1.6;
+        }
+
+        .footer-disclaimer strong {
+            color: #0078D4;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="cover-page">
+        <div class="cover-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="50" height="50">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+        </div>
+        <div class="cover-company">{{ client.company_name }}</div>
+
+        <h1 class="cover-title">Azure Advisor<br/>Executive Report</h1>
+        <p class="cover-subtitle">Strategic Insights and Key Findings</p>
+
+        <div class="cover-footer">
+            <table>
+                <tr>
+                    <td>
+                        <div class="cover-footer-label">Report Date</div>
+                        <div class="cover-footer-value">{{ generated_date|date:"F d, Y" }}</div>
+                    </td>
+                    <td>
+                        <div class="cover-footer-label">Total Findings</div>
+                        <div class="cover-footer-value">{{ summary_metrics.total_recommendations }}</div>
+                    </td>
+                    <td>
+                        <div class="cover-footer-label">Potential Savings</div>
+                        <div class="cover-footer-value">${{ summary_metrics.total_savings|floatformat:0 }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="report-header">
+        <h1 class="report-title">Executive Summary</h1>
+        <div class="report-meta">
+            <table>
+                <tr>
+                    <td><span class="meta-label">Client:</span> {{ client.company_name }}</td>
+                    <td><span class="meta-label">Generated:</span> {{ generated_date|date:"F d, Y" }} at {{ generated_date|date:"g:i A" }}</td>
+                </tr>
+                <tr>
+                    <td><span class="meta-label">Report Type:</span> Executive Summary</td>
+                    {% if client.industry %}
+                    <td><span class="meta-label">Industry:</span> {{ client.industry }}</td>
+                    {% endif %}
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="metrics-container">
+        <table class="metrics-table">
+            <tr>
+                <td width="25%">
+                    <div class="metric-card">
+                        <div class="metric-icon">📊</div>
+                        <div class="metric-label">Total Recommendations</div>
+                        <div class="metric-value">{{ summary_metrics.total_recommendations }}</div>
+                        <div class="metric-subtitle">Optimization opportunities</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="metric-card metric-cost">
+                        <div class="metric-icon">💰</div>
+                        <div class="metric-label">Annual Savings</div>
+                        <div class="metric-value">${{ summary_metrics.total_savings|floatformat:0 }}</div>
+                        <div class="metric-subtitle">${{ summary_metrics.monthly_savings|floatformat:0 }}/month</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="metric-card metric-critical">
+                        <div class="metric-icon">⚠️</div>
+                        <div class="metric-label">High Priority Items</div>
+                        <div class="metric-value">{{ summary_metrics.high_priority_count }}</div>
+                        <div class="metric-subtitle">Immediate attention</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="metric-card metric-security">
+                        <div class="metric-icon">🎯</div>
+                        <div class="metric-label">Categories Impacted</div>
+                        <div class="metric-value">{{ summary_metrics.categories_affected }}</div>
+                        <div class="metric-subtitle">Azure pillars</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Key Insights -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">💡</span>
+            <h2 class="section-title">Key Insights</h2>
+        </div>
+
+        <div class="success-box">
+            <h3>Strategic Overview</h3>
+            <p>
+                Azure Advisor has identified <strong>{{ summary_metrics.total_recommendations }} optimization opportunities</strong>
+                across your Azure environment, representing <strong>{{ summary_metrics.categories_affected }} key areas</strong> for improvement.
+                {% if summary_metrics.total_savings > 0 %}
+                Implementing these recommendations could result in annual cost savings of
+                <strong>${{ summary_metrics.total_savings|floatformat:0 }}</strong>
+                while improving security, reliability, and operational performance.
+                {% endif %}
+                <strong>{{ summary_metrics.high_priority_count }} high-priority items</strong> have been flagged for immediate executive attention.
+            </p>
+        </div>
+    </div>
+
+    <!-- Recommendations Distribution -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">📈</span>
+            <h2 class="section-title">Recommendations Distribution</h2>
+        </div>
+
+        <table width="100%">
+            <tr>
+                <td width="50%" valign="top">
+                    <div class="chart-container">
+                        <div class="chart-title">By Azure Advisor Category</div>
+                        <div class="chart-subtitle">Distribution across optimization pillars</div>
+
+                        {% for cat in category_chart_data %}
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">{{ cat.category }} ({{ cat.count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {{ cat.percentage }}%; background-color: {{ cat.color }};"></div>
+                                <div class="bar-chart-value">{{ cat.percentage }}%</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </td>
+                <td width="50%" valign="top">
+                    <div class="chart-container">
+                        <div class="chart-title">By Business Impact</div>
+                        <div class="chart-subtitle">Priority classification</div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">High Priority ({{ high_impact_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio high_impact_count summary_metrics.total_recommendations 100 %}%; background-color: #D13438;"></div>
+                                <div class="bar-chart-value">{% widthratio high_impact_count summary_metrics.total_recommendations 100 %}%</div>
+                            </div>
+                        </div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">Medium Priority ({{ medium_impact_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio medium_impact_count summary_metrics.total_recommendations 100 %}%; background-color: #FFB900;"></div>
+                                <div class="bar-chart-value">{% widthratio medium_impact_count summary_metrics.total_recommendations 100 %}%</div>
+                            </div>
+                        </div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">Low Priority ({{ low_impact_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio low_impact_count summary_metrics.total_recommendations 100 %}%; background-color: #107C10;"></div>
+                                <div class="bar-chart-value">{% widthratio low_impact_count summary_metrics.total_recommendations 100 %}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Category Summary Table -->
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align: center;">Count</th>
+                    <th style="text-align: center;">% of Total</th>
+                    <th>Distribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in category_chart_data %}
+                <tr>
+                    <td><span class="badge badge-{{ cat.category|lower|cut:' ' }}">{{ cat.category }}</span></td>
+                    <td class="text-center"><strong>{{ cat.count }}</strong></td>
+                    <td class="text-center"><strong>{{ cat.percentage }}%</strong></td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ cat.percentage }}%; background-color: {{ cat.color }};"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Wins -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);">⚡</span>
+            <h2 class="section-title">Quick Wins - High Value Opportunities</h2>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>High Impact, High Value:</strong> These {{ quick_wins.count }} recommendations offer the best combination of business impact and financial return. Prioritize these for immediate implementation.</p>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th width="40">#</th>
+                    <th>Recommendation</th>
+                    <th width="120">Category</th>
+                    <th width="150">Resource</th>
+                    <th width="110" style="text-align: right;">Annual Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in quick_wins %}
+                <tr>
+                    <td class="text-center"><strong class="text-primary">{{ forloop.counter }}</strong></td>
+                    <td>
+                        <strong>{{ rec.recommendation|truncatewords:15 }}</strong>
+                        {% if rec.potential_benefits %}
+                        <div class="text-sm text-muted">{{ rec.potential_benefits|truncatewords:15 }}</div>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-{{ rec.category }}">{{ rec.get_category_display }}</span></td>
+                    <td>
+                        {% if rec.resource_name %}
+                        <div class="font-semibold">{{ rec.resource_name|truncatechars:20 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                        {% else %}
+                        <span class="text-muted">General</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right"><strong class="text-success">${{ rec.potential_savings|floatformat:0 }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No high-priority quick wins identified.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Top 10 Recommendations -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon icon-cost">💎</span>
+            <h2 class="section-title">Top 10 Recommendations by Value</h2>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th width="30">#</th>
+                    <th width="90">Impact</th>
+                    <th width="110">Category</th>
+                    <th>Recommendation</th>
+                    <th width="110" style="text-align: right;">Potential Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in top_10_recommendations %}
+                <tr>
+                    <td class="text-center"><strong>{{ forloop.counter }}</strong></td>
+                    <td><span class="badge badge-{{ rec.business_impact }}">{{ rec.get_business_impact_display|upper }}</span></td>
+                    <td><span class="badge badge-{{ rec.category }}">{{ rec.get_category_display }}</span></td>
+                    <td>
+                        <strong>{{ rec.recommendation|truncatewords:18 }}</strong>
+                        {% if rec.resource_name %}
+                        <div class="text-sm text-muted">Resource: {{ rec.resource_name|truncatechars:35 }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if rec.potential_savings > 0 %}
+                        <strong class="text-success">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        {% else %}
+                        <span class="text-muted">Non-financial</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No recommendations available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Implementation Roadmap -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #8661C5 0%, #9966FF 100%);">🗓️</span>
+            <h2 class="section-title">Strategic Implementation Roadmap</h2>
+        </div>
+
+        <div class="danger-box">
+            <h3>Phase 1: Immediate Response (Week 1-2)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>Convene Leadership Team:</strong> Review {{ summary_metrics.high_priority_count }} high-priority items with stakeholders</li>
+                <li><strong>Security First:</strong> Address all critical security vulnerabilities immediately</li>
+                <li><strong>Assign Ownership:</strong> Designate executive sponsors and technical leads</li>
+                <li><strong>Emergency Budget:</strong> Secure approvals for immediate remediation</li>
+            </ol>
+        </div>
+
+        <div class="warning-box">
+            <h3>Phase 2: Strategic Implementation (Month 1)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>Quick Wins Execution:</strong> Implement high-value, low-risk optimizations</li>
+                <li><strong>Cost Optimization:</strong> Launch formal program to capture ${{ summary_metrics.total_savings|floatformat:0 }} in savings</li>
+                <li><strong>Architecture Review:</strong> Conduct deep-dive technical assessments</li>
+                <li><strong>Progress Reporting:</strong> Establish weekly executive dashboards</li>
+            </ol>
+        </div>
+
+        <div class="success-box">
+            <h3>Phase 3: Continuous Excellence (Quarter 1 & Ongoing)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>Complete Remediation:</strong> Address all medium and low priority recommendations</li>
+                <li><strong>Optimize Architecture:</strong> Implement strategic long-term improvements</li>
+                <li><strong>Governance Framework:</strong> Establish policies and automation</li>
+                <li><strong>Continuous Monitoring:</strong> Schedule monthly Azure Advisor reviews</li>
+                <li><strong>Team Enablement:</strong> Conduct training and establish Centers of Excellence</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Executive Action Items -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #00BCF2 0%, #0078D4 100%);">✅</span>
+            <h2 class="section-title">Executive Action Items</h2>
+        </div>
+
+        <div class="success-box">
+            <h3>Recommended Next Steps for Leadership</h3>
+            <ol style="line-height: 2; margin: 15px 0 15px 20px;">
+                <li><strong>Board/C-Suite Briefing:</strong> Present this summary to leadership within 48 hours</li>
+                <li><strong>Secure Resources:</strong> Allocate budget and engineering resources</li>
+                <li><strong>Establish Governance:</strong> Create steering committee with executive sponsors</li>
+                <li><strong>Set KPIs:</strong> Define success metrics and ROI targets</li>
+                <li><strong>Communication Plan:</strong> Develop stakeholder communication strategy</li>
+                <li><strong>Vendor Engagement:</strong> Schedule strategic review with Microsoft Azure</li>
+                <li><strong>Track Progress:</strong> Implement executive dashboard for real-time visibility</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-disclaimer">
+        <strong>Disclaimer:</strong> This report was automatically generated from Azure Advisor recommendations.
+        All data is sourced from Microsoft Azure Advisor as of {{ generated_date|date:"F d, Y" }}.
+        Recommendations should be evaluated by qualified technical personnel before implementation.
+        Potential savings estimates are provided by Azure Advisor and actual savings may vary based on usage patterns,
+        pricing changes, and implementation timing.
+    </div>
+
+    <div style="text-align: center; color: #605E5C; font-size: 8pt; margin-top: 20px;">
+        <p><strong>Azure Advisor Reports Platform</strong></p>
+        <p>&copy; {{ generated_date|date:"Y" }} | Powered by Microsoft Azure Advisor</p>
+    </div>
+</body>
+</html>

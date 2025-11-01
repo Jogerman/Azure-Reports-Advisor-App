@@ -688,38 +688,14 @@ class ReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Get file path - handle both relative and absolute paths
-        file_path_str = file_field.name if hasattr(file_field, 'name') else str(file_field)
-
-        # Remove any leading /app/media/ or /media/ prefixes
-        file_path_str = file_path_str.replace('/app/media/', '').replace('/media/', '')
-
-        # Construct full path
-        full_path = os.path.join(settings.MEDIA_ROOT, file_path_str)
-
-        # Check if file exists on disk
-        if not os.path.exists(full_path):
-            logger.error(f"File not found on disk: {full_path}")
-            return Response(
-                {
-                    'status': 'error',
-                    'message': f'{file_format.upper()} file not found on server',
-                    'debug_info': {
-                        'file_field': str(file_field),
-                        'expected_path': full_path,
-                    }
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
         try:
             # Prepare filename
             filename = f"{report.client.company_name.replace(' ', '_')}_" \
                       f"{report.get_report_type_display().replace(' ', '_')}_" \
                       f"{report.created_at.strftime('%Y%m%d')}.{file_format}"
 
-            # Open file and return as response
-            file_handle = open(full_path, 'rb')
+            # Open file from storage (works with both local and cloud storage)
+            file_handle = file_field.open('rb')
 
             # Set content type
             content_type = 'text/html; charset=utf-8' if file_format == 'html' else 'application/pdf'

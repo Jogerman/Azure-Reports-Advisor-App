@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Assessment Report - {{ client.company_name }}</title>
+
+    <style>
+        /* WeasyPrint-Compatible PDF Styles for Security Report */
+
+        /* Page setup for PDF generation */
+        @page {
+            size: A4;
+            margin: 2cm 1.5cm;
+            @top-center {
+                content: "Azure Advisor Security Assessment - {{ client.company_name }}";
+                font-size: 9pt;
+                color: #605E5C;
+            }
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 9pt;
+                color: #605E5C;
+            }
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #201F1E;
+            background-color: #ffffff;
+            font-size: 10pt;
+        }
+
+        /* Cover page */
+        .cover-page {
+            page-break-after: always;
+            text-align: center;
+            padding: 100px 40px;
+            background: linear-gradient(135deg, #FF8C00 0%, #D13438 100%);
+            color: white;
+            min-height: 24cm;
+        }
+
+        .cover-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            padding: 15px;
+        }
+
+        .cover-company {
+            font-size: 14pt;
+            margin-bottom: 10px;
+            opacity: 0.95;
+        }
+
+        .cover-title {
+            font-size: 36pt;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            line-height: 1.2;
+        }
+
+        .cover-subtitle {
+            font-size: 18pt;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .cover-footer {
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .cover-footer table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cover-footer td {
+            padding: 15px;
+            text-align: center;
+        }
+
+        .cover-footer-label {
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .cover-footer-value {
+            font-size: 16pt;
+            font-weight: 500;
+        }
+
+        /* Report header */
+        .report-header {
+            background: linear-gradient(to right, #FAFAFA, #ffffff);
+            border-left: 6px solid #FF8C00;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+
+        .report-title {
+            color: #FF8C00;
+            font-size: 24pt;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .report-meta {
+            font-size: 9pt;
+            color: #484644;
+        }
+
+        .report-meta table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-meta td {
+            padding: 5px 10px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #484644;
+        }
+
+        /* Security score gauge */
+        .security-score-section {
+            text-align: center;
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .security-score-circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 12px solid #E1DFDD;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .security-score-circle.excellent {
+            border-color: #107C10;
+        }
+
+        .security-score-circle.good {
+            border-color: #9FDA3A;
+        }
+
+        .security-score-circle.fair {
+            border-color: #FFB900;
+        }
+
+        .security-score-circle.poor {
+            border-color: #D13438;
+        }
+
+        .security-score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48pt;
+            font-weight: 700;
+        }
+
+        .security-score-value.excellent {
+            color: #107C10;
+        }
+
+        .security-score-value.good {
+            color: #9FDA3A;
+        }
+
+        .security-score-value.fair {
+            color: #FFB900;
+        }
+
+        .security-score-value.poor {
+            color: #D13438;
+        }
+
+        .security-score-label {
+            font-size: 14pt;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        /* Metric cards */
+        .metrics-container {
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 10px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #0078D4;
+            text-align: center;
+        }
+
+        .metric-card.metric-critical {
+            border-top-color: #D13438;
+        }
+
+        .metric-card.metric-security {
+            border-top-color: #FF8C00;
+        }
+
+        .metric-card.metric-cost {
+            border-top-color: #FFB900;
+        }
+
+        .metric-icon {
+            font-size: 28pt;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-size: 8pt;
+            color: #605E5C;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 32pt;
+            font-weight: 700;
+            color: #201F1E;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .metric-card.metric-critical .metric-value {
+            color: #D13438;
+        }
+
+        .metric-card.metric-security .metric-value {
+            color: #FF8C00;
+        }
+
+        .metric-card.metric-cost .metric-value {
+            color: #FFB900;
+        }
+
+        .metric-subtitle {
+            font-size: 9pt;
+            color: #605E5C;
+        }
+
+        /* Threat severity indicators */
+        .threat-bar {
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .severity-block {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: 3px;
+        }
+
+        .severity-critical { background: #D13438; }
+        .severity-high { background: #FF8C00; }
+        .severity-medium { background: #FFB900; }
+        .severity-empty { background: #E1DFDD; }
+
+        /* Section headers */
+        .section {
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #E1DFDD;
+        }
+
+        .section-title {
+            font-size: 18pt;
+            font-weight: 700;
+            color: #201F1E;
+            display: inline-block;
+        }
+
+        .section-icon {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #FF8C00 0%, #D13438 100%);
+            border-radius: 6px;
+            text-align: center;
+            line-height: 40px;
+            color: white;
+            font-size: 18pt;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+
+        /* Info boxes */
+        .info-box {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 6px solid #00BCF2;
+            background: rgba(0, 188, 242, 0.05);
+            page-break-inside: avoid;
+        }
+
+        .success-box {
+            border-left-color: #107C10;
+            background: rgba(16, 124, 16, 0.05);
+        }
+
+        .warning-box {
+            border-left-color: #FF8C00;
+            background: rgba(255, 140, 0, 0.05);
+        }
+
+        .danger-box {
+            border-left-color: #D13438;
+            background: rgba(209, 52, 56, 0.05);
+        }
+
+        .info-box h3 {
+            color: #00BCF2;
+            font-size: 12pt;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .success-box h3 {
+            color: #107C10;
+        }
+
+        .warning-box h3 {
+            color: #FF8C00;
+        }
+
+        .danger-box h3 {
+            color: #D13438;
+        }
+
+        .info-box p, .info-box ol {
+            line-height: 1.8;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 9pt;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
+        }
+
+        .data-table thead {
+            background: #FF8C00;
+            color: white;
+        }
+
+        .data-table thead th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background-color: rgba(255, 140, 0, 0.02);
+        }
+
+        .data-table tbody tr.critical-row {
+            background-color: rgba(209, 52, 56, 0.03);
+        }
+
+        .data-table tbody td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #E1DFDD;
+            vertical-align: top;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-high {
+            background: #D13438;
+            color: white;
+        }
+
+        .badge-medium {
+            background: #FF8C00;
+            color: white;
+        }
+
+        .badge-low {
+            background: #107C10;
+            color: white;
+        }
+
+        .risk-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .risk-critical {
+            background: #D13438;
+            color: white;
+        }
+
+        .risk-high {
+            background: #FF8C00;
+            color: white;
+        }
+
+        /* Risk distribution bar */
+        .risk-distribution-bar {
+            width: 100%;
+            height: 22px;
+            border-radius: 11px;
+            overflow: hidden;
+        }
+
+        .risk-segment {
+            height: 100%;
+            float: left;
+        }
+
+        .risk-segment.critical {
+            background: #D13438;
+        }
+
+        .risk-segment.high {
+            background: #FF8C00;
+        }
+
+        .risk-segment.medium {
+            background: #FFB900;
+        }
+
+        /* Chart replacement - CSS bars */
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        .chart-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #201F1E;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .chart-subtitle {
+            font-size: 9pt;
+            color: #605E5C;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .bar-chart-item {
+            margin-bottom: 15px;
+        }
+
+        .bar-chart-label {
+            font-size: 9pt;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .bar-chart-bar {
+            background-color: #E1DFDD;
+            height: 28px;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-chart-fill {
+            height: 100%;
+            float: left;
+        }
+
+        .bar-chart-value {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #201F1E;
+        }
+
+        /* Compliance badges */
+        .compliance-grid {
+            margin: 20px 0;
+        }
+
+        .compliance-grid table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 10px;
+        }
+
+        .compliance-badge {
+            background: #FAFAFA;
+            border: 2px solid #E1DFDD;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .compliance-icon {
+            font-size: 18pt;
+            margin-bottom: 5px;
+        }
+
+        .compliance-name {
+            font-weight: 700;
+            font-size: 10pt;
+            margin-bottom: 3px;
+        }
+
+        .compliance-desc {
+            font-size: 8pt;
+            color: #605E5C;
+        }
+
+        /* Utility classes */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-muted { color: #605E5C; }
+        .text-danger { color: #D13438; }
+        .text-warning { color: #FF8C00; }
+        .font-semibold { font-weight: 600; }
+        .text-sm { font-size: 9pt; }
+        .text-lg { font-size: 11pt; }
+
+        /* Footer */
+        .footer-disclaimer {
+            background: #FAFAFA;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 30px 0 15px;
+            font-size: 8pt;
+            color: #484644;
+            line-height: 1.6;
+        }
+
+        .footer-disclaimer strong {
+            color: #FF8C00;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="cover-page">
+        <div class="cover-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="50" height="50">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+        </div>
+        <div class="cover-company">{{ client.company_name }}</div>
+
+        <h1 class="cover-title">Security Posture<br/>Assessment</h1>
+        <p class="cover-subtitle">Comprehensive Security Analysis and Remediation Roadmap</p>
+
+        <div class="cover-footer">
+            <table>
+                <tr>
+                    <td>
+                        <div class="cover-footer-label">Report Date</div>
+                        <div class="cover-footer-value">{{ generated_date|date:"F d, Y" }}</div>
+                    </td>
+                    <td>
+                        <div class="cover-footer-label">Security Score</div>
+                        <div class="cover-footer-value">{{ security_score|default:75 }}/100</div>
+                    </td>
+                    <td>
+                        <div class="cover-footer-label">Total Findings</div>
+                        <div class="cover-footer-value">{{ total_security_findings }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Report Header -->
+    <div class="report-header">
+        <h1 class="report-title">Security Posture Assessment</h1>
+        <div class="report-meta">
+            <table>
+                <tr>
+                    <td><span class="meta-label">Client:</span> {{ client.company_name }}</td>
+                    <td><span class="meta-label">Generated:</span> {{ generated_date|date:"F d, Y" }} at {{ generated_date|date:"g:i A" }}</td>
+                </tr>
+                <tr>
+                    <td><span class="meta-label">Report Type:</span> Security Assessment</td>
+                    {% if client.industry %}
+                    <td><span class="meta-label">Industry:</span> {{ client.industry }}</td>
+                    {% endif %}
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Security Score and Timeline -->
+    <table width="100%">
+        <tr>
+            <td width="40%" valign="top">
+                <div class="security-score-section">
+                    <div class="security-score-circle {% if security_score >= 80 %}excellent{% elif security_score >= 60 %}good{% elif security_score >= 40 %}fair{% else %}poor{% endif %}">
+                        <div class="security-score-value {% if security_score >= 80 %}excellent{% elif security_score >= 60 %}good{% elif security_score >= 40 %}fair{% else %}poor{% endif %}">
+                            {{ security_score|default:75 }}
+                        </div>
+                    </div>
+                    <div class="security-score-label">
+                        {% if security_score >= 80 %}Excellent{% elif security_score >= 60 %}Good{% elif security_score >= 40 %}Fair{% else %}Needs Improvement{% endif %}
+                    </div>
+                    <div class="text-muted" style="margin-top: 5px;">Based on {{ total_security_findings }} findings</div>
+                </div>
+            </td>
+            <td width="60%" valign="top">
+                <div class="metrics-container">
+                    <table class="metrics-table">
+                        <tr>
+                            <td>
+                                <div class="metric-card metric-critical">
+                                    <div class="metric-icon">🚨</div>
+                                    <div class="metric-label">Immediate</div>
+                                    <div class="metric-value">{{ critical_count }}</div>
+                                    <div class="metric-subtitle">Within 24 hours</div>
+                                    <div class="threat-bar">
+                                        {% for i in "12345" %}
+                                        <div class="severity-block {% if forloop.counter <= critical_count|stringformat:"s"|slice:":1"|default:"0"|add:"0" %}severity-critical{% else %}severity-empty{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="metric-card metric-security">
+                                    <div class="metric-icon">⚠️</div>
+                                    <div class="metric-label">Short-term</div>
+                                    <div class="metric-value">{{ high_count }}</div>
+                                    <div class="metric-subtitle">Within 1 week</div>
+                                    <div class="threat-bar">
+                                        {% for i in "12345" %}
+                                        <div class="severity-block {% if forloop.counter <= high_count|stringformat:"s"|slice:":1"|default:"0"|add:"0" %}severity-high{% else %}severity-empty{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="metric-card metric-cost">
+                                    <div class="metric-icon">📋</div>
+                                    <div class="metric-label">Medium-term</div>
+                                    <div class="metric-value">{{ medium_count }}</div>
+                                    <div class="metric-subtitle">Within 1 month</div>
+                                    <div class="threat-bar">
+                                        {% for i in "12345" %}
+                                        <div class="severity-block {% if forloop.counter <= medium_count|stringformat:"s"|slice:":1"|default:"0"|add:"0" %}severity-medium{% else %}severity-empty{% endif %}"></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Threat Landscape Overview -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">🎯</span>
+            <h2 class="section-title">Threat Landscape Overview</h2>
+        </div>
+
+        <div class="warning-box">
+            <h3>Security Posture Summary</h3>
+            <p>
+                Azure Advisor has identified <strong>{{ total_security_findings }} security findings</strong> across your Azure environment.
+                {% if critical_count > 0 %}
+                <strong style="color: #D13438;">{{ critical_count }} critical vulnerabilities</strong> pose significant risk and require immediate remediation within 24 hours to prevent potential security breaches.
+                {% endif %}
+                {% if high_count > 0 %}
+                An additional <strong>{{ high_count }} high-priority issues</strong> should be addressed within one week to maintain a strong security posture.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Distribution Charts -->
+        <table width="100%">
+            <tr>
+                <td width="50%" valign="top">
+                    <div class="chart-container">
+                        <div class="chart-title">Security Findings by Severity</div>
+                        <div class="chart-subtitle">Risk distribution analysis</div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">Critical ({{ critical_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio critical_count total_security_findings 100 %}%; background-color: #D13438;"></div>
+                                <div class="bar-chart-value">{% widthratio critical_count total_security_findings 100 %}%</div>
+                            </div>
+                        </div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">High Priority ({{ high_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio high_count total_security_findings 100 %}%; background-color: #FF8C00;"></div>
+                                <div class="bar-chart-value">{% widthratio high_count total_security_findings 100 %}%</div>
+                            </div>
+                        </div>
+
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">Medium Priority ({{ medium_count }})</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio medium_count total_security_findings 100 %}%; background-color: #FFB900;"></div>
+                                <div class="bar-chart-value">{% widthratio medium_count total_security_findings 100 %}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td width="50%" valign="top">
+                    {% if security_by_resource_type %}
+                    <div class="chart-container">
+                        <div class="chart-title">Findings by Resource Type</div>
+                        <div class="chart-subtitle">Most vulnerable components</div>
+
+                        {% for item in security_by_resource_type|slice:":8" %}
+                        <div class="bar-chart-item">
+                            <div class="bar-chart-label">{{ item.resource_type|truncatechars:25 }}</div>
+                            <div class="bar-chart-bar">
+                                <div class="bar-chart-fill" style="width: {% widthratio item.count total_security_findings 100 %}%; background-color: #FF8C00;"></div>
+                                <div class="bar-chart-value">{{ item.count }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Critical Security Issues -->
+    {% if critical_issues %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #F25022 0%, #D13438 100%);">🚨</span>
+            <h2 class="section-title">Critical Security Issues - Immediate Action Required</h2>
+        </div>
+
+        <div class="danger-box">
+            <p><strong>HIGH RISK:</strong> These {{ critical_issues.count }} critical security issues pose significant risk to your environment and require immediate remediation to prevent potential security breaches, data loss, or compliance violations. Executive escalation recommended.</p>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th width="30">#</th>
+                    <th>Security Issue</th>
+                    <th width="150">Affected Resource</th>
+                    <th width="90" style="text-align: center;">Risk Level</th>
+                    <th width="80" style="text-align: center;">Timeline</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in critical_issues %}
+                <tr class="critical-row">
+                    <td class="text-center"><strong class="text-danger">{{ forloop.counter }}</strong></td>
+                    <td>
+                        <strong style="color: #D13438;">{{ rec.recommendation|truncatewords:18 }}</strong>
+                        {% if rec.potential_benefits %}
+                        <div class="text-sm text-muted">Impact: {{ rec.potential_benefits|truncatewords:15 }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="risk-indicator risk-critical">CRITICAL</span>
+                    </td>
+                    <td class="text-center">
+                        <strong style="background: #D13438; color: white; padding: 4px 8px; border-radius: 6px; font-size: 8pt;">24 Hours</strong>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- High Priority Security Issues -->
+    {% if high_priority_issues %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">⚠️</span>
+            <h2 class="section-title">High Priority Security Issues</h2>
+        </div>
+
+        <div class="warning-box">
+            <p>These {{ high_priority_issues.count }} security issues should be addressed within one week to maintain a strong security posture and prevent potential exploitation.</p>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Security Issue</th>
+                    <th width="150">Affected Resource</th>
+                    <th width="90" style="text-align: center;">Risk Level</th>
+                    <th width="80" style="text-align: center;">Timeline</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in high_priority_issues %}
+                <tr>
+                    <td>
+                        <strong>{{ rec.recommendation|truncatewords:18 }}</strong>
+                        {% if rec.potential_benefits %}
+                        <div class="text-sm text-muted">{{ rec.potential_benefits|truncatewords:12 }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:22 }}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="risk-indicator risk-high">HIGH</span>
+                    </td>
+                    <td class="text-center">
+                        <span style="font-weight: 600; color: #FF8C00;">1 Week</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Security by Subscription -->
+    {% if security_by_subscription %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #00BCF2 0%, #0078D4 100%);">☁️</span>
+            <h2 class="section-title">Security Findings by Azure Subscription</h2>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Subscription</th>
+                    <th style="text-align: center;">Critical</th>
+                    <th style="text-align: center;">High</th>
+                    <th style="text-align: center;">Medium</th>
+                    <th style="text-align: center;">Total</th>
+                    <th>Risk Distribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in security_by_subscription %}
+                <tr>
+                    <td><strong>{{ sub.subscription_name|default:"Unknown Subscription"|truncatechars:35 }}</strong></td>
+                    <td class="text-center">
+                        {% if sub.critical_count > 0 %}
+                        <span class="badge badge-high">{{ sub.critical_count }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if sub.high_count > 0 %}
+                        <span class="badge badge-medium">{{ sub.high_count }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if sub.medium_count > 0 %}
+                        <span class="badge badge-low">{{ sub.medium_count }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center"><strong>{{ sub.total_count }}</strong></td>
+                    <td>
+                        <div class="risk-distribution-bar">
+                            {% widthratio sub.critical_count sub.total_count 100 as crit_pct %}
+                            {% widthratio sub.high_count sub.total_count 100 as high_pct %}
+                            {% widthratio sub.medium_count sub.total_count 100 as med_pct %}
+                            <div class="risk-segment critical" style="width: {{ crit_pct }}%;"></div>
+                            <div class="risk-segment high" style="width: {{ high_pct }}%;"></div>
+                            <div class="risk-segment medium" style="width: {{ med_pct }}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Compliance & Standards -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #8661C5 0%, #9966FF 100%);">📜</span>
+            <h2 class="section-title">Compliance & Regulatory Framework Alignment</h2>
+        </div>
+
+        <div class="info-box">
+            <h3>Regulatory Framework Impact</h3>
+            <p>
+                Addressing these security recommendations helps maintain compliance with common security frameworks and regulatory requirements. These findings may impact your organization's ability to meet compliance obligations.
+            </p>
+        </div>
+
+        <div class="compliance-grid">
+            <table>
+                <tr>
+                    <td width="33%">
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">🔒</div>
+                            <div class="compliance-name">ISO 27001</div>
+                            <div class="compliance-desc">Information Security Management</div>
+                        </div>
+                    </td>
+                    <td width="33%">
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">🛡️</div>
+                            <div class="compliance-name">NIST CSF</div>
+                            <div class="compliance-desc">Cybersecurity Framework</div>
+                        </div>
+                    </td>
+                    <td width="33%">
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">📋</div>
+                            <div class="compliance-name">CIS Controls</div>
+                            <div class="compliance-desc">Critical Security Controls</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">🔐</div>
+                            <div class="compliance-name">SOC 2 Type II</div>
+                            <div class="compliance-desc">Trust Service Principles</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">🏥</div>
+                            <div class="compliance-name">HIPAA</div>
+                            <div class="compliance-desc">Healthcare Data Protection</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="compliance-badge">
+                            <div class="compliance-icon">💳</div>
+                            <div class="compliance-name">PCI DSS</div>
+                            <div class="compliance-desc">Payment Card Standards</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Remediation Roadmap -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #00BCF2 0%, #0078D4 100%);">🗺️</span>
+            <h2 class="section-title">Security Remediation Roadmap</h2>
+        </div>
+
+        <div class="danger-box">
+            <h3>Phase 1: Critical Response (24 Hours)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>Emergency Triage:</strong> Convene security team to review all {{ critical_count }} critical findings within 2 hours</li>
+                <li><strong>Immediate Mitigations:</strong> Implement temporary security controls and workarounds</li>
+                <li><strong>Incident Response:</strong> Activate procedures if any active exploitation detected</li>
+                <li><strong>Executive Notification:</strong> Brief leadership on critical security posture</li>
+                <li><strong>Vendor Escalation:</strong> Engage Microsoft support for critical Azure issues</li>
+            </ol>
+        </div>
+
+        <div class="warning-box">
+            <h3>Phase 2: Short-term Hardening (Week 1)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>High Priority Remediation:</strong> Address all {{ high_count }} high-priority findings</li>
+                <li><strong>Security Policy Updates:</strong> Review and update policies, firewall rules, access controls</li>
+                <li><strong>MFA Enforcement:</strong> Ensure multi-factor authentication for all privileged accounts</li>
+                <li><strong>Security Awareness:</strong> Conduct targeted training for teams</li>
+                <li><strong>Enhanced Monitoring:</strong> Implement additional security monitoring and alerting</li>
+            </ol>
+        </div>
+
+        <div class="success-box">
+            <h3>Phase 3: Continuous Improvement (Month 1 & Ongoing)</h3>
+            <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                <li><strong>Complete Remediation:</strong> Address all {{ medium_count }} medium-priority findings</li>
+                <li><strong>Security Automation:</strong> Implement Azure Policy and automated guardrails</li>
+                <li><strong>Regular Assessments:</strong> Establish weekly Azure Advisor security reviews</li>
+                <li><strong>Penetration Testing:</strong> Conduct third-party security assessment</li>
+                <li><strong>Security Metrics:</strong> Create executive dashboard tracking security KPIs</li>
+                <li><strong>Zero Trust Implementation:</strong> Begin journey toward Zero Trust architecture</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Immediate Action Items -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon" style="background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);">✅</span>
+            <h2 class="section-title">Immediate Action Items</h2>
+        </div>
+
+        <div class="success-box">
+            <h3>Security Leadership Actions</h3>
+            <ol style="line-height: 2; margin: 15px 0 15px 20px;">
+                <li><strong>Emergency Review:</strong> CISO/Security team review within 2 hours for critical findings</li>
+                <li><strong>Assign Ownership:</strong> Designate security incident response team</li>
+                <li><strong>Stakeholder Communication:</strong> Brief executive team and board on security posture</li>
+                <li><strong>Budget Allocation:</strong> Secure emergency budget for critical improvements</li>
+                <li><strong>Third-party Assessment:</strong> Consider engaging external security consultants</li>
+                <li><strong>Compliance Review:</strong> Engage legal/compliance teams for regulatory implications</li>
+                <li><strong>Track Progress:</strong> Implement daily stand-ups until critical issues resolved</li>
+                <li><strong>Post-mortem:</strong> Conduct lessons learned and update security procedures</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-disclaimer">
+        <strong>Security Disclaimer:</strong> This report was automatically generated from Azure Advisor recommendations.
+        All data is sourced from Microsoft Azure Advisor as of {{ generated_date|date:"F d, Y" }}.
+        Security findings should be evaluated by qualified security personnel before implementation.
+        The security score is calculated based on Azure Advisor metrics and may not represent a comprehensive security assessment.
+        We recommend conducting regular third-party security audits and penetration testing.
+    </div>
+
+    <div style="text-align: center; color: #605E5C; font-size: 8pt; margin-top: 20px;">
+        <p><strong>Azure Advisor Reports Platform</strong></p>
+        <p>&copy; {{ generated_date|date:"Y" }} | Powered by Microsoft Azure Advisor</p>
+    </div>
+</body>
+</html>

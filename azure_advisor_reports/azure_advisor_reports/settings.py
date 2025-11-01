@@ -186,8 +186,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'apps.authentication.authentication.AzureADAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        'apps.authentication.authentication.JWTAuthentication',  # Backend-generated JWT tokens (primary)
+        'apps.authentication.authentication.AzureADAuthentication',  # Azure AD tokens (for login)
+        'rest_framework.authentication.SessionAuthentication',  # Django session (fallback)
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -209,6 +210,15 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
 }
+
+# Log the configured authentication classes to verify settings are loaded
+import logging
+settings_logger = logging.getLogger('django.settings')
+settings_logger.critical("=" * 80)
+settings_logger.critical(f"REST_FRAMEWORK DEFAULT_AUTHENTICATION_CLASSES configured:")
+for idx, auth_class in enumerate(REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'], 1):
+    settings_logger.critical(f"  {idx}. {auth_class}")
+settings_logger.critical("=" * 80)
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = config(
