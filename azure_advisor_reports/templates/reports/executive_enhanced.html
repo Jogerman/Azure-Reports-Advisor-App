@@ -403,10 +403,11 @@
 
     <!-- Charts JavaScript -->
     <script>
-        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        // Wait for DOM to be ready - Compatible with Playwright PDF generation
         (function() {
-            // Azure Color Palette
-            const azureColors = {
+            function initializeCharts() {
+                // Azure Color Palette
+                const azureColors = {
                 cost: '#107C10',
                 security: '#FF8C00',
                 reliability: '#00BCF2',
@@ -526,6 +527,15 @@
                         }
                     }
                 });
+            }
+            }
+
+            // Execute when DOM is ready - works with both normal page load and Playwright set_content()
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeCharts);
+            } else {
+                // DOM is already ready, execute immediately
+                initializeCharts();
             }
         })();
     </script>

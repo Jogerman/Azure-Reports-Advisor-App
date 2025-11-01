@@ -465,11 +465,12 @@
 
     <!-- Chart.js Initialization Script -->
     <script>
-        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        // Wait for DOM to be ready - Compatible with Playwright PDF generation
         (function() {
-            // Set default chart options
-            Chart.defaults.font.family = "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif";
-            Chart.defaults.font.size = 12;
+            function initializeCharts() {
+                // Set default chart options
+                Chart.defaults.font.family = "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif";
+                Chart.defaults.font.size = 12;
 
             // Azure Color Palette
             const azureColors = {
@@ -701,6 +702,15 @@
                 });
             }
             {% endif %}
+            }
+
+            // Execute when DOM is ready - works with both normal page load and Playwright set_content()
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeCharts);
+            } else {
+                // DOM is already ready, execute immediately
+                initializeCharts();
+            }
         })();
     </script>
 {% endblock %}

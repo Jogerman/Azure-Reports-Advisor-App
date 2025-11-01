@@ -640,10 +640,11 @@
 
     <!-- Charts JavaScript -->
     <script>
-        // Execute immediately - DO NOT wait for DOMContentLoaded (Playwright PDF generation issue)
+        // Wait for DOM to be ready - Compatible with Playwright PDF generation
         (function() {
-            // Severity Distribution Chart
-            const severityCtx = document.getElementById('severityChart');
+            function initializeCharts() {
+                // Severity Distribution Chart
+                const severityCtx = document.getElementById('severityChart');
             if (severityCtx) {
                 new Chart(severityCtx, {
                     type: 'doughnut',
@@ -737,6 +738,15 @@
                 });
             }
             {% endif %}
+            }
+
+            // Execute when DOM is ready - works with both normal page load and Playwright set_content()
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeCharts);
+            } else {
+                // DOM is already ready, execute immediately
+                initializeCharts();
+            }
         })();
     </script>
 {% endblock %}
