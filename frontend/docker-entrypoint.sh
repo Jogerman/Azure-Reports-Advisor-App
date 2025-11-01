@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runtime environment variable injection for React app
-# This script replaces placeholder values in the built JS files with actual runtime environment variables
+# Custom entrypoint script for React frontend
+# Injects runtime environment variables before starting nginx
 
 set -e
 
@@ -27,4 +27,6 @@ echo "   - REACT_APP_AZURE_TENANT_ID: ${REACT_APP_AZURE_TENANT_ID:0:10}... (${#R
 echo "   - REACT_APP_AZURE_REDIRECT_URI: ${REACT_APP_AZURE_REDIRECT_URI:-not set}"
 echo "   - REACT_APP_ENVIRONMENT: ${REACT_APP_ENVIRONMENT:-production}"
 
-# Note: nginx will be started automatically by the main entrypoint script
+# Start nginx in the foreground
+echo "🚀 Starting nginx..."
+exec nginx -g 'daemon off;'
