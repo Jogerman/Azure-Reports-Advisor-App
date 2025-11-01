@@ -1,33 +1,8 @@
 import { Configuration, PopupRequest } from '@azure/msal-browser';
-
-/**
- * Validate required environment variables for Azure AD authentication
- */
-const validateEnvVars = () => {
-  const requiredVars = {
-    REACT_APP_AZURE_CLIENT_ID: process.env.REACT_APP_AZURE_CLIENT_ID,
-    REACT_APP_AZURE_TENANT_ID: process.env.REACT_APP_AZURE_TENANT_ID,
-  };
-
-  const missingVars = Object.entries(requiredVars)
-    .filter(([_, value]) => !value)
-    .map(([key, _]) => key);
-
-  if (missingVars.length > 0) {
-    console.error('❌ Missing required Azure AD environment variables:', missingVars);
-    console.error('Please check your .env.local or .env.production file');
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  }
-
-  // Log configuration for debugging (without sensitive data)
-  console.log('✅ Azure AD Configuration initialized:');
-  console.log('  - Client ID:', requiredVars.REACT_APP_AZURE_CLIENT_ID?.substring(0, 8) + '...');
-  console.log('  - Tenant ID:', requiredVars.REACT_APP_AZURE_TENANT_ID?.substring(0, 8) + '...');
-  console.log('  - Redirect URI:', process.env.REACT_APP_AZURE_REDIRECT_URI || window.location.origin);
-};
+import { env, validateEnvironment } from './env';
 
 // Validate environment variables on module load
-validateEnvVars();
+validateEnvironment();
 
 /**
  * Configuration object to be passed to MSAL instance on creation.
@@ -36,10 +11,10 @@ validateEnvVars();
  */
 export const msalConfig: Configuration = {
   auth: {
-    clientId: process.env.REACT_APP_AZURE_CLIENT_ID!,
-    authority: `https://login.microsoftonline.com/${process.env.REACT_APP_AZURE_TENANT_ID}`,
-    redirectUri: process.env.REACT_APP_AZURE_REDIRECT_URI || window.location.origin,
-    postLogoutRedirectUri: process.env.REACT_APP_AZURE_POST_LOGOUT_REDIRECT_URI || window.location.origin,
+    clientId: env.azureClientId,
+    authority: `https://login.microsoftonline.com/${env.azureTenantId}`,
+    redirectUri: env.azureRedirectUri,
+    postLogoutRedirectUri: env.azureRedirectUri,
     navigateToLoginRequestUrl: false, // Let React Router handle navigation
   },
   cache: {
