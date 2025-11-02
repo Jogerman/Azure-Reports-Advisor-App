@@ -161,7 +161,10 @@ class PlaywrightPDFGenerator:
                     await self._wait_for_charts(page)
 
                 # Additional wait to ensure all animations complete
-                await page.wait_for_timeout(500)
+                # Increased from 500ms to 2000ms to ensure Chart.js animations finish
+                await page.wait_for_timeout(2000)
+
+                logger.info("All animations complete, proceeding with PDF generation")
 
                 # Inject print-ready CSS
                 await self._inject_print_css(page)
@@ -197,7 +200,7 @@ class PlaywrightPDFGenerator:
         try:
             logger.info("Waiting for Chart.js charts to render...")
 
-            # Inject script to wait for charts
+            # Inject script to wait for charts - IMPROVED VERSION
             chart_script = """
                 () => {
                     return new Promise((resolve) => {
@@ -207,28 +210,63 @@ class PlaywrightPDFGenerator:
                             return;
                         }
 
+                        const canvases = document.querySelectorAll('canvas');
+
+                        if (canvases.length === 0) {
+                            console.log('No canvas elements found');
+                            resolve();
+                            return;
+                        }
+
+                        console.log(`Found ${canvases.length} canvas elements, waiting for Chart.js rendering...`);
+
+                        let checkCount = 0;
+                        const maxChecks = 100; // 10 seconds max (100 * 100ms)
+
                         const checkCharts = () => {
-                            const canvases = document.querySelectorAll('canvas');
+                            checkCount++;
 
-                            if (canvases.length === 0) {
-                                console.log('No canvas elements found');
-                                resolve();
-                                return;
-                            }
-
+                            // Check if all canvases are visible and have content
                             const allRendered = Array.from(canvases).every(canvas => {
-                                return canvas.offsetHeight > 0 && canvas.offsetWidth > 0;
+                                // 1. Canvas must be visible (has dimensions)
+                                if (canvas.offsetHeight === 0 || canvas.offsetWidth === 0) {
+                                    return false;
+                                }
+
+                                // 2. Canvas must have actual drawing context (Chart.js has drawn something)
+                                try {
+                                    const ctx = canvas.getContext('2d');
+                                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                                    // Check if canvas has any non-transparent pixels
+                                    // This confirms Chart.js actually drew something
+                                    for (let i = 0; i < imageData.data.length; i += 4) {
+                                        const alpha = imageData.data[i + 3];
+                                        if (alpha > 0) {
+                                            return true; // Found at least one drawn pixel
+                                        }
+                                    }
+                                    return false; // Canvas is blank
+                                } catch (e) {
+                                    console.warn('Could not check canvas content:', e);
+                                    // If we can't check, assume it's rendered after dimensions are set
+                                    return true;
+                                }
                             });
 
                             if (allRendered) {
-                                console.log(`All ${canvases.length} charts rendered successfully`);
+                                console.log(`All ${canvases.length} charts rendered successfully after ${checkCount * 100}ms`);
+                                resolve();
+                            } else if (checkCount >= maxChecks) {
+                                console.warn(`Chart rendering timeout after ${checkCount * 100}ms, proceeding anyway`);
                                 resolve();
                             } else {
                                 setTimeout(checkCharts, 100);
                             }
                         };
 
-                        checkCharts();
+                        // Start checking after a small delay to let Chart.js initialize
+                        setTimeout(checkCharts, 500);
                     });
                 }
             """

@@ -47,9 +47,44 @@ python manage.py collectstatic --no-input --clear
 echo "Setting up cache table..."
 python manage.py createcachetable || true
 
-# Start Gunicorn
+# Start Celery Worker in background
+echo "Starting Celery worker..."
+celery -A azure_advisor_reports worker \
+    --loglevel=${CELERY_LOG_LEVEL:-info} \
+    --concurrency=${CELERY_CONCURRENCY:-2} \
+    --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} \
+    --pool=threads \
+    &
+
+# Store Celery PID
+CELERY_PID=$!
+
+# Start Celery Beat scheduler in background (for periodic tasks)
+echo "Starting Celery beat scheduler..."
+celery -A azure_advisor_reports beat \
+    --loglevel=${CELERY_LOG_LEVEL:-info} \
+    --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+    &
+
+# Store Beat PID
+BEAT_PID=$!
+
+# Function to handle shutdown
+shutdown() {
+    echo "Shutting down services..."
+    kill -TERM $CELERY_PID 2>/dev/null
+    kill -TERM $BEAT_PID 2>/dev/null
+    kill -TERM $GUNICORN_PID 2>/dev/null
+    wait $CELERY_PID $BEAT_PID $GUNICORN_PID
+    exit 0
+}
+
+# Trap SIGTERM and SIGINT (sh syntax: no SIG prefix)
+trap shutdown TERM INT
+
+# Start Gunicorn in foreground
 echo "Starting Gunicorn server..."
-exec gunicorn azure_advisor_reports.wsgi:application \
+gunicorn azure_advisor_reports.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers ${GUNICORN_WORKERS:-4} \
     --threads ${GUNICORN_THREADS:-2} \
@@ -63,4 +98,10 @@ exec gunicorn azure_advisor_reports.wsgi:application \
     --error-logfile - \
     --log-level ${GUNICORN_LOG_LEVEL:-info} \
     --capture-output \
-    --enable-stdio-inheritance
+    --enable-stdio-inheritance &
+
+# Store Gunicorn PID
+GUNICORN_PID=$!
+
+# Wait for all processes
+wait $GUNICORN_PID
