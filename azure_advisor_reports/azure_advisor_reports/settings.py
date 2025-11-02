@@ -137,45 +137,69 @@ else:
         if not db_name:
             try:
                 db_name = config('DB_NAME', default='azure_advisor_reports')
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: config('DB_NAME') failed: {e}")
                 db_name = 'azure_advisor_reports'
 
         db_user = os.environ.get('DB_USER')
         if not db_user:
             try:
                 db_user = config('DB_USER', default='postgres')
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: config('DB_USER') failed: {e}")
                 db_user = 'postgres'
 
         db_password = os.environ.get('DB_PASSWORD')
         if not db_password:
             try:
                 db_password = config('DB_PASSWORD', default='postgres')
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: config('DB_PASSWORD') failed: {e}")
                 db_password = 'postgres'
 
         db_host = os.environ.get('DB_HOST')
         if not db_host:
             try:
                 db_host = config('DB_HOST', default='localhost')
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: config('DB_HOST') failed: {e}")
                 db_host = 'localhost'
 
         db_port = os.environ.get('DB_PORT')
         if not db_port:
             try:
                 db_port = config('DB_PORT', default='5432')
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: config('DB_PORT') failed: {e}")
                 db_port = '5432'
+
+        # Debug logging for database configuration
+        print(f"DATABASE CONFIG - Name: {db_name}, User: {db_user}, Host: {db_host}, Port: {db_port}")
+        print(f"DATABASE CONFIG - Password set: {bool(db_password)}")
+
+        # Ensure all values are strings and not None
+        if not all([db_name, db_user, db_password, db_host, db_port]):
+            print(f"ERROR: Missing database configuration!")
+            print(f"  DB_NAME: {db_name}")
+            print(f"  DB_USER: {db_user}")
+            print(f"  DB_PASSWORD: {'SET' if db_password else 'NOT SET'}")
+            print(f"  DB_HOST: {db_host}")
+            print(f"  DB_PORT: {db_port}")
+            # Don't fail, use defaults
+            db_name = db_name or 'azure_advisor_reports'
+            db_user = db_user or 'postgres'
+            db_password = db_password or 'postgres'
+            db_host = db_host or 'localhost'
+            db_port = db_port or '5432'
 
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
-                'NAME': db_name,
-                'USER': db_user,
-                'PASSWORD': db_password,
-                'HOST': db_host,
-                'PORT': db_port,
+                'NAME': str(db_name),
+                'USER': str(db_user),
+                'PASSWORD': str(db_password),
+                'HOST': str(db_host),
+                'PORT': str(db_port),
             }
         }
 
