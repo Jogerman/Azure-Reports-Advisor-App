@@ -131,15 +131,51 @@ else:
             'default': dj_database_url.parse(database_url)
         }
     else:
-        # Fallback to individual env vars (for local development)
+        # Fallback to individual env vars
+        # Try os.environ first, then config (for local .env file)
+        db_name = os.environ.get('DB_NAME')
+        if not db_name:
+            try:
+                db_name = config('DB_NAME', default='azure_advisor_reports')
+            except Exception:
+                db_name = 'azure_advisor_reports'
+
+        db_user = os.environ.get('DB_USER')
+        if not db_user:
+            try:
+                db_user = config('DB_USER', default='postgres')
+            except Exception:
+                db_user = 'postgres'
+
+        db_password = os.environ.get('DB_PASSWORD')
+        if not db_password:
+            try:
+                db_password = config('DB_PASSWORD', default='postgres')
+            except Exception:
+                db_password = 'postgres'
+
+        db_host = os.environ.get('DB_HOST')
+        if not db_host:
+            try:
+                db_host = config('DB_HOST', default='localhost')
+            except Exception:
+                db_host = 'localhost'
+
+        db_port = os.environ.get('DB_PORT')
+        if not db_port:
+            try:
+                db_port = config('DB_PORT', default='5432')
+            except Exception:
+                db_port = '5432'
+
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='azure_advisor_reports')),
-                'USER': os.environ.get('DB_USER', config('DB_USER', default='postgres')),
-                'PASSWORD': os.environ.get('DB_PASSWORD', config('DB_PASSWORD', default='postgres')),
-                'HOST': os.environ.get('DB_HOST', config('DB_HOST', default='localhost')),
-                'PORT': os.environ.get('DB_PORT', config('DB_PORT', default='5432')),
+                'NAME': db_name,
+                'USER': db_user,
+                'PASSWORD': db_password,
+                'HOST': db_host,
+                'PORT': db_port,
             }
         }
 
