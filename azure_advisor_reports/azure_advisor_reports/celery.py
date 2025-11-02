@@ -14,7 +14,16 @@ from celery.signals import worker_process_init
 from kombu import Exchange, Queue
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'azure_advisor_reports.settings.development')
+# Use environment variable to determine settings module, with intelligent defaults
+environment = os.environ.get('DJANGO_ENVIRONMENT', 'development').lower()
+if environment == 'production':
+    settings_module = 'azure_advisor_reports.settings.production'
+elif environment == 'staging':
+    settings_module = 'azure_advisor_reports.settings.staging'
+else:
+    settings_module = 'azure_advisor_reports.settings.development'
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', settings_module)
 
 # Create Celery app
 app = Celery('azure_advisor_reports')
@@ -80,8 +89,39 @@ app.conf.update(
 # Signal handlers
 @worker_process_init.connect
 def configure_workers(sender=None, conf=None, **kwargs):
-    """Configure workers on initialization."""
-    pass
+    """
+    Configure workers on initialization.
+
+    This runs when each worker process starts, ensuring Django settings
+    are properly loaded and database connection is available.
+    """
+    import logging
+    from django.conf import settings
+    from django.db import connection
+
+    logger = logging.getLogger('celery.worker')
+
+    # Log the settings module being used
+    settings_module = os.environ.get('DJANGO_SETTINGS_MODULE', 'UNKNOWN')
+    logger.info(f"Worker initialized with settings module: {settings_module}")
+
+    # Verify database configuration is loaded
+    try:
+        db_config = settings.DATABASES['default']
+        db_engine = db_config.get('ENGINE', 'UNKNOWN')
+        db_name = db_config.get('NAME', 'UNKNOWN')
+        logger.info(f"Database engine: {db_engine}")
+        logger.info(f"Database name: {db_name}")
+
+        # Test database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        logger.info("Database connection successful")
+
+    except Exception as e:
+        logger.error(f"Database configuration error: {e}")
+        logger.error(f"DATABASES setting: {getattr(settings, 'DATABASES', 'NOT SET')}")
+        # Don't raise - let tasks fail individually so we can see better error messages
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):

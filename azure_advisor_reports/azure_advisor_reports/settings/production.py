@@ -100,55 +100,58 @@ CORS_ALLOW_HEADERS = [
 # DATABASE CONFIGURATION - Azure PostgreSQL
 # ============================================================================
 
-import sys
 import os
 
-# Use SQLite for testing to avoid PostgreSQL dependency
-if 'test' in sys.argv or 'pytest' in sys.modules:
+# PRODUCTION ALWAYS uses PostgreSQL - NO conditional logic based on pytest
+# Testing should use a separate settings file (settings/testing.py)
+# NEVER check for 'pytest' in sys.modules - it's unreliable in production!
+
+# Try DATABASE_URL first (for Azure Container Apps), fallback to individual vars
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Use DATABASE_URL if provided (preferred for Azure Container Apps)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+
+    # Ensure SSL is required for Azure PostgreSQL
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS']['sslmode'] = 'require'
+    DATABASES['default']['OPTIONS']['connect_timeout'] = 10
+    DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+else:
+    # Fallback to individual environment variables
+    # Use direct os.environ.get instead of config() for production reliability
+    # config() depends on python-decouple which can have issues in worker processes
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', ''),
+            'USER': os.environ.get('DB_USER', ''),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', ''),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {
+                'sslmode': 'require',  # Required for Azure PostgreSQL
+                'connect_timeout': 10,
+            },
+            'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
+            'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
         }
     }
-else:
-    # Try DATABASE_URL first (for Azure Container Apps), fallback to individual vars
-    database_url = os.environ.get('DATABASE_URL')
 
-    if database_url:
-        # Use DATABASE_URL if provided (preferred for Azure Container Apps)
-        DATABASES = {
-            'default': dj_database_url.parse(
-                database_url,
-                conn_max_age=600,
-                conn_health_checks=True,
-            )
-        }
-
-        # Ensure SSL is required for Azure PostgreSQL
-        DATABASES['default'].setdefault('OPTIONS', {})
-        DATABASES['default']['OPTIONS']['sslmode'] = 'require'
-        DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-        DATABASES['default']['ATOMIC_REQUESTS'] = True
-
-    else:
-        # Fallback to individual environment variables
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': config('DB_NAME'),
-                'USER': config('DB_USER'),
-                'PASSWORD': config('DB_PASSWORD'),
-                'HOST': config('DB_HOST'),
-                'PORT': config('DB_PORT', default='5432'),
-                'OPTIONS': {
-                    'sslmode': 'require',  # Required for Azure PostgreSQL
-                    'connect_timeout': 10,
-                },
-                'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
-                'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
-            }
-        }
+# Validate that database configuration is present
+if not DATABASES['default'].get('NAME'):
+    raise ValueError(
+        "DATABASE configuration is missing! Set either DATABASE_URL or "
+        "DB_NAME/DB_USER/DB_PASSWORD/DB_HOST environment variables."
+    )
 
 # ============================================================================
 # CACHE CONFIGURATION - Azure Redis
