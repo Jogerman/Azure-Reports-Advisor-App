@@ -131,15 +131,42 @@ else:
             'default': dj_database_url.parse(database_url)
         }
     else:
-        # Fallback to individual env vars (for local development)
+        # Fallback to individual env vars
+        # In production (no .env file), os.environ is the source of truth
+        # In development (with .env file), config() will load from .env before os.environ
+        try:
+            db_name = config('DB_NAME', default='azure_advisor_reports')
+        except:
+            db_name = os.environ.get('DB_NAME', 'azure_advisor_reports')
+
+        try:
+            db_user = config('DB_USER', default='postgres')
+        except:
+            db_user = os.environ.get('DB_USER', 'postgres')
+
+        try:
+            db_password = config('DB_PASSWORD', default='postgres')
+        except:
+            db_password = os.environ.get('DB_PASSWORD', 'postgres')
+
+        try:
+            db_host = config('DB_HOST', default='localhost')
+        except:
+            db_host = os.environ.get('DB_HOST', 'localhost')
+
+        try:
+            db_port = config('DB_PORT', default='5432')
+        except:
+            db_port = os.environ.get('DB_PORT', '5432')
+
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.environ.get('DB_NAME', config('DB_NAME', default='azure_advisor_reports')),
-                'USER': os.environ.get('DB_USER', config('DB_USER', default='postgres')),
-                'PASSWORD': os.environ.get('DB_PASSWORD', config('DB_PASSWORD', default='postgres')),
-                'HOST': os.environ.get('DB_HOST', config('DB_HOST', default='localhost')),
-                'PORT': os.environ.get('DB_PORT', config('DB_PORT', default='5432')),
+                'NAME': db_name,
+                'USER': db_user,
+                'PASSWORD': db_password,
+                'HOST': db_host,
+                'PORT': db_port,
             }
         }
 
