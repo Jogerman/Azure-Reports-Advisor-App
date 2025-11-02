@@ -115,8 +115,11 @@ WSGI_APPLICATION = 'azure_advisor_reports.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 import sys
 
-# Use SQLite for testing to avoid PostgreSQL dependency
-if 'test' in sys.argv or 'pytest' in sys.modules:
+# IMPORTANT: Only use SQLite for actual test execution via pytest command
+# NEVER use 'pytest' in sys.modules check - it's unreliable and causes Celery failures!
+# The sys.modules check can randomly trigger in production when pytest is imported by dependencies
+if 'test' in sys.argv:
+    # Only when explicitly running: python manage.py test
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -124,6 +127,7 @@ if 'test' in sys.argv or 'pytest' in sys.modules:
         }
     }
 else:
+    # Normal operation: Use PostgreSQL (production/development) or environment-based config
     # Try DATABASE_URL first (for production), fallback to individual vars (for local dev)
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
@@ -131,33 +135,28 @@ else:
             'default': dj_database_url.parse(database_url)
         }
     else:
-        # Fallback to individual env vars
-        # In production (no .env file), os.environ is the source of truth
-        # In development (with .env file), config() will load from .env before os.environ
-        try:
-            db_name = config('DB_NAME', default='azure_advisor_reports')
-        except:
-            db_name = os.environ.get('DB_NAME', 'azure_advisor_reports')
+        # Fallback to individual env vars with safe retrieval
+        # Priority: os.environ > config() > default
+        # This approach ensures Celery workers (which may have issues with config())
+        # will always work if environment variables are set in Azure Container Apps
+        def get_db_config(key, default):
+            """Safely get database config with proper fallback chain."""
+            # First check os.environ directly (works in all contexts)
+            value = os.environ.get(key)
+            if value is not None:
+                return value
+            # Try config() for local development with .env files
+            try:
+                return config(key, default=default)
+            except Exception:
+                # If config() fails (e.g., in Celery workers), use default
+                return default
 
-        try:
-            db_user = config('DB_USER', default='postgres')
-        except:
-            db_user = os.environ.get('DB_USER', 'postgres')
-
-        try:
-            db_password = config('DB_PASSWORD', default='postgres')
-        except:
-            db_password = os.environ.get('DB_PASSWORD', 'postgres')
-
-        try:
-            db_host = config('DB_HOST', default='localhost')
-        except:
-            db_host = os.environ.get('DB_HOST', 'localhost')
-
-        try:
-            db_port = config('DB_PORT', default='5432')
-        except:
-            db_port = os.environ.get('DB_PORT', '5432')
+        db_name = get_db_config('DB_NAME', 'azure_advisor_reports')
+        db_user = get_db_config('DB_USER', 'postgres')
+        db_password = get_db_config('DB_PASSWORD', 'postgres')
+        db_host = get_db_config('DB_HOST', 'localhost')
+        db_port = get_db_config('DB_PORT', '5432')
 
         DATABASES = {
             'default': {
@@ -267,8 +266,19 @@ AZURE_AD = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+# Use same safe config pattern for Celery workers
+def get_celery_config(key, default):
+    """Safely get Celery config with proper fallback chain."""
+    value = os.environ.get(key)
+    if value is not None:
+        return value
+    try:
+        return config(key, default=default)
+    except Exception:
+        return default
+
+CELERY_BROKER_URL = get_celery_config('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = get_celery_config('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -276,7 +286,9 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Cache Configuration
-if 'test' in sys.argv or 'pytest' in sys.modules:
+# IMPORTANT: Only use dummy cache for actual test execution
+# NEVER use 'pytest' in sys.modules - it causes Celery failures!
+if 'test' in sys.argv:
     # Use dummy cache for testing (no Redis dependency)
     CACHES = {
         'default': {
@@ -288,7 +300,7 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('REDIS_URL', default='redis://localhost:6379/1'),
+            'LOCATION': get_celery_config('REDIS_URL', 'redis://localhost:6379/1'),
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             },
