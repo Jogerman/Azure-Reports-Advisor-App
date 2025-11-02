@@ -38,7 +38,11 @@
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_click",
-      "mcp__playwright__browser_tabs"
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_console_messages",
+      "Bash(az containerapp logs show:*)",
+      "Bash(az containerapp show:*)",
+      "Bash(az containerapp revision copy:*)"
     ],
     "deny": [],
     "ask": []

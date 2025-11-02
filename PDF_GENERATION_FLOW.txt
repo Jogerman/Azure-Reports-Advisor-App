@@ -1,0 +1,217 @@
+# PDF Generation System - Flow Diagrams and Architecture
+
+## 1. High-Level Architecture Overview
+
+PDF Request (POST /api/v1/reports/{id}/generate/)
+     |
+     v
+Check if Async
+     |
+     +-- Async: Celery Task Queue --> Returns task_id
+     |
+     +-- Sync: Direct Generation --> Returns file URLs
+     |
+     v
+Select Report Generator (5 types)
+     |
+     v
+Check PDF_ENGINE Setting
+     |
+     +-- Playwright (Modern) --> Headless Browser PDF
+     |
+     +-- WeasyPrint (Legacy) --> Direct PDF Generation
+     |
+     v
+Save to Azure Blob Storage
+     |
+     v
+Return Response with URLs
+
+---
+
+## 2. Report Types and Generators
+
+DetailedReportGenerator
+  - Template: reports/detailed.html
+  - Audience: Technical teams
+
+ExecutiveReportGenerator
+  - Template: reports/executive_enhanced.html
+  - Audience: Executives
+
+CostOptimizationReportGenerator
+  - Template: reports/cost_enhanced.html
+  - Audience: Finance teams
+
+SecurityReportGenerator
+  - Template: reports/security_enhanced.html
+  - Audience: Security teams
+
+OperationsReportGenerator
+  - Template: reports/operations.html
+  - Audience: Operations teams
+
+---
+
+## 3. Playwright Generation Steps
+
+1. Create SyncPlaywrightPDFGenerator
+2. Launch Playwright browser (Chromium)
+3. Create new page
+4. Set viewport size (1100x1400)
+5. Set HTML content
+6. Wait for network idle
+7. Wait for fonts to load
+8. Wait for Chart.js charts to render
+9. Additional 500ms wait for animations
+10. Inject print CSS
+11. Generate PDF
+12. Close page and browser
+13. Save to Azure Blob Storage
+14. Return file path
+
+---
+
+## 4. PDF_ENGINE Configuration
+
+PDF_ENGINE = 'playwright'  (Default)
+             or
+PDF_ENGINE = 'weasyprint'
+
+Decision in: BaseReportGenerator.generate_pdf()
+    if pdf_engine == 'playwright':
+        return self.generate_pdf_with_playwright()
+    else:
+        return self.generate_pdf_with_weasyprint()
+
+---
+
+## 5. File Storage
+
+Temporary File Generation
+    |
+    v
+Read bytes from file
+    |
+    v
+Upload to Azure Blob Storage
+    |
+    v
+Path: reports/pdf/{report_id}_{report_type}.pdf
+    |
+    v
+Save relative path to Report.pdf_file
+    |
+    v
+Delete temporary file
+    |
+    v
+File available for download
+
+---
+
+## 6. Celery Task Flow
+
+API Request (async=true)
+    |
+    v
+Return task_id immediately
+    |
+    v
+Celery Task: generate_report.delay(report_id, format_type)
+    |
+    v
+Task Steps:
+  1. Get report from database
+  2. Validate status == 'completed'
+  3. Validate has recommendations
+  4. Generate HTML (if requested)
+  5. Generate PDF (if requested)
+  6. Update report with file paths
+  7. Return success
+    |
+    v
+Error Handling:
+  - Max 3 retries
+  - Exponential backoff (60s, 120s, 180s)
+  - Final failure: Return error to client
+
+---
+
+## 7. Configuration Decision Tree
+
+PDF_WAIT_FOR_CHARTS
+  - True (default): Wait for Chart.js
+  - False: Skip chart detection
+
+PDF_WAIT_FOR_FONTS
+  - True (default): Wait for fonts
+  - False: Skip font loading
+
+PDF_HEADLESS_BROWSER
+  - True (default): Headless mode (production)
+  - False: Debug mode with UI
+
+PLAYWRIGHT_PDF_OPTIONS
+  - Format: A4
+  - Print background: True
+  - Margins: 25mm top/bottom, 15mm sides
+  - Scale: 0.95
+  - Timeout: 30000ms
+
+---
+
+## 8. API Endpoints
+
+Generate Report:
+  POST /api/v1/reports/{id}/generate/
+  Body: { "format": "both", "async": true }
+  Response: { "task_id": "...", "status_url": "..." }
+
+Check Status:
+  GET /api/v1/reports/{id}/status/?task_id={task_id}
+  Response: { "task_state": "SUCCESS", "file_paths": {...} }
+
+Download Report:
+  GET /api/v1/reports/{id}/download/pdf/
+  Response: PDF file (application/pdf, attachment)
+
+---
+
+## 9. Error Recovery
+
+PDF Generation Error
+    |
+    v
+Error Type Check
+    |
+    +-- ImportError --> Install library
+    +-- TimeoutError --> Increase timeout
+    +-- PlaywrightError --> Check browser config
+    +-- Other --> Log and retry if Celery task
+    |
+    v
+If Celery Task:
+  Retry up to 3 times
+    - 1st retry: 60s delay
+    - 2nd retry: 120s delay
+    - 3rd retry: 180s delay
+    |
+    v
+Final Failure: Mark report, return error
+
+---
+
+## 10. Performance Metrics
+
+Executive Report (5 charts): ~3.5 seconds
+Cost Report (8 charts): ~4.2 seconds
+Security Report (3 charts): ~2.8 seconds
+Detailed Report: ~1.5-2.5 seconds
+
+Memory Usage:
+  - Per PDF generation: 300-500MB
+  - Minimum system: 2GB
+  - Recommended: 4GB
+
+Docker Image Size: ~680MB

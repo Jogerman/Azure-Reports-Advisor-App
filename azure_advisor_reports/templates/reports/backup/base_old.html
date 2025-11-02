@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Azure Advisor Report - {{ client.company_name }}{% endblock %}</title>
+    <style>
+        /* Azure-themed color palette */
+        :root {
+            --primary-color: #0078D4;
+            --secondary-color: #005A9E;
+            --success-color: #107C10;
+            --warning-color: #FF8C00;
+            --danger-color: #D13438;
+            --info-color: #00BCF2;
+            --gray-100: #F3F2F1;
+            --gray-200: #E1DFDD;
+            --gray-300: #D2D0CE;
+            --gray-400: #C8C6C4;
+            --gray-600: #605E5C;
+            --gray-800: #323130;
+            --gray-900: #201F1E;
+        }
+
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--gray-900);
+            background-color: #ffffff;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header styles */
+        .report-header {
+            border-bottom: 4px solid var(--primary-color);
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .report-logo {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .report-header h1 {
+            color: var(--primary-color);
+            font-size: 2.5em;
+            font-weight: 300;
+            margin: 20px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            color: var(--gray-600);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        /* Summary cards */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--gray-100) 0%, #ffffff 100%);
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 300;
+            color: var(--primary-color);
+            line-height: 1.2;
+        }
+
+        .stat-subtitle {
+            font-size: 0.85em;
+            color: var(--gray-600);
+            margin-top: 5px;
+        }
+
+        /* Section styles */
+        .section {
+            margin: 50px 0;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            font-weight: 400;
+            color: var(--gray-900);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .section-subtitle {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin: 30px 0 15px 0;
+        }
+
+        /* Table styles */
+        .recommendation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .recommendation-table thead {
+            background: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .recommendation-table th {
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .recommendation-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid var(--gray-200);
+            vertical-align: top;
+        }
+
+        .recommendation-table tbody tr:hover {
+            background-color: var(--gray-100);
+        }
+
+        .recommendation-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badge styles */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-high {
+            background: var(--danger-color);
+            color: #ffffff;
+        }
+
+        .badge-medium {
+            background: var(--warning-color);
+            color: #ffffff;
+        }
+
+        .badge-low {
+            background: var(--success-color);
+            color: #ffffff;
+        }
+
+        .badge-cost {
+            background: #FF6384;
+            color: #ffffff;
+        }
+
+        .badge-security {
+            background: #36A2EB;
+            color: #ffffff;
+        }
+
+        .badge-reliability {
+            background: #FFCE56;
+            color: var(--gray-900);
+        }
+
+        .badge-operational_excellence {
+            background: #4BC0C0;
+            color: #ffffff;
+        }
+
+        .badge-performance {
+            background: #9966FF;
+            color: #ffffff;
+        }
+
+        /* Alert/Info boxes */
+        .info-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--info-color);
+            background-color: #E6F7FF;
+        }
+
+        .warning-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--warning-color);
+            background-color: #FFF4E5;
+        }
+
+        .success-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--success-color);
+            background-color: #E6F4EA;
+        }
+
+        /* Footer styles */
+        .report-footer {
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 2px solid var(--gray-200);
+            color: var(--gray-600);
+            font-size: 0.9em;
+        }
+
+        .footer-disclaimer {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: var(--gray-100);
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Utility classes */
+        .text-muted {
+            color: var(--gray-600);
+        }
+
+        .text-primary {
+            color: var(--primary-color);
+        }
+
+        .text-danger {
+            color: var(--danger-color);
+        }
+
+        .text-success {
+            color: var(--success-color);
+        }
+
+        .text-warning {
+            color: var(--warning-color);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-4 {
+            margin-top: 40px;
+        }
+
+        .mb-4 {
+            margin-bottom: 40px;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .stat-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            .recommendation-table {
+                font-size: 0.85em;
+            }
+
+            .section {
+                page-break-before: auto;
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+
+            .report-header h1 {
+                font-size: 1.8em;
+            }
+
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-value {
+                font-size: 1.8em;
+            }
+
+            .recommendation-table {
+                font-size: 0.85em;
+            }
+
+            .recommendation-table th,
+            .recommendation-table td {
+                padding: 10px 8px;
+            }
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Report Header -->
+    <div class="report-header">
+        <div class="report-logo">☁ Azure Advisor Reports</div>
+        <h1>{% block header_title %}{{ report_type_display }}{% endblock %}</h1>
+
+        <div class="report-meta">
+            <div class="meta-item">
+                <span class="meta-label">Client:</span>
+                <span>{{ client.company_name }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Generated:</span>
+                <span>{{ generated_date|date:"F d, Y" }} at {{ generated_date|date:"g:i A" }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Report Type:</span>
+                <span>{{ report_type_display }}</span>
+            </div>
+            {% if client.industry %}
+            <div class="meta-item">
+                <span class="meta-label">Industry:</span>
+                <span>{{ client.industry }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Report Footer -->
+    <div class="report-footer">
+        <div class="footer-disclaimer">
+            <strong>Disclaimer:</strong> This report was automatically generated from Azure Advisor recommendations.
+            All data is sourced from Microsoft Azure Advisor as of {{ generated_date|date:"F d, Y" }}.
+            Recommendations should be evaluated by qualified technical personnel before implementation.
+            Potential savings estimates are provided by Azure Advisor and actual savings may vary.
+        </div>
+
+        <div class="text-center text-muted" style="margin-top: 20px;">
+            <p>© {{ generated_date|date:"Y" }} Azure Advisor Reports Platform</p>
+            <p style="font-size: 0.85em;">Powered by Microsoft Azure Advisor | Report ID: {{ report.id }}</p>
+        </div>
+    </div>
+</body>
+</html>

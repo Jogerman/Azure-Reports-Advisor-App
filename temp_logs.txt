@@ -1,0 +1,121 @@
+{"TimeStamp": "2025-10-31T08:53:44.53226", "Log": "Connecting to the container 'backend'..."}
+{"TimeStamp": "2025-10-31T08:53:44.56581", "Log": "Successfully Connected to container: 'backend' [Revision: 'advisor-reports-backend--v1-3-4-download', Replica: 'advisor-reports-backend--v1-3-4-download-5b6998f984-9d8s5']"}
+{"TimeStamp": "2025-10-31T08:53:12.0508051+00:00", "Log": "F Starting Azure Advisor Reports Backend..."}
+{"TimeStamp": "2025-10-31T08:53:12.0508278+00:00", "Log": "F Waiting for database connection..."}
+{"TimeStamp": "2025-10-31T08:53:12.6629306+00:00", "Log": "F Database is ready!"}
+{"TimeStamp": "2025-10-31T08:53:12.6716123+00:00", "Log": "F Running database migrations..."}
+{"TimeStamp": "2025-10-31T08:53:14.3731518+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,372 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:14.3733007+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,373 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:14.3733179+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,373 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:14.3738597+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,373 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:14.374052+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,373 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:14.374235+00:00", "Log": "F CRITICAL 2025-10-31 08:53:14,374 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:16.0704883+00:00", "Log": "F Operations to perform:"}
+{"TimeStamp": "2025-10-31T08:53:16.0705286+00:00", "Log": "F   Apply all migrations: admin, analytics, auth, authentication, clients, contenttypes, django_celery_beat, django_celery_results, reports, sessions"}
+{"TimeStamp": "2025-10-31T08:53:16.1530734+00:00", "Log": "F Running migrations:"}
+{"TimeStamp": "2025-10-31T08:53:16.1531152+00:00", "Log": "F   No migrations to apply."}
+{"TimeStamp": "2025-10-31T08:53:16.176212+00:00", "Log": "F   Your models in app(s): 'reports' have changes that are not yet reflected in a migration, and so won't be applied."}
+{"TimeStamp": "2025-10-31T08:53:16.1762527+00:00", "Log": "F   Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them."}
+{"TimeStamp": "2025-10-31T08:53:20.1149163+00:00", "Log": "F Collecting static files..."}
+{"TimeStamp": "2025-10-31T08:53:21.3749945+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,374 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:21.37517+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,374 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:21.3752872+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,375 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:21.3754156+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,375 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:21.3755753+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,375 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:21.3757045+00:00", "Log": "F CRITICAL 2025-10-31 08:53:21,375 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:31.3874979+00:00", "Log": "F"}
+{"TimeStamp": "2025-10-31T08:53:31.3875459+00:00", "Log": "F 160 static files copied to '/app/staticfiles', 764 post-processed."}
+{"TimeStamp": "2025-10-31T08:53:31.5349252+00:00", "Log": "F Setting up cache table..."}
+{"TimeStamp": "2025-10-31T08:53:32.6742375+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,673 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:32.6743617+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,674 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:32.6745434+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,674 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:32.6748958+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,674 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:32.6750168+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,674 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:32.6752583+00:00", "Log": "F CRITICAL 2025-10-31 08:53:32,675 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:33.2067823+00:00", "Log": "F Starting Celery worker..."}
+{"TimeStamp": "2025-10-31T08:53:33.2071439+00:00", "Log": "F Starting Celery beat scheduler..."}
+{"TimeStamp": "2025-10-31T08:53:33.207168+00:00", "Log": "F Starting Gunicorn server..."}
+{"TimeStamp": "2025-10-31T08:53:33.5823399+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [37] [INFO] Starting gunicorn 21.2.0"}
+{"TimeStamp": "2025-10-31T08:53:33.5827897+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [37] [INFO] Listening at: http://0.0.0.0:8000 (37)"}
+{"TimeStamp": "2025-10-31T08:53:33.5828587+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [37] [INFO] Using worker: gthread"}
+{"TimeStamp": "2025-10-31T08:53:33.5849354+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [38] [INFO] Booting worker with pid: 38"}
+{"TimeStamp": "2025-10-31T08:53:33.676185+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [39] [INFO] Booting worker with pid: 39"}
+{"TimeStamp": "2025-10-31T08:53:33.7404909+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [40] [INFO] Booting worker with pid: 40"}
+{"TimeStamp": "2025-10-31T08:53:33.7884851+00:00", "Log": "F [2025-10-31 08:53:33 +0000] [41] [INFO] Booting worker with pid: 41"}
+{"TimeStamp": "2025-10-31T08:53:34.3696949+00:00", "Log": "F celery beat v5.3.4 (emerald-rush) is starting."}
+{"TimeStamp": "2025-10-31T08:53:34.9589587+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,958 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:34.9594881+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,959 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:34.9598742+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,959 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:34.9602694+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,960 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:34.9605816+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,960 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:34.9610387+00:00", "Log": "F CRITICAL 2025-10-31 08:53:34,960 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.2600286+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,259 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.2602479+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,260 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:35.2603906+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,260 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.2608033+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,260 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.2609562+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,260 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:35.2611183+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,261 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3611782+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,360 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3617067+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,361 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:35.3620631+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,361 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3624523+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,362 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3628411+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,362 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:35.3631528+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,363 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3674619+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,367 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3678074+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,367 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:35.368048+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,367 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.368321+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,368 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.3685317+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,368 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:35.36872+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,368 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4154392+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,415 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4156921+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,415 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:35.4158763+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,415 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4161552+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,416 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4165342+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,416 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:35.4168915+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,416 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4286162+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,428 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4289648+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,428 AUTHENTICATION MODULE LOADED: apps.authentication.authentication"}
+{"TimeStamp": "2025-10-31T08:53:35.4291951+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,429 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4294899+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,429 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:35.4347521+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,434 SUCCESS: JWTAuthentication and AzureADAuthentication imported in __init__.py"}
+{"TimeStamp": "2025-10-31T08:53:35.4349836+00:00", "Log": "F CRITICAL 2025-10-31 08:53:35,434 ================================================================================"}
+{"TimeStamp": "2025-10-31T08:53:36.2529142+00:00", "Log": "F __    -    ... __   -        _"}
+{"TimeStamp": "2025-10-31T08:53:36.2529549+00:00", "Log": "F LocalTime -> 2025-10-31 08:53:36"}
+{"TimeStamp": "2025-10-31T08:53:36.2529693+00:00", "Log": "F Configuration ->"}
+{"TimeStamp": "2025-10-31T08:53:36.2529715+00:00", "Log": "F     . broker -> rediss://:**@advisor-reports-cache.redis.cache.windows.net:6380/1"}
+{"TimeStamp": "2025-10-31T08:53:36.2529729+00:00", "Log": "F     . loader -> celery.loaders.app.AppLoader"}
+{"TimeStamp": "2025-10-31T08:53:36.2529743+00:00", "Log": "F     . scheduler -> django_celery_beat.schedulers.DatabaseScheduler"}
+{"TimeStamp": "2025-10-31T08:53:36.252976+00:00", "Log": "F"}
+{"TimeStamp": "2025-10-31T08:53:36.2529818+00:00", "Log": "F     . logfile -> [stderr]@%INFO"}
+{"TimeStamp": "2025-10-31T08:53:36.2529831+00:00", "Log": "F     . maxinterval -> 5.00 seconds (5s)"}
+{"TimeStamp": "2025-10-31T08:53:36.2820624+00:00", "Log": "F"}
+{"TimeStamp": "2025-10-31T08:53:36.2821046+00:00", "Log": "F  -------------- celery@advisor-reports-backend--v1-3-4-download-5b6998f984-9d8s5 v5.3.4 (emerald-rush)"}
+{"TimeStamp": "2025-10-31T08:53:36.2821219+00:00", "Log": "F --- ***** -----"}
+{"TimeStamp": "2025-10-31T08:53:36.2821249+00:00", "Log": "F -- ******* ---- Linux-5.15.186.1-1.cm2-x86_64-with-glibc2.41 2025-10-31 08:53:36"}
+{"TimeStamp": "2025-10-31T08:53:36.2821272+00:00", "Log": "F - *** --- * ---"}
+{"TimeStamp": "2025-10-31T08:53:36.2821335+00:00", "Log": "F - ** ---------- [config]"}
+{"TimeStamp": "2025-10-31T08:53:36.2821359+00:00", "Log": "F - ** ---------- .> app:         azure_advisor_reports:0x795d1ce25b50"}
+{"TimeStamp": "2025-10-31T08:53:36.2821385+00:00", "Log": "F - ** ---------- .> transport:   rediss://:**@advisor-reports-cache.redis.cache.windows.net:6380/1"}
+{"TimeStamp": "2025-10-31T08:53:36.2821408+00:00", "Log": "F - ** ---------- .> results:     rediss://:**@advisor-reports-cache.redis.cache.windows.net:6380/2"}
+{"TimeStamp": "2025-10-31T08:53:36.2821431+00:00", "Log": "F - *** --- * --- .> concurrency: 2 (thread)"}
+{"TimeStamp": "2025-10-31T08:53:36.2821456+00:00", "Log": "F -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)"}
+{"TimeStamp": "2025-10-31T08:53:36.2821478+00:00", "Log": "F --- ***** -----"}
+{"TimeStamp": "2025-10-31T08:53:36.2821499+00:00", "Log": "F  -------------- [queues]"}
+{"TimeStamp": "2025-10-31T08:53:36.282152+00:00", "Log": "F                 .> default          exchange=default(direct) key=default"}
+{"TimeStamp": "2025-10-31T08:53:36.2821545+00:00", "Log": "F                 .> priority         exchange=priority(direct) key=priority.#"}
+{"TimeStamp": "2025-10-31T08:53:36.2821566+00:00", "Log": "F                 .> reports          exchange=reports(direct) key=reports.#"}
+{"TimeStamp": "2025-10-31T08:53:36.2821589+00:00", "Log": "F"}
+{"TimeStamp": "2025-10-31T08:53:36.2821625+00:00", "Log": "F [tasks]"}
+{"TimeStamp": "2025-10-31T08:53:36.2821649+00:00", "Log": "F   . analytics.calculate_daily_metrics"}
+{"TimeStamp": "2025-10-31T08:53:36.2821672+00:00", "Log": "F   . analytics.calculate_dashboard_metrics_periodic"}
+{"TimeStamp": "2025-10-31T08:53:36.2822604+00:00", "Log": "F   . analytics.cleanup_old_activities"}
+{"TimeStamp": "2025-10-31T08:53:36.2822843+00:00", "Log": "F   . analytics.cleanup_old_system_metrics"}
+{"TimeStamp": "2025-10-31T08:53:36.2822934+00:00", "Log": "F   . analytics.generate_weekly_report"}
+{"TimeStamp": "2025-10-31T08:53:36.2822953+00:00", "Log": "F   . analytics.update_report_usage_stats"}
+{"TimeStamp": "2025-10-31T08:53:36.2822966+00:00", "Log": "F   . apps.reports.tasks.cleanup_old_csv_files"}
+{"TimeStamp": "2025-10-31T08:53:36.2822979+00:00", "Log": "F   . apps.reports.tasks.generate_report"}
+{"TimeStamp": "2025-10-31T08:53:36.2822991+00:00", "Log": "F   . apps.reports.tasks.process_csv_file"}
+{"TimeStamp": "2025-10-31T08:53:36.2823005+00:00", "Log": "F   . apps.reports.tasks.retry_failed_report"}
+{"TimeStamp": "2025-10-31T08:53:36.282305+00:00", "Log": "F   . azure_advisor_reports.celery.debug_task"}
+{"TimeStamp": "2025-10-31T08:53:36.2823064+00:00", "Log": "F   . azure_advisor_reports.celery.health_check_task"}
+{"TimeStamp": "2025-10-31T08:53:36.2823079+00:00", "Log": "F"}

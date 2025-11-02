@@ -1,0 +1,170 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Detailed Azure Advisor Report - {{ client.company_name }}{% endblock %}
+
+{% block content %}
+    <!-- Executive Summary -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Recommendations</div>
+            <div class="stat-value">{{ total_recommendations }}</div>
+            <div class="stat-subtitle">Across all categories</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Potential Annual Savings</div>
+            <div class="stat-value">${{ total_savings|floatformat:0 }}</div>
+            <div class="stat-subtitle">${{ monthly_savings|floatformat:0 }}/month</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">High Priority</div>
+            <div class="stat-value">{{ high_impact_count }}</div>
+            <div class="stat-subtitle">Immediate attention needed</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Categories Affected</div>
+            <div class="stat-value">{{ category_distribution|length }}</div>
+            <div class="stat-subtitle">Azure Advisor categories</div>
+        </div>
+    </div>
+
+    <!-- Category Summary -->
+    <div class="section">
+        <h2 class="section-title">Category Summary</h2>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align: center;">Count</th>
+                    <th style="text-align: center;">High Impact</th>
+                    <th style="text-align: right;">Potential Savings</th>
+                    <th style="text-align: right;">Avg. Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in category_stats %}
+                <tr>
+                    <td><strong>{{ cat.category }}</strong></td>
+                    <td style="text-align: center;">{{ cat.count }}</td>
+                    <td style="text-align: center;">
+                        {% if cat.high_impact > 0 %}
+                        <span class="badge badge-high">{{ cat.high_impact }}</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">${{ cat.total_savings|floatformat:2 }}</td>
+                    <td style="text-align: right;">${{ cat.avg_savings|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detailed Recommendations by Category -->
+    <div class="section">
+        <h2 class="section-title">Detailed Recommendations</h2>
+
+        {% for category, recs in recommendations_by_category.items %}
+        <div class="section-subtitle">{{ category }} ({{ recs|length }} recommendations)</div>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th>Impact</th>
+                    <th>Recommendation</th>
+                    <th>Resource</th>
+                    <th style="text-align: right;">Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in recs %}
+                <tr>
+                    <td>
+                        <span class="badge badge-{{ rec.business_impact }}">{{ rec.get_business_impact_display }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ rec.recommendation|truncatewords:15 }}</strong>
+                        {% if rec.potential_benefits %}
+                        <br><small class="text-muted">{{ rec.potential_benefits|truncatewords:20 }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if rec.resource_name %}
+                        <strong>{{ rec.resource_name }}</strong><br>
+                        <small class="text-muted">{{ rec.resource_type }}</small>
+                        {% if rec.resource_group %}
+                        <br><small class="text-muted">{{ rec.resource_group }}</small>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">General</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if rec.potential_savings > 0 %}
+                        <strong class="text-success">${{ rec.potential_savings|floatformat:2 }}</strong><br>
+                        <small class="text-muted">${{ rec.monthly_savings|floatformat:2 }}/mo</small>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+    </div>
+
+    <!-- Subscription Breakdown -->
+    {% if subscriptions %}
+    <div class="section">
+        <h2 class="section-title">Breakdown by Azure Subscription</h2>
+
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th>Subscription Name</th>
+                    <th>Subscription ID</th>
+                    <th style="text-align: center;">Recommendations</th>
+                    <th style="text-align: right;">Potential Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in subscriptions %}
+                <tr>
+                    <td><strong>{{ sub.subscription_name|default:"Unnamed Subscription" }}</strong></td>
+                    <td><code style="font-size: 0.85em;">{{ sub.subscription_id|truncatechars:20 }}</code></td>
+                    <td style="text-align: center;">{{ sub.rec_count }}</td>
+                    <td style="text-align: right;">
+                        {% if sub.total_savings %}
+                        <strong>${{ sub.total_savings|floatformat:2 }}</strong>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Next Steps -->
+    <div class="section">
+        <h2 class="section-title">Recommended Next Steps</h2>
+
+        <div class="info-box">
+            <h3 style="margin-bottom: 15px;">Implementation Guidance</h3>
+            <ol style="margin-left: 20px;">
+                <li><strong>Prioritize High Impact Items:</strong> Start with the {{ high_impact_count }} high-impact recommendations for immediate results.</li>
+                <li><strong>Review with Technical Team:</strong> Evaluate each recommendation with relevant stakeholders before implementation.</li>
+                <li><strong>Plan Implementation:</strong> Create a phased rollout plan, starting with low-risk, high-value changes.</li>
+                <li><strong>Monitor Results:</strong> Track the impact of implemented changes using Azure Monitor and Cost Management.</li>
+                <li><strong>Schedule Regular Reviews:</strong> Review Azure Advisor recommendations monthly to maintain optimal performance.</li>
+            </ol>
+        </div>
+    </div>
+{% endblock %}
