@@ -287,11 +287,18 @@ class BaseReportGenerator(ABC):
         # Check which PDF engine to use from settings
         pdf_engine = getattr(settings, 'PDF_ENGINE', 'weasyprint').lower()
 
+        # Enhanced debug logging
+        logger.info(f"PDF Engine Configuration Debug for report {self.report.id}:")
+        logger.info(f"  - settings.PDF_ENGINE value: '{settings.PDF_ENGINE}'")
+        logger.info(f"  - pdf_engine variable: '{pdf_engine}'")
+        logger.info(f"  - pdf_engine type: {type(pdf_engine)}")
+        logger.info(f"  - Comparison result (pdf_engine == 'playwright'): {pdf_engine == 'playwright'}")
+
         if pdf_engine == 'playwright':
-            logger.info(f"Using Playwright PDF engine for report {self.report.id}")
+            logger.info(f"✓ Using Playwright PDF engine for report {self.report.id}")
             return self.generate_pdf_with_playwright()
         else:
-            logger.info(f"Using WeasyPrint PDF engine for report {self.report.id}")
+            logger.info(f"✗ Using WeasyPrint PDF engine for report {self.report.id}")
             return self.generate_pdf_with_weasyprint()
 
     def generate_pdf_with_playwright(self):

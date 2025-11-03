@@ -177,3 +177,30 @@ CSV_ENCODING_OPTIONS = ['utf-8', 'utf-8-sig', 'latin-1', 'iso-8859-1', 'windows-
 
 # Create logs directory
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# ============================================================================
+# PDF Generation Settings
+# ============================================================================
+# PDF_ENGINE: Choose the PDF generation engine
+#   - 'playwright': Use Playwright headless browser (modern, supports Chart.js)
+#   - 'weasyprint': Use WeasyPrint (legacy, limited CSS support)
+PDF_ENGINE = config('PDF_ENGINE', default='playwright').lower()
+
+# Playwright PDF Settings
+PLAYWRIGHT_PDF_OPTIONS = {
+    'format': 'A4',
+    'print_background': True,  # Python Playwright uses snake_case
+    'display_header_footer': True,
+    'margin': {
+        'top': '25mm',
+        'right': '15mm',
+        'bottom': '25mm',
+        'left': '15mm',
+    },
+}
+
+# WeasyPrint PDF Settings (legacy, for backwards compatibility)
+WEASYPRINT_PDF_OPTIONS = {
+    'presentational_hints': True,
+    'optimize_images': True,
+}
