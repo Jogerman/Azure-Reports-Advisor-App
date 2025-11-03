@@ -121,6 +121,15 @@ def process_csv_file(self, report_id):
 
         logger.info(f"CSV processing completed successfully for report {report_id}")
 
+        # Automatically trigger report generation after successful CSV processing
+        try:
+            logger.info(f"Triggering automatic report generation for {report_id}")
+            generate_report.delay(str(report_id), format_type='both')
+            logger.info(f"Report generation task dispatched for {report_id}")
+        except Exception as e:
+            logger.error(f"Failed to trigger report generation for {report_id}: {str(e)}", exc_info=True)
+            # Don't fail the CSV processing task if report generation fails to dispatch
+
         return {
             'status': 'success',
             'report_id': str(report_id),
