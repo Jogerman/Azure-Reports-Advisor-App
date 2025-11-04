@@ -46,11 +46,11 @@ class PlaywrightPDFGenerator:
         'scale': 0.95,  # Slightly reduce scale to fit more content
     }
 
-    # Default timeout for page operations (30 seconds)
-    DEFAULT_TIMEOUT = 30000
+    # Default timeout for page operations (60 seconds) - Increased for complex reports
+    DEFAULT_TIMEOUT = 60000
 
-    # Timeout for chart rendering detection (10 seconds)
-    CHART_TIMEOUT = 10000
+    # Timeout for chart rendering detection (15 seconds) - Increased for multiple charts
+    CHART_TIMEOUT = 15000
 
     def __init__(self, headless: bool = True, timeout: int = None):
         """
@@ -146,23 +146,39 @@ class PlaywrightPDFGenerator:
 
                 logger.info("HTML content loaded into browser")
 
-                # Wait for network to be idle
+                # Wait for network to be idle (increased timeout)
                 try:
-                    await page.wait_for_load_state('networkidle', timeout=5000)
+                    await page.wait_for_load_state('networkidle', timeout=10000)
+                    logger.info("Network idle state reached")
                 except PlaywrightError:
                     logger.warning("Network idle timeout - continuing anyway")
+
+                # Wait for DOM to be fully ready
+                await page.wait_for_load_state('load', timeout=self.timeout)
+                logger.info("DOM load complete")
 
                 # Wait for fonts to load
                 if wait_for_fonts:
                     await self._wait_for_fonts(page)
 
+                # Additional wait for any lazy-loaded content
+                await page.wait_for_timeout(2000)
+                logger.info("Waited for lazy-loaded content")
+
                 # Wait for Chart.js charts to render
                 if wait_for_charts:
                     await self._wait_for_charts(page)
 
+                # Wait for all images to load
+                await self._wait_for_images(page)
+
+                # Wait for all elements to be visible
+                await self._wait_for_elements_visible(page)
+
                 # Additional wait to ensure all animations complete
-                # Increased from 500ms to 2000ms to ensure Chart.js animations finish
-                await page.wait_for_timeout(2000)
+                # Increased to 4000ms to ensure everything is fully rendered
+                await page.wait_for_timeout(4000)
+                logger.info("Final wait complete - all content should be rendered")
 
                 logger.info("All animations complete, proceeding with PDF generation")
 
@@ -221,7 +237,7 @@ class PlaywrightPDFGenerator:
                         console.log(`Found ${canvases.length} canvas elements, waiting for Chart.js rendering...`);
 
                         let checkCount = 0;
-                        const maxChecks = 100; // 10 seconds max (100 * 100ms)
+                        const maxChecks = 150; // 15 seconds max (150 * 100ms) - Increased for complex charts
 
                         const checkCharts = () => {
                             checkCount++;
@@ -265,8 +281,9 @@ class PlaywrightPDFGenerator:
                             }
                         };
 
-                        // Start checking after a small delay to let Chart.js initialize
-                        setTimeout(checkCharts, 500);
+                        // Start checking after initial delay to let Chart.js initialize
+                        // Increased delay to give more time for complex charts
+                        setTimeout(checkCharts, 1000);
                     });
                 }
             """
@@ -304,6 +321,153 @@ class PlaywrightPDFGenerator:
 
         except Exception as e:
             logger.warning(f"Font loading detection failed: {str(e)}")
+
+    async def _wait_for_images(self, page: Page) -> None:
+        """
+        Wait for all images to fully load.
+
+        Args:
+            page: Playwright page object
+        """
+        try:
+            logger.info("Waiting for images to load...")
+
+            image_script = """
+                () => {
+                    return new Promise((resolve) => {
+                        const images = Array.from(document.images);
+
+                        if (images.length === 0) {
+                            console.log('No images found');
+                            resolve();
+                            return;
+                        }
+
+                        console.log(`Found ${images.length} images, waiting for them to load...`);
+
+                        const loadedImages = images.filter(img => img.complete && img.naturalHeight !== 0);
+
+                        if (loadedImages.length === images.length) {
+                            console.log('All images already loaded');
+                            resolve();
+                            return;
+                        }
+
+                        let loadedCount = loadedImages.length;
+                        const totalImages = images.length;
+
+                        const checkAllLoaded = () => {
+                            if (loadedCount >= totalImages) {
+                                console.log(`All ${totalImages} images loaded successfully`);
+                                resolve();
+                            }
+                        };
+
+                        images.forEach((img) => {
+                            if (img.complete && img.naturalHeight !== 0) {
+                                return; // Already loaded
+                            }
+
+                            img.addEventListener('load', () => {
+                                loadedCount++;
+                                checkAllLoaded();
+                            });
+
+                            img.addEventListener('error', () => {
+                                console.warn('Image failed to load:', img.src);
+                                loadedCount++; // Count as "done" even if failed
+                                checkAllLoaded();
+                            });
+                        });
+
+                        // Timeout fallback
+                        setTimeout(() => {
+                            console.warn(`Image loading timeout after 5s (${loadedCount}/${totalImages} loaded)`);
+                            resolve();
+                        }, 5000);
+                    });
+                }
+            """
+
+            await page.evaluate(image_script)
+
+            logger.info("All images loaded successfully")
+
+        except Exception as e:
+            logger.warning(f"Image loading detection failed: {str(e)}")
+
+    async def _wait_for_elements_visible(self, page: Page) -> None:
+        """
+        Wait for all major content elements to be visible and have dimensions.
+
+        Args:
+            page: Playwright page object
+        """
+        try:
+            logger.info("Waiting for all elements to be visible...")
+
+            visibility_script = """
+                () => {
+                    return new Promise((resolve) => {
+                        const selectors = [
+                            '.chart-container',
+                            '.recommendation-card',
+                            'table',
+                            'canvas',
+                            '.content-section',
+                            '.report-section'
+                        ];
+
+                        let checkCount = 0;
+                        const maxChecks = 50; // 5 seconds max
+
+                        const checkVisibility = () => {
+                            checkCount++;
+
+                            const allVisible = selectors.every(selector => {
+                                const elements = document.querySelectorAll(selector);
+
+                                if (elements.length === 0) {
+                                    return true; // No elements with this selector, that's OK
+                                }
+
+                                // Check if all elements with this selector are visible
+                                return Array.from(elements).every(el => {
+                                    const rect = el.getBoundingClientRect();
+                                    const style = window.getComputedStyle(el);
+
+                                    return (
+                                        rect.width > 0 &&
+                                        rect.height > 0 &&
+                                        style.display !== 'none' &&
+                                        style.visibility !== 'hidden' &&
+                                        style.opacity !== '0'
+                                    );
+                                });
+                            });
+
+                            if (allVisible) {
+                                console.log(`All content elements visible after ${checkCount * 100}ms`);
+                                resolve();
+                            } else if (checkCount >= maxChecks) {
+                                console.warn(`Element visibility check timeout after ${checkCount * 100}ms`);
+                                resolve();
+                            } else {
+                                setTimeout(checkVisibility, 100);
+                            }
+                        };
+
+                        setTimeout(checkVisibility, 500);
+                    });
+                }
+            """
+
+            await page.evaluate(visibility_script)
+
+            logger.info("All elements are visible")
+
+        except Exception as e:
+            logger.warning(f"Element visibility detection failed: {str(e)}")
 
     async def _inject_print_css(self, page: Page) -> None:
         """
