@@ -276,30 +276,44 @@ class BaseReportGenerator(ABC):
 
     def generate_pdf(self):
         """
-        Generate PDF using configured PDF engine (Playwright or WeasyPrint).
+        Generate PDF using Playwright (primary) with WeasyPrint fallback.
+
+        Tries Playwright first for best rendering quality. If Playwright fails,
+        falls back to WeasyPrint for reliable PDF generation.
 
         Returns:
             str: Relative path to generated PDF file (for Django FileField)
 
         Raises:
-            Exception: If PDF generation fails
+            Exception: If both PDF engines fail
         """
-        # Check which PDF engine to use from settings
-        pdf_engine = getattr(settings, 'PDF_ENGINE', 'weasyprint').lower()
+        logger.info(f"Starting PDF generation for report {self.report.id}")
 
-        # Enhanced debug logging
-        logger.info(f"PDF Engine Configuration Debug for report {self.report.id}:")
-        logger.info(f"  - settings.PDF_ENGINE value: '{settings.PDF_ENGINE}'")
-        logger.info(f"  - pdf_engine variable: '{pdf_engine}'")
-        logger.info(f"  - pdf_engine type: {type(pdf_engine)}")
-        logger.info(f"  - Comparison result (pdf_engine == 'playwright'): {pdf_engine == 'playwright'}")
-
-        if pdf_engine == 'playwright':
-            logger.info(f"✓ Using Playwright PDF engine for report {self.report.id}")
+        # Try Playwright first (primary method)
+        try:
+            logger.info(f"Attempting PDF generation with Playwright (primary method)")
             return self.generate_pdf_with_playwright()
-        else:
-            logger.info(f"✗ Using WeasyPrint PDF engine for report {self.report.id}")
-            return self.generate_pdf_with_weasyprint()
+        except Exception as playwright_error:
+            logger.warning(
+                f"Playwright PDF generation failed for report {self.report.id}: {str(playwright_error)}"
+            )
+            logger.info(f"Falling back to WeasyPrint...")
+
+            # Fallback to WeasyPrint
+            try:
+                logger.info(f"Attempting PDF generation with WeasyPrint (fallback method)")
+                return self.generate_pdf_with_weasyprint()
+            except Exception as weasyprint_error:
+                logger.error(
+                    f"Both PDF engines failed for report {self.report.id}. "
+                    f"Playwright error: {str(playwright_error)}, "
+                    f"WeasyPrint error: {str(weasyprint_error)}"
+                )
+                raise Exception(
+                    f"PDF generation failed with both engines. "
+                    f"Playwright: {str(playwright_error)}. "
+                    f"WeasyPrint: {str(weasyprint_error)}"
+                )
 
     def generate_pdf_with_playwright(self):
         """

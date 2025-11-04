@@ -181,10 +181,15 @@ os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 # ============================================================================
 # PDF Generation Settings
 # ============================================================================
-# PDF_ENGINE: Choose the PDF generation engine
-#   - 'playwright': Use Playwright headless browser (modern, supports Chart.js)
-#   - 'weasyprint': Use WeasyPrint (legacy, limited CSS support)
-PDF_ENGINE = config('PDF_ENGINE', default='playwright').lower()
+# PDF generation uses a dual-engine approach with automatic fallback:
+#   1. PRIMARY: Playwright headless browser (modern, supports Chart.js, best quality)
+#   2. FALLBACK: WeasyPrint (legacy, limited CSS but reliable)
+#
+# The system will automatically try Playwright first, and if it fails,
+# will fall back to WeasyPrint to ensure PDF generation always succeeds.
+#
+# Note: PDF_ENGINE setting is deprecated but kept for backward compatibility
+PDF_ENGINE = config('PDF_ENGINE', default='playwright').lower()  # Deprecated: now uses auto-fallback
 
 # Playwright PDF Settings
 PLAYWRIGHT_PDF_OPTIONS = {
