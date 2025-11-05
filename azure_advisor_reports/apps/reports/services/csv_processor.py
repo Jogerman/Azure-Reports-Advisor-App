@@ -139,7 +139,15 @@ class AzureAdvisorCSVProcessor:
                     encoding=encoding,
                     skipinitialspace=True,
                     na_values=['', 'N/A', 'NA', 'null', 'None'],
-                    keep_default_na=True
+                    keep_default_na=True,
+                    # FIX: Handle commas within quoted fields (Azure Advisor CSV format)
+                    quotechar='"',
+                    doublequote=True,
+                    escapechar=None,
+                    # Use Python engine for better error tolerance
+                    engine='python',
+                    # Warn on bad lines instead of crashing (Pandas 1.3.0+)
+                    on_bad_lines='warn'
                 )
                 logger.info(f"Successfully read CSV with encoding: {encoding}")
                 logger.info(f"CSV shape: {self.df.shape[0]} rows, {self.df.shape[1]} columns")
@@ -150,7 +158,28 @@ class AzureAdvisorCSVProcessor:
             except pd.errors.EmptyDataError:
                 raise CSVProcessingError("CSV file is empty or contains no data")
             except pd.errors.ParserError as e:
-                raise CSVProcessingError(f"Failed to parse CSV: {str(e)}")
+                # Log detailed error information for debugging
+                logger.error(f"Parser error details: {str(e)}")
+                # Try with more lenient settings
+                try:
+                    logger.info(f"Retrying with lenient parser settings for encoding: {encoding}")
+                    self.df = pd.read_csv(
+                        self.file_path,
+                        encoding=encoding,
+                        skipinitialspace=True,
+                        na_values=['', 'N/A', 'NA', 'null', 'None'],
+                        keep_default_na=True,
+                        quotechar='"',
+                        doublequote=True,
+                        engine='python',
+                        on_bad_lines='skip',  # Skip problematic lines
+                    )
+                    logger.warning(f"Successfully read CSV with lenient settings (some rows may have been skipped)")
+                    logger.info(f"CSV shape: {self.df.shape[0]} rows, {self.df.shape[1]} columns")
+                    return self.df
+                except Exception as retry_error:
+                    logger.error(f"Retry also failed: {str(retry_error)}")
+                    raise CSVProcessingError(f"Failed to parse CSV: {str(e)}")
             except Exception as e:
                 logger.error(f"Unexpected error reading CSV: {str(e)}")
                 continue
