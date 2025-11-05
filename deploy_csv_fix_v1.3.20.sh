@@ -5,7 +5,7 @@
 set -e  # Exit on error
 
 VERSION="v1.3.20"
-REGISTRY="advisorreportsacr.azurecr.io"
+REGISTRY="advisorreportsacr-afc0cmayd8hcekaf.azurecr.io"
 IMAGE_NAME="advisor-reports-backend"
 RESOURCE_GROUP="rg-azure-advisor-app"
 
