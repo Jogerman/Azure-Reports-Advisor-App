@@ -212,27 +212,47 @@ class AzureADAuthentication(authentication.BaseAuthentication):
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
 
-            # Verify and decode the token
-            # For id_token: audience should be the client_id
-            # For access_token: audience should be the API resource ID
+            # Verify and decode the token with STRICT audience validation
+            # Security: Only accept ID tokens issued for this application
             client_id = settings.AZURE_AD['CLIENT_ID']
 
-            # Accept either id_token (aud=client_id) or properly scoped access_token
-            # Skip audience validation for now - will validate manually
+            # SECURITY FIX: Enable strict audience validation
+            # Only accept tokens issued specifically for this application
             payload = jwt.decode(
                 token,
                 pem,
                 algorithms=['RS256'],
                 issuer=token_issuer,
-                options={"verify_aud": False}
+                audience=client_id,  # Strict validation - only accept our client_id
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_aud": True,  # ENABLED - Critical security control
+                    "verify_iss": True,
+                }
             )
 
-            # Manual audience validation: accept client_id (id_token) or MS Graph (for dev only)
-            if token_audience not in [client_id, '00000003-0000-0000-c000-000000000000']:
-                logger.warning(f"Token audience {token_audience} not recognized. Expected {client_id}")
-                # For now, we'll allow it for development but log the warning
+            # Additional security validation: Verify this is an ID token, not an access token
+            # ID tokens should have 'nonce' claim, access tokens typically don't
+            require_id_token = getattr(settings.AZURE_AD, 'REQUIRE_ID_TOKEN', True)
+
+            if require_id_token and 'nonce' not in payload:
+                logger.error('Token is not an ID token (missing nonce claim)')
+                raise exceptions.AuthenticationFailed(
+                    'Only ID tokens are accepted for user authentication. '
+                    'Please use the ID token from MSAL, not the access token.'
+                )
+
+            # Verify token_use claim if present (additional validation)
+            token_use = payload.get('token_use')
+            if token_use and token_use != 'id_token':
+                logger.error(f'Invalid token_use: {token_use}')
+                raise exceptions.AuthenticationFailed(
+                    f'Invalid token type: {token_use}. Expected id_token.'
+                )
 
             logger.info(f"Token verified successfully for user: {payload.get('preferred_username', 'unknown')}")
+            logger.info(f"Token audience validated: {payload.get('aud')}")
             return payload
 
         except jwt.ExpiredSignatureError as e:

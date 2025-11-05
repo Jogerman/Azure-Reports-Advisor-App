@@ -3,10 +3,20 @@ Serializers for reports app.
 """
 
 import os
+import re
+import csv
+from io import StringIO
 from rest_framework import serializers
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Report, Recommendation, ReportTemplate, ReportShare
+
+# Try to import python-magic for enhanced file validation
+try:
+    import magic
+    HAS_MAGIC = True
+except ImportError:
+    HAS_MAGIC = False
 
 
 class RecommendationSerializer(serializers.ModelSerializer):
@@ -168,7 +178,16 @@ class CSVUploadSerializer(serializers.Serializer):
 
     def validate_csv_file(self, value):
         """
-        Validate the uploaded CSV file.
+        Comprehensive CSV file validation with security controls.
+
+        This method implements multiple layers of validation:
+        1. File extension check
+        2. File size validation
+        3. Magic number validation (file signature)
+        4. MIME type verification
+        5. CSV structure validation
+        6. Required columns check
+        7. Filename sanitization
 
         Args:
             value: Uploaded file object
@@ -178,35 +197,126 @@ class CSVUploadSerializer(serializers.Serializer):
 
         Raises:
             serializers.ValidationError: If file validation fails
+
+        Security Notes:
+            - Prevents file type spoofing attacks
+            - Validates actual file content, not just extension
+            - Prevents path traversal via filename sanitization
+            - Limits file size to prevent DoS attacks
         """
-        # Check file extension
+        # 1. Check file extension
         file_name = value.name.lower()
         allowed_extensions = getattr(settings, 'ALLOWED_CSV_EXTENSIONS', ['.csv'])
 
         if not any(file_name.endswith(ext) for ext in allowed_extensions):
             raise serializers.ValidationError(
-                f"Invalid file extension. Allowed extensions: {', '.join(allowed_extensions)}"
+                f"Invalid file extension. Allowed: {', '.join(allowed_extensions)}"
             )
 
-        # Check file size
-        max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 52428800)
+        # 2. Check file size
+        max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 52428800)  # 50MB default
         if value.size > max_size:
-            max_size_mb = max_size / (1024 * 1024)
             raise serializers.ValidationError(
-                f"File size ({value.size / (1024 * 1024):.2f} MB) exceeds maximum allowed size ({max_size_mb} MB)"
+                f"File size exceeds maximum ({max_size / (1024*1024):.0f} MB)"
             )
 
         if value.size == 0:
             raise serializers.ValidationError("File is empty")
 
-        # Check MIME type
-        content_type = value.content_type
-        allowed_mimetypes = getattr(settings, 'ALLOWED_CSV_MIMETYPES', ['text/csv'])
+        # 3. Validate MIME type using magic numbers (if python-magic is available)
+        if HAS_MAGIC:
+            try:
+                # Read first 2KB to detect file type
+                file_type = magic.from_buffer(value.read(2048), mime=True)
+                value.seek(0)  # Reset file pointer
 
-        if content_type not in allowed_mimetypes:
+                allowed_mime = ['text/plain', 'text/csv', 'application/csv',
+                               'application/vnd.ms-excel', 'text/x-csv']
+                if file_type not in allowed_mime:
+                    raise serializers.ValidationError(
+                        f"Invalid file type: {file_type}. Expected CSV file."
+                    )
+            except Exception as e:
+                raise serializers.ValidationError(
+                    f"File type validation failed: {str(e)}"
+                )
+        else:
+            # Fallback to basic content-type check if python-magic not available
+            content_type = value.content_type
+            allowed_mimetypes = getattr(settings, 'ALLOWED_CSV_MIMETYPES',
+                                       ['text/csv', 'application/csv', 'text/plain'])
+
+            if content_type not in allowed_mimetypes:
+                raise serializers.ValidationError(
+                    f"Invalid content type: {content_type}. Allowed: {', '.join(allowed_mimetypes)}"
+                )
+
+        # 4. Validate CSV structure
+        try:
+            value.seek(0)
+            # Read first 1KB to validate structure
+            sample = value.read(1024).decode('utf-8-sig', errors='ignore')
+            value.seek(0)
+
+            csv_reader = csv.reader(StringIO(sample))
+            header = next(csv_reader, None)
+
+            if not header:
+                raise serializers.ValidationError("CSV file appears to be empty")
+
+            # 5. Check for required columns (case-insensitive)
+            required_columns = ['Category', 'Recommendation']
+            header_lower = [col.lower().strip() for col in header if col]
+
+            missing = [col for col in required_columns
+                      if col.lower() not in header_lower]
+
+            if missing:
+                raise serializers.ValidationError(
+                    f"CSV missing required columns: {', '.join(missing)}. "
+                    f"Found columns: {', '.join(header[:10])}"
+                )
+
+            # 6. Validate at least one data row exists
+            data_row = next(csv_reader, None)
+            if not data_row:
+                raise serializers.ValidationError("CSV file has no data rows")
+
+        except UnicodeDecodeError:
             raise serializers.ValidationError(
-                f"Invalid content type: {content_type}. Allowed types: {', '.join(allowed_mimetypes)}"
+                "File encoding is invalid. Please use UTF-8 encoding."
             )
+        except csv.Error as e:
+            raise serializers.ValidationError(f"Invalid CSV format: {str(e)}")
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            raise serializers.ValidationError(
+                f"CSV validation failed: {str(e)}"
+            )
+
+        # 7. Sanitize filename (prevent path traversal)
+        safe_name = re.sub(r'[^\w\s.-]', '', value.name)
+        safe_name = safe_name[:255]  # Limit filename length
+        value.name = safe_name
+
+        # 8. Check for cell size limits
+        max_cell_size = getattr(settings, 'CSV_MAX_CELL_SIZE', 10000)
+        value.seek(0)
+        try:
+            content = value.read().decode('utf-8-sig', errors='ignore')
+            value.seek(0)
+
+            # Check if any cell exceeds max size
+            for row in csv.reader(StringIO(content)):
+                for cell in row:
+                    if len(cell) > max_cell_size:
+                        raise serializers.ValidationError(
+                            f"CSV contains cells larger than {max_cell_size} characters. "
+                            "Please reduce cell size."
+                        )
+        except UnicodeDecodeError:
+            pass  # Already handled above
 
         return value
 

@@ -32,6 +32,10 @@ class AzureAdvisorCSVProcessor:
         'Recommendation',
     ]
 
+    # Formula injection prefixes (CSV Injection prevention)
+    # These characters at the start of a cell can cause Excel/Calc to execute formulas
+    FORMULA_PREFIXES = ('=', '+', '-', '@', '|', '\t', '\r')
+
     # Optional columns (may vary between Azure Advisor exports)
     OPTIONAL_COLUMNS = [
         'Impact',
@@ -262,8 +266,64 @@ class AzureAdvisorCSVProcessor:
             self.df.rename(columns=column_mapping, inplace=True)
             logger.info(f"Normalized columns: {column_mapping}")
 
+    def sanitize_cell_value(self, value) -> str:
+        """
+        Sanitize cell value to prevent CSV injection attacks.
+
+        Formula injection (CSV Injection) occurs when spreadsheet applications
+        execute formulas in CSV cells starting with =, +, -, @, |, tab, or carriage return.
+
+        This method prepends a single quote to values starting with dangerous characters,
+        preventing formula execution while preserving the original data.
+
+        References:
+        - OWASP: https://owasp.org/www-community/attacks/CSV_Injection
+        - CWE-1236: CSV Injection
+
+        Args:
+            value: Cell value to sanitize (any type)
+
+        Returns:
+            str: Sanitized value safe from formula injection
+
+        Examples:
+            >>> processor.sanitize_cell_value('=1+1')
+            "'=1+1"
+            >>> processor.sanitize_cell_value('Normal text')
+            "Normal text"
+            >>> processor.sanitize_cell_value('=cmd|"/c calc"!A1')
+            "'=cmd|"/c calc"!A1"
+        """
+        # Return non-string values as-is
+        if not isinstance(value, str):
+            return value
+
+        # Strip whitespace to check first character
+        value = value.strip()
+
+        # Empty strings are safe
+        if not value:
+            return value
+
+        # Check if value starts with dangerous characters
+        if value[0] in self.FORMULA_PREFIXES:
+            # Prepend single quote to prevent formula execution
+            sanitized = "'" + value
+            logger.debug(f"CSV Injection prevented: Sanitized '{value[:50]}...' -> '{sanitized[:50]}...'")
+            return sanitized
+
+        return value
+
     def clean_data(self) -> None:
-        """Clean and normalize data in the DataFrame."""
+        """
+        Clean and normalize data in the DataFrame with security controls.
+
+        This method:
+        1. Removes empty rows
+        2. Fills NaN values
+        3. Strips whitespace
+        4. Sanitizes all string values to prevent CSV injection attacks
+        """
         if self.df is None:
             return
 
@@ -274,11 +334,13 @@ class AzureAdvisorCSVProcessor:
         text_columns = self.df.select_dtypes(include=['object']).columns
         self.df[text_columns] = self.df[text_columns].fillna('')
 
-        # Strip whitespace from all string columns
+        # Strip whitespace and sanitize all string columns
         for col in text_columns:
             self.df[col] = self.df[col].str.strip()
+            # CRITICAL: Sanitize for CSV injection (prevents formula execution in Excel/LibreOffice)
+            self.df[col] = self.df[col].apply(self.sanitize_cell_value)
 
-        logger.info(f"Data cleaning completed: {len(self.df)} rows remaining")
+        logger.info(f"Data cleaning completed: {len(self.df)} rows, CSV injection protection applied")
 
     def parse_decimal(self, value, default=0) -> Decimal:
         """

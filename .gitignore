@@ -269,3 +269,14 @@ uploads/
 temp/
 tmp/nul
 */nul
+
+# Security - Debug files that may contain sensitive data
+DEBUG_REPORT.json
+debug-*.json
+*debug-report*.json
+screenshots/*debug*.json
+
+# Security - Prevent accidental commit of credentials
+backend-appsettings.json
+*appsettings.json
+!*appsettings.example.json

@@ -42,7 +42,9 @@ param(
 # Constants
 # ============================================================================
 
-$TENANT_ID = "9acf6dd6-1978-4d9c-9a9c-c9be95245565"
+# ⚠️ SECURITY: Set TENANT_ID via environment variable or parameter
+# Do NOT hardcode production credentials in scripts
+$TENANT_ID = if ($env:AZURE_TENANT_ID) { $env:AZURE_TENANT_ID } else { "00000000-0000-0000-0000-000000000000" }
 $SOLVEX_TENANT = "Solvex Dominicana"
 $PROJECT_ROOT = $PSScriptRoot
 $BACKEND_PATH = Join-Path $PROJECT_ROOT "azure_advisor_reports"

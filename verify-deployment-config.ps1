@@ -14,7 +14,9 @@ param(
     [string]$ResourceGroup = ""
 )
 
-$EXPECTED_TENANT_ID = "9acf6dd6-1978-4d9c-9a9c-c9be95245565"
+# ⚠️ SECURITY: Set EXPECTED_TENANT_ID via environment variable
+# Do NOT hardcode production credentials in scripts
+$EXPECTED_TENANT_ID = if ($env:AZURE_TENANT_ID) { $env:AZURE_TENANT_ID } else { "00000000-0000-0000-0000-000000000000" }
 $TENANT_NAME = "Solvex Dominicana"
 
 # Colors

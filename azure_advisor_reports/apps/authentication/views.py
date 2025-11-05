@@ -3,13 +3,18 @@ Authentication views for Azure AD login, JWT token management, and user profile.
 """
 
 import logging
+import jwt
 from rest_framework import status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.utils import timezone
 from django.db.models import Q
+from django.core.cache import cache
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 
 from .serializers import (
     UserSerializer,
@@ -27,26 +32,77 @@ from .permissions import IsAdmin, CanManageClients
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger('security')
+
+
+def get_client_ip(request):
+    """
+    Get client IP address from request.
+    Handles X-Forwarded-For header for proxied requests.
+    """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+    return ip
 
 
 class AzureADLoginView(views.APIView):
     """
-    API endpoint for Azure AD authentication.
+    API endpoint for Azure AD authentication with rate limiting and progressive lockout.
 
     POST /api/v1/auth/login/
     {
         "access_token": "azure_ad_access_token"
     }
+
+    Rate Limits:
+    - 5 requests per minute per IP
+    - 10 requests per minute per User-Agent
+    - Progressive lockout: 5 failures = 15 min, 10 failures = 1 hour, 15 failures = 24 hours
     """
     permission_classes = [AllowAny]
     serializer_class = AzureADLoginSerializer
 
+    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True))
+    @method_decorator(ratelimit(key='header:user-agent', rate='10/m', method='POST', block=True))
     def post(self, request):
         """
-        Authenticate user with Azure AD access token and return JWT tokens.
+        Authenticate user with Azure AD access token - rate limited.
         """
+        ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')[:100]
+
+        # Check if IP is in lockout
+        lockout_key = f'auth_lockout:{ip}'
+        lockout_until = cache.get(lockout_key)
+
+        if lockout_until:
+            security_logger.warning(
+                f'Authentication attempt from locked out IP: {ip} (locked until {lockout_until})'
+            )
+            return Response(
+                {
+                    'error': 'Too many failed authentication attempts. Account temporarily locked.',
+                    'detail': 'Please try again later or contact support if you believe this is an error.'
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        # Validate request data
         serializer = AzureADLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            # Track failed attempt
+            self._track_failed_attempt(ip)
+            security_logger.warning(
+                f'Authentication failed from IP {ip}: Invalid request data - {serializer.errors}'
+            )
+            return Response(
+                {'error': 'Invalid request data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         azure_token = serializer.validated_data['access_token']
         azure_service = AzureADService()
@@ -55,6 +111,11 @@ class AzureADLoginView(views.APIView):
         is_valid, azure_user_info = azure_service.validate_token(azure_token)
 
         if not is_valid or not azure_user_info:
+            # Track failed attempt
+            self._track_failed_attempt(ip)
+            security_logger.warning(
+                f'Authentication failed from IP {ip}: Invalid Azure AD token'
+            )
             return Response(
                 {'error': 'Invalid Azure AD token'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -64,14 +125,22 @@ class AzureADLoginView(views.APIView):
         user = azure_service.create_or_update_user(azure_user_info)
 
         if not user:
+            # Track failed attempt
+            self._track_failed_attempt(ip)
+            security_logger.error(
+                f'Authentication failed from IP {ip}: Failed to create/update user'
+            )
             return Response(
                 {'error': 'Failed to create/update user'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+        # SUCCESS: Clear failed attempts for this IP
+        self._clear_failed_attempts(ip)
+
         # Update last login info
         user.last_login = timezone.now()
-        user.last_login_ip = self.get_client_ip(request)
+        user.last_login_ip = ip
         user.save(update_fields=['last_login', 'last_login_ip'])
 
         # Generate JWT tokens
@@ -82,79 +151,232 @@ class AzureADLoginView(views.APIView):
             'user': UserProfileSerializer(user).data
         }
 
+        security_logger.info(
+            f'User {user.email} successfully logged in via Azure AD from IP {ip}'
+        )
         logger.info(f"User {user.email} successfully logged in via Azure AD")
 
         return Response(response_data, status=status.HTTP_200_OK)
 
+    def _track_failed_attempt(self, ip):
+        """
+        Track failed authentication attempts and implement progressive lockout.
+
+        Progressive lockout thresholds:
+        - 5 failures = 15 minute lockout
+        - 10 failures = 1 hour lockout
+        - 15 failures = 24 hour lockout
+        """
+        key = f'auth_failures:{ip}'
+        failures = cache.get(key, 0) + 1
+        cache.set(key, failures, 3600)  # Track failures for 1 hour
+
+        security_logger.info(f'Failed authentication attempt #{failures} from IP {ip}')
+
+        # Progressive lockout implementation
+        if failures >= 15:
+            lockout_duration = 86400  # 24 hours
+            lockout_label = '24 hours'
+        elif failures >= 10:
+            lockout_duration = 3600  # 1 hour
+            lockout_label = '1 hour'
+        elif failures >= 5:
+            lockout_duration = 900  # 15 minutes
+            lockout_label = '15 minutes'
+        else:
+            return  # No lockout yet
+
+        # Set lockout
+        lockout_key = f'auth_lockout:{ip}'
+        lockout_until = timezone.now() + timezone.timedelta(seconds=lockout_duration)
+        cache.set(lockout_key, lockout_until.isoformat(), lockout_duration)
+
+        security_logger.error(
+            f'IP {ip} locked out for {lockout_label} after {failures} failed authentication attempts'
+        )
+
+    def _clear_failed_attempts(self, ip):
+        """Clear failed authentication attempts for an IP after successful login."""
+        key = f'auth_failures:{ip}'
+        failures = cache.get(key, 0)
+        if failures > 0:
+            cache.delete(key)
+            security_logger.info(
+                f'Cleared {failures} failed authentication attempts for IP {ip} after successful login'
+            )
+
+    # Keep legacy method for backward compatibility
     @staticmethod
     def get_client_ip(request):
-        """Extract client IP address from request."""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+        """Extract client IP address from request. (Deprecated - use module-level function)"""
+        return get_client_ip(request)
 
 
 class TokenRefreshView(views.APIView):
     """
-    API endpoint for refreshing JWT access token.
+    API endpoint for refreshing JWT access token with rate limiting.
 
     POST /api/v1/auth/refresh/
     {
         "refresh_token": "your_refresh_token"
     }
+
+    Rate Limits:
+    - 30 requests per hour per IP
     """
     permission_classes = [AllowAny]
     serializer_class = TokenRefreshSerializer
 
+    @method_decorator(ratelimit(key='ip', rate='30/h', method='POST', block=True))
     def post(self, request):
         """
-        Generate new access token using refresh token.
+        Generate new access token using refresh token - rate limited.
         """
+        ip = get_client_ip(request)
+
         serializer = TokenRefreshSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            security_logger.warning(
+                f'Token refresh failed from IP {ip}: Invalid request data - {serializer.errors}'
+            )
+            return Response(
+                {'error': 'Invalid request data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         refresh_token = serializer.validated_data['refresh_token']
         new_tokens = JWTService.refresh_access_token(refresh_token)
 
         if not new_tokens:
+            security_logger.warning(
+                f'Token refresh failed from IP {ip}: Invalid or expired refresh token'
+            )
             return Response(
                 {'error': 'Invalid or expired refresh token'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+        security_logger.info(f"Access token refreshed successfully from IP {ip}")
         logger.info("Access token refreshed successfully")
         return Response(new_tokens, status=status.HTTP_200_OK)
 
 
 class LogoutView(views.APIView):
     """
-    API endpoint for user logout.
+    API endpoint for user logout with token blacklisting.
+
+    This endpoint revokes both access and refresh tokens by adding them
+    to the blacklist. Once revoked, these tokens cannot be used again.
 
     POST /api/v1/auth/logout/
+    Authorization: Bearer <access_token>
     {
         "refresh_token": "your_refresh_token"  // optional
     }
+
+    Returns:
+        200: Logout successful, tokens revoked
+        400: Invalid request or token format
+        401: Unauthorized or invalid token
+        500: Server error during logout
     """
     permission_classes = [IsAuthenticated]
     serializer_class = LogoutSerializer
 
     def post(self, request):
         """
-        Logout user and invalidate tokens.
-        Note: In a stateless JWT system, actual token invalidation
-        requires implementing a token blacklist.
-        """
-        # In production, implement token blacklisting here
-        # For now, just log the logout
-        logger.info(f"User {request.user.email} logged out")
+        Logout user by revoking their access and refresh tokens.
 
-        return Response(
-            {'message': 'Successfully logged out'},
-            status=status.HTTP_200_OK
-        )
+        Extracts the access token from Authorization header and optionally
+        the refresh token from request body, then revokes both in the blacklist.
+        """
+        ip = get_client_ip(request)
+
+        try:
+            # Get access token from Authorization header
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            if not auth_header.startswith('Bearer '):
+                return Response(
+                    {'error': 'Invalid authorization header format'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            access_token = auth_header.split(' ')[1]
+
+            # Decode access token to get JTI (allow expired tokens for logout)
+            try:
+                access_payload = jwt.decode(
+                    access_token,
+                    settings.SECRET_KEY,
+                    algorithms=['HS256'],
+                    options={"verify_exp": False}  # Allow expired tokens for logout
+                )
+                access_jti = access_payload.get('jti')
+
+                if access_jti:
+                    # Revoke access token
+                    if JWTService.revoke_token(access_jti, reason='logout'):
+                        logger.debug(f"Revoked access token {access_jti[:8]}...")
+                    else:
+                        logger.warning(f"Could not revoke access token {access_jti[:8]}...")
+                else:
+                    logger.warning("Access token missing JTI - cannot revoke")
+
+            except jwt.InvalidTokenError as e:
+                logger.warning(f"Could not decode access token for logout: {str(e)}")
+                # Continue with logout even if access token is invalid
+
+            # Optionally revoke refresh token if provided
+            refresh_token = request.data.get('refresh_token')
+            if refresh_token:
+                try:
+                    refresh_payload = jwt.decode(
+                        refresh_token,
+                        settings.SECRET_KEY,
+                        algorithms=['HS256'],
+                        options={"verify_exp": False}  # Allow expired tokens for logout
+                    )
+                    refresh_jti = refresh_payload.get('jti')
+
+                    if refresh_jti:
+                        # Revoke refresh token
+                        if JWTService.revoke_token(refresh_jti, reason='logout'):
+                            logger.debug(f"Revoked refresh token {refresh_jti[:8]}...")
+                        else:
+                            logger.warning(f"Could not revoke refresh token {refresh_jti[:8]}...")
+                    else:
+                        logger.warning("Refresh token missing JTI - cannot revoke")
+
+                except jwt.InvalidTokenError as e:
+                    logger.warning(f"Could not decode refresh token for logout: {str(e)}")
+                    # Continue with logout even if refresh token is invalid
+
+            # Log successful logout
+            security_logger.info(
+                f'User {request.user.email} logged out successfully from IP {ip}'
+            )
+
+            return Response(
+                {
+                    'message': 'Logged out successfully',
+                    'detail': 'Your tokens have been revoked and can no longer be used.'
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error(f"Logout error for user {request.user.email}: {str(e)}")
+            security_logger.error(
+                f'Logout failed for user {request.user.email} from IP {ip}: {str(e)}'
+            )
+            return Response(
+                {
+                    'error': 'Logout failed',
+                    'detail': 'An error occurred during logout. Please try again.'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class CurrentUserView(views.APIView):

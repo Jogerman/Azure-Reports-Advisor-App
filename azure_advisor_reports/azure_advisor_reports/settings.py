@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from decouple import config
 import dj_database_url
@@ -18,8 +19,47 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
+# ============================================================================
+# SECRET_KEY Configuration - CRITICAL SECURITY
+# ============================================================================
+# SECURITY WARNING: SECRET_KEY must be set in environment variables
+# Generate a secure key with: python -c 'import secrets; print(secrets.token_urlsafe(50))'
+
+# Remove default - force SECRET_KEY to be set
+try:
+    SECRET_KEY = config('SECRET_KEY')
+except Exception:
+    raise ValueError(
+        "SECRET_KEY must be set in environment variables. "
+        "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(50))'"
+    )
+
+# Validate SECRET_KEY strength
+# Skip validation only for Django management commands that don't need security
+MANAGEMENT_COMMANDS_SKIP_VALIDATION = ['migrate', 'makemigrations', 'collectstatic', 'showmigrations', 'sqlmigrate']
+should_validate_secret = not any(cmd in sys.argv for cmd in MANAGEMENT_COMMANDS_SKIP_VALIDATION)
+
+if should_validate_secret:
+    if SECRET_KEY == 'django-insecure-change-this-in-production':
+        raise ValueError(
+            "Default SECRET_KEY detected. This is a critical security vulnerability. "
+            "Set a cryptographically secure SECRET_KEY in environment variables."
+        )
+
+    if len(SECRET_KEY) < 50:
+        raise ValueError(
+            f"SECRET_KEY must be at least 50 characters long (current: {len(SECRET_KEY)}). "
+            "Generate a secure key with: python -c 'import secrets; print(secrets.token_urlsafe(50))'"
+        )
+
+# Add secret rotation support
+# Multiple keys can be specified for zero-downtime rotation
+# Format: FALLBACK_KEY_1,FALLBACK_KEY_2,...
+SECRET_KEY_FALLBACKS = config(
+    'SECRET_KEY_FALLBACKS',
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Read DEBUG from environment - default to False in production
@@ -255,7 +295,7 @@ CORS_ALLOWED_ORIGINS = config(
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Azure AD Configuration
+# Azure AD Configuration (Security Enhanced)
 AZURE_AD = {
     'CLIENT_ID': config('AZURE_CLIENT_ID', default=''),
     'CLIENT_SECRET': config('AZURE_CLIENT_SECRET', default=''),
@@ -263,7 +303,12 @@ AZURE_AD = {
     'REDIRECT_URI': config('AZURE_REDIRECT_URI', default='http://localhost:3000'),
     'SCOPE': ['openid', 'profile', 'email'],
     'AUTHORITY': f"https://login.microsoftonline.com/{config('AZURE_TENANT_ID', default='')}",
+    'REQUIRE_ID_TOKEN': config('AZURE_REQUIRE_ID_TOKEN', default=True, cast=bool),
 }
+
+# Validate Azure AD configuration on startup (non-management commands)
+if should_validate_secret and not all([AZURE_AD['CLIENT_ID'], AZURE_AD['TENANT_ID']]):
+    logger.warning("Azure AD configuration incomplete - authentication will fail")
 
 # Celery Configuration
 # Use same safe config pattern for Celery workers
@@ -319,13 +364,17 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
-# CSV Upload and Validation Settings
+# CSV Upload and Validation Settings (Security Enhanced)
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB maximum file size
-ALLOWED_CSV_EXTENSIONS = ['.csv', '.CSV']  # Allowed file extensions
-CSV_MAX_ROWS = 10000  # Maximum number of rows in CSV
+ALLOWED_CSV_EXTENSIONS = ['.csv']  # Allowed file extensions (lowercase only for security)
+ALLOWED_CSV_MIMETYPES = ['text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel', 'text/x-csv']
+CSV_MAX_ROWS = 100000  # Maximum number of rows in CSV (increased for large datasets)
+CSV_MAX_CELL_SIZE = 10000  # Maximum characters per cell (prevents DoS)
 CSV_ENCODING_OPTIONS = ['utf-8', 'utf-8-sig', 'latin-1', 'iso-8859-1', 'windows-1252']  # Encoding options to try
 
-# Logging Configuration
+# ============================================================================
+# Logging Configuration - Security Enhanced
+# ============================================================================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -336,6 +385,10 @@ LOGGING = {
         },
         'simple': {
             'format': '{levelname} {message}',
+            'style': '{',
+        },
+        'security': {
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
     },
@@ -350,6 +403,14 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+        },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 10,
+            'formatter': 'security',
         },
     },
     'root': {
@@ -367,8 +428,29 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'security': {
+            'handlers': ['security_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
     },
 }
+
+# ============================================================================
+# Rate Limiting Configuration - CRITICAL SECURITY
+# ============================================================================
+# django-ratelimit is already installed in requirements.txt
+RATELIMIT_ENABLE = config('RATELIMIT_ENABLE', default=True, cast=bool)
+RATELIMIT_USE_CACHE = 'default'
+
+# Custom 429 handler for rate limiting
+# Will be implemented in apps.core.views.ratelimit_error
+# RATELIMIT_VIEW = 'apps.core.views.ratelimit_error'
 
 # Security Settings
 if not DEBUG:

@@ -50,6 +50,7 @@ django-storages[azure]==1.14
 
 # Security & Rate Limiting
 django-ratelimit==4.1.0
+python-magic==0.4.27  # File type validation (MIME type detection)
 
 # PDF Generation - WeasyPrint and Playwright
 weasyprint==61.2

@@ -9,6 +9,7 @@ This module provides services for:
 """
 
 import logging
+import uuid
 import jwt
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
@@ -21,6 +22,7 @@ import requests
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger('security')
 
 
 class AzureADService:
@@ -233,44 +235,86 @@ class AzureADService:
 
 class JWTService:
     """
-    Service for generating and validating JWT tokens for API access.
+    Service for generating and validating JWT tokens for API access with blacklisting support.
+
+    Security Features:
+    - Reduced token lifetimes (access: 15 minutes, refresh: 1 day)
+    - JWT ID (JTI) for token tracking and revocation
+    - Token blacklist checking during validation
+    - Automatic token storage in database for audit trail
     """
+
+    # Reduced token lifetimes for enhanced security
+    ACCESS_TOKEN_LIFETIME = timedelta(minutes=15)  # Was 1 hour, now 15 minutes
+    REFRESH_TOKEN_LIFETIME = timedelta(days=1)     # Was 7 days, now 1 day
 
     @staticmethod
     def generate_token(user: User) -> Dict[str, str]:
         """
-        Generate JWT access and refresh tokens for a user.
+        Generate JWT access and refresh tokens with JTI for blacklisting.
+
+        Each token is assigned a unique JTI (JWT ID) and stored in the database
+        for tracking and revocation capabilities. Tokens have reduced lifetimes
+        for enhanced security.
 
         Args:
             user: User instance
 
         Returns:
-            Dictionary with 'access_token' and 'refresh_token'
+            Dictionary with 'access_token', 'refresh_token', 'expires_in', 'token_type'
         """
         try:
-            # Access token (expires in 1 hour)
+            # Generate unique token IDs
+            access_jti = str(uuid.uuid4())
+            refresh_jti = str(uuid.uuid4())
+
+            now = datetime.utcnow()
+            access_exp = now + JWTService.ACCESS_TOKEN_LIFETIME
+            refresh_exp = now + JWTService.REFRESH_TOKEN_LIFETIME
+
+            # Access token payload
             access_payload = {
                 'user_id': str(user.id),
                 'email': user.email,
                 'role': user.role,
-                'exp': datetime.utcnow() + timedelta(hours=1),
-                'iat': datetime.utcnow(),
+                'jti': access_jti,
+                'exp': access_exp,
+                'iat': now,
                 'type': 'access'
             }
 
+            # Refresh token payload
+            refresh_payload = {
+                'user_id': str(user.id),
+                'jti': refresh_jti,
+                'exp': refresh_exp,
+                'iat': now,
+                'type': 'refresh'
+            }
+
+            # Store tokens in database for tracking/revocation
+            from .models import TokenBlacklist
+
+            TokenBlacklist.objects.create(
+                jti=access_jti,
+                token_type='access',
+                user=user,
+                expires_at=access_exp
+            )
+
+            TokenBlacklist.objects.create(
+                jti=refresh_jti,
+                token_type='refresh',
+                user=user,
+                expires_at=refresh_exp
+            )
+
+            # Encode tokens
             access_token = jwt.encode(
                 access_payload,
                 settings.SECRET_KEY,
                 algorithm='HS256'
             )
-
-            # Refresh token (expires in 7 days)
-            refresh_payload = {
-                'user_id': str(user.id),
-                'exp': datetime.utcnow() + timedelta(days=7),
-                'iat': datetime.utcnow(),
-                'type': 'refresh'
-            }
 
             refresh_token = jwt.encode(
                 refresh_payload,
@@ -278,12 +322,12 @@ class JWTService:
                 algorithm='HS256'
             )
 
-            logger.info(f"Generated JWT tokens for user: {user.email}")
+            logger.info(f"Generated JWT tokens for user: {user.email} (access expires in {JWTService.ACCESS_TOKEN_LIFETIME})")
 
             return {
                 'access_token': access_token,
                 'refresh_token': refresh_token,
-                'expires_in': 3600,  # 1 hour
+                'expires_in': int(JWTService.ACCESS_TOKEN_LIFETIME.total_seconds()),
                 'token_type': 'Bearer'
             }
 
@@ -294,7 +338,13 @@ class JWTService:
     @staticmethod
     def validate_token(token: str, token_type: str = 'access') -> Tuple[bool, Optional[Dict]]:
         """
-        Validate JWT token.
+        Validate JWT token with blacklist checking.
+
+        This method performs comprehensive token validation:
+        1. Decodes the JWT and validates signature
+        2. Checks token type matches expected type
+        3. Verifies token has not been revoked (blacklist check)
+        4. Ensures token exists in database (prevents forged tokens with valid JTI)
 
         Args:
             token: JWT token string
@@ -304,6 +354,7 @@ class JWTService:
             Tuple of (is_valid, payload_dict or None)
         """
         try:
+            # Decode and validate JWT signature
             payload = jwt.decode(
                 token,
                 settings.SECRET_KEY,
@@ -312,16 +363,45 @@ class JWTService:
 
             # Verify token type
             if payload.get('type') != token_type:
-                logger.warning(f"Invalid token type. Expected {token_type}, got {payload.get('type')}")
+                logger.warning(f"Token type mismatch: expected {token_type}, got {payload.get('type')}")
+                return False, None
+
+            # Check if token is blacklisted
+            jti = payload.get('jti')
+            if jti:
+                from .models import TokenBlacklist
+
+                try:
+                    token_record = TokenBlacklist.objects.get(jti=jti)
+
+                    # Check if token has been revoked
+                    if token_record.is_revoked:
+                        security_logger.warning(
+                            f"Rejected revoked token {jti[:8]}... for user {payload.get('email')} "
+                            f"(reason: {token_record.revoked_reason})"
+                        )
+                        return False, None
+
+                    logger.debug(f"Token {jti[:8]}... validated successfully")
+
+                except TokenBlacklist.DoesNotExist:
+                    # Token not found in database - could be forged or database issue
+                    security_logger.error(
+                        f"Token {jti[:8]}... not found in database - potential forgery attempt"
+                    )
+                    return False, None
+            else:
+                # No JTI in token - old format or invalid
+                logger.warning("Token missing JTI claim - rejecting for security")
                 return False, None
 
             return True, payload
 
         except jwt.ExpiredSignatureError:
-            logger.warning("JWT token has expired")
+            logger.debug("JWT token has expired")
             return False, None
         except jwt.InvalidTokenError as e:
-            logger.error(f"Invalid JWT token: {str(e)}")
+            logger.warning(f"Invalid JWT token: {str(e)}")
             return False, None
         except Exception as e:
             logger.error(f"Error validating JWT token: {str(e)}")
@@ -331,6 +411,8 @@ class JWTService:
     def refresh_access_token(refresh_token: str) -> Optional[Dict[str, str]]:
         """
         Generate new access token using refresh token.
+
+        Creates a new access token with a new JTI and stores it in the database.
 
         Args:
             refresh_token: Valid refresh token
@@ -346,15 +428,30 @@ class JWTService:
         try:
             user = User.objects.get(id=payload['user_id'])
 
-            # Generate new access token
+            # Generate new access token with new JTI
+            access_jti = str(uuid.uuid4())
+            now = datetime.utcnow()
+            access_exp = now + JWTService.ACCESS_TOKEN_LIFETIME
+
             access_payload = {
                 'user_id': str(user.id),
                 'email': user.email,
                 'role': user.role,
-                'exp': datetime.utcnow() + timedelta(hours=1),
-                'iat': datetime.utcnow(),
+                'jti': access_jti,
+                'exp': access_exp,
+                'iat': now,
                 'type': 'access'
             }
+
+            # Store new access token in database
+            from .models import TokenBlacklist
+
+            TokenBlacklist.objects.create(
+                jti=access_jti,
+                token_type='access',
+                user=user,
+                expires_at=access_exp
+            )
 
             access_token = jwt.encode(
                 access_payload,
@@ -362,9 +459,11 @@ class JWTService:
                 algorithm='HS256'
             )
 
+            logger.info(f"Refreshed access token for user: {user.email}")
+
             return {
                 'access_token': access_token,
-                'expires_in': 3600,
+                'expires_in': int(JWTService.ACCESS_TOKEN_LIFETIME.total_seconds()),
                 'token_type': 'Bearer'
             }
 
@@ -374,6 +473,71 @@ class JWTService:
         except Exception as e:
             logger.error(f"Error refreshing access token: {str(e)}")
             return None
+
+    @staticmethod
+    def revoke_token(jti: str, reason: str = 'logout') -> bool:
+        """
+        Revoke a specific token by its JTI.
+
+        Args:
+            jti: JWT ID to revoke
+            reason: Reason for revocation (default: 'logout')
+
+        Returns:
+            bool: True if token was revoked, False if not found
+        """
+        from .models import TokenBlacklist
+
+        try:
+            token = TokenBlacklist.objects.get(jti=jti)
+
+            if not token.is_revoked:
+                token.revoke(reason=reason)
+                security_logger.info(
+                    f"Token {jti[:8]}... revoked for user {token.user.email} (reason: {reason})"
+                )
+                return True
+            else:
+                logger.debug(f"Token {jti[:8]}... already revoked")
+                return True
+
+        except TokenBlacklist.DoesNotExist:
+            logger.warning(f"Attempted to revoke non-existent token {jti[:8]}...")
+            return False
+        except Exception as e:
+            logger.error(f"Error revoking token {jti[:8]}...: {str(e)}")
+            return False
+
+    @staticmethod
+    def revoke_all_user_tokens(user, reason: str = 'security') -> int:
+        """
+        Revoke all active tokens for a specific user.
+
+        This is useful for:
+        - Password changes
+        - Account compromise
+        - Administrative actions
+        - Security incidents
+
+        Args:
+            user: User instance
+            reason: Reason for revocation (default: 'security')
+
+        Returns:
+            int: Number of tokens revoked
+        """
+        from .models import TokenBlacklist
+
+        try:
+            count = TokenBlacklist.revoke_user_tokens(user, reason=reason)
+            security_logger.warning(
+                f"Revoked {count} tokens for user {user.email} (reason: {reason})"
+            )
+            return count
+
+        except Exception as e:
+            logger.error(f"Error revoking all tokens for user {user.email}: {str(e)}")
+            return 0
 
 
 class RoleService:
