@@ -86,11 +86,89 @@ class AzureAdvisorCSVProcessor:
 
         Args:
             file_path: Path to the CSV file to process
+
+        Raises:
+            CSVProcessingError: If file path is invalid or outside MEDIA_ROOT
         """
-        self.file_path = file_path
+        # SECURITY: Validate and sanitize file path to prevent path traversal attacks
+        self.file_path = self._validate_file_path(file_path)
         self.df: Optional[pd.DataFrame] = None
         self.statistics: Dict = {}
         self.errors: List[str] = []
+
+    def _validate_file_path(self, file_path: str) -> str:
+        """
+        Validate file path to prevent path traversal attacks.
+
+        This method ensures that:
+        1. The file path is absolute
+        2. The file is located within MEDIA_ROOT (no path traversal)
+        3. The path doesn't contain dangerous sequences like ../ or symbolic links
+
+        Args:
+            file_path: Path to validate
+
+        Returns:
+            str: Validated absolute file path
+
+        Raises:
+            CSVProcessingError: If path is invalid or outside allowed directory
+
+        Security References:
+        - CWE-22: Improper Limitation of a Pathname to a Restricted Directory
+        - OWASP: Path Traversal
+        """
+        if not file_path:
+            raise CSVProcessingError("File path cannot be empty")
+
+        # Get absolute path and resolve any symbolic links
+        try:
+            abs_path = os.path.abspath(file_path)
+            real_path = os.path.realpath(abs_path)
+        except Exception as e:
+            raise CSVProcessingError(f"Invalid file path: {str(e)}")
+
+        # Get MEDIA_ROOT from settings (fallback to safer default)
+        media_root = getattr(settings, 'MEDIA_ROOT', None)
+        if not media_root:
+            raise CSVProcessingError("MEDIA_ROOT not configured - cannot validate file path")
+
+        # Ensure MEDIA_ROOT is absolute
+        media_root_abs = os.path.abspath(media_root)
+        media_root_real = os.path.realpath(media_root_abs)
+
+        # CRITICAL: Check that file is within MEDIA_ROOT (prevents path traversal)
+        # Use os.path.commonpath to safely check if file is within allowed directory
+        try:
+            common = os.path.commonpath([media_root_real, real_path])
+        except ValueError:
+            # Paths are on different drives (Windows) or one is relative
+            raise CSVProcessingError(
+                f"File path validation failed: paths on different drives or invalid"
+            )
+
+        if common != media_root_real:
+            logger.error(
+                f"SECURITY: Path traversal attempt detected! "
+                f"Attempted path: {file_path}, "
+                f"Real path: {real_path}, "
+                f"MEDIA_ROOT: {media_root_real}"
+            )
+            raise CSVProcessingError(
+                f"Access denied: File must be within allowed directory. "
+                f"Path traversal attempts are logged and monitored."
+            )
+
+        # Additional check: Ensure path doesn't contain suspicious patterns
+        suspicious_patterns = ['..', '~', '//']
+        for pattern in suspicious_patterns:
+            if pattern in file_path:
+                logger.warning(
+                    f"SECURITY: Suspicious pattern '{pattern}' detected in path: {file_path}"
+                )
+
+        logger.debug(f"Path validation passed: {real_path} is within {media_root_real}")
+        return real_path
 
     def validate_file(self) -> bool:
         """

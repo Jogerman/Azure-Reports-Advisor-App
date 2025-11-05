@@ -1,5 +1,5 @@
 # Core Django
-Django==4.2.7
+Django==4.2.11  # Updated from 4.2.7 - Security fixes for CVE-2024-24680, CVE-2024-27351
 djangorestframework==3.14.0
 django-cors-headers==4.3.1
 django-filter==23.3
@@ -9,12 +9,12 @@ psycopg2-binary==2.9.7
 dj-database-url==2.1.0
 
 # Authentication & Security
-PyJWT==2.8.0
-cryptography==41.0.7
+PyJWT==2.9.0  # Updated from 2.8.0 - Improved algorithm verification
+cryptography==42.0.5  # Updated from 41.0.7 - Security fixes for CVE-2024-26130, CVE-2023-50782
 msal==1.24.1
 
 # Task Queue
-celery==5.3.4
+celery==5.3.6  # Updated from 5.3.4 - Security improvements in task serialization
 redis==5.0.1
 django-celery-beat==2.5.0
 django-celery-results==2.5.1
@@ -26,7 +26,7 @@ openpyxl==3.1.2
 
 # PDF Generation
 reportlab==4.0.6
-Pillow==10.1.0
+Pillow==10.3.0  # Updated from 10.1.0 - Critical security fixes for CVE-2024-28219, CVE-2023-50447
 
 # Cloud Storage
 azure-storage-blob==12.19.0
@@ -51,6 +51,7 @@ django-storages[azure]==1.14
 # Security & Rate Limiting
 django-ratelimit==4.1.0
 python-magic==0.4.27  # File type validation (MIME type detection)
+django-csp==3.8  # Content Security Policy headers
 
 # PDF Generation - WeasyPrint and Playwright
 weasyprint==61.2

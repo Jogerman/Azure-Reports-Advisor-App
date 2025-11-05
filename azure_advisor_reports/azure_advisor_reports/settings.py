@@ -105,6 +105,7 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
+    'csp',  # Content Security Policy
     # Celery apps disabled for testing to avoid dependency issues
     # 'django_celery_beat',
     # 'django_celery_results',
@@ -123,6 +124,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'csp.middleware.CSPMiddleware',  # Content Security Policy
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -452,17 +454,103 @@ RATELIMIT_USE_CACHE = 'default'
 # Will be implemented in apps.core.views.ratelimit_error
 # RATELIMIT_VIEW = 'apps.core.views.ratelimit_error'
 
-# Security Settings
+# ============================================================================
+# Security Settings - Enhanced Configuration
+# ============================================================================
 if not DEBUG:
+    # HTTPS and Cookie Security
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_REDIRECT_EXEMPT = []
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
+
+    # Additional Production Security Headers
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# ============================================================================
+# Content Security Policy (CSP) Configuration
+# ============================================================================
+# CSP helps prevent XSS attacks by controlling which resources can be loaded
+# Different policies for development and production
+
+if DEBUG:
+    # Development: More permissive for local development and testing
+    CSP_DEFAULT_SRC = ("'self'",)
+    CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'")  # Allow inline scripts in dev
+    CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")  # Allow inline styles in dev
+    CSP_IMG_SRC = ("'self'", "data:", "https:")
+    CSP_FONT_SRC = ("'self'", "data:", "https:")
+    CSP_CONNECT_SRC = ("'self'", "http://localhost:*", "ws://localhost:*")
+    CSP_REPORT_ONLY = True  # Report violations but don't block in development
+else:
+    # Production: Strict CSP policy
+    CSP_DEFAULT_SRC = ("'self'",)
+
+    # Scripts: Only from same origin and Azure CDN (if used)
+    # Remove 'unsafe-inline' and 'unsafe-eval' in production for maximum security
+    CSP_SCRIPT_SRC = (
+        "'self'",
+        # Add your CDN domains here if needed
+        # "https://cdn.example.com",
+    )
+
+    # Styles: Only from same origin
+    # Consider using nonces or hashes for inline styles in production
+    CSP_STYLE_SRC = (
+        "'self'",
+        # If you need inline styles, use nonces: CSP_INCLUDE_NONCE_IN = ['style-src']
+    )
+
+    # Images: Allow data URIs and HTTPS sources
+    CSP_IMG_SRC = ("'self'", "data:", "https:")
+
+    # Fonts: Allow data URIs and HTTPS sources
+    CSP_FONT_SRC = ("'self'", "data:", "https:")
+
+    # AJAX/WebSocket connections: Only to same origin
+    CSP_CONNECT_SRC = ("'self'",)
+
+    # Frames: Deny all iframes
+    CSP_FRAME_ANCESTORS = ("'none'",)
+
+    # Base URI: Restrict to same origin
+    CSP_BASE_URI = ("'self'",)
+
+    # Form submissions: Only to same origin
+    CSP_FORM_ACTION = ("'self'",)
+
+    # Object/Embed: Block all plugins
+    CSP_OBJECT_SRC = ("'none'",)
+
+    # Media: Allow from same origin
+    CSP_MEDIA_SRC = ("'self'",)
+
+    # Worker sources: Allow from same origin
+    CSP_WORKER_SRC = ("'self'",)
+
+    # Manifest: Allow from same origin
+    CSP_MANIFEST_SRC = ("'self'",)
+
+    # Upgrade insecure requests to HTTPS
+    CSP_UPGRADE_INSECURE_REQUESTS = True
+
+    # Block mixed content
+    CSP_BLOCK_ALL_MIXED_CONTENT = True
+
+    # Report violations (optional - configure reporting endpoint)
+    # CSP_REPORT_URI = '/api/v1/csp-report/'
+
+    # Don't use report-only mode in production
+    CSP_REPORT_ONLY = False
+
+# CSP Nonce support (recommended for inline scripts/styles in production)
+# CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
 
 # Development Settings
 if DEBUG:

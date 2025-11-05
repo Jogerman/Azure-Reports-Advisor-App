@@ -5,6 +5,7 @@ Serializers for reports app.
 import os
 import re
 import csv
+import logging
 from io import StringIO
 from rest_framework import serializers
 from django.conf import settings
@@ -17,6 +18,9 @@ try:
     HAS_MAGIC = True
 except ImportError:
     HAS_MAGIC = False
+
+# Security logger for file upload events
+security_logger = logging.getLogger('security')
 
 
 class RecommendationSerializer(serializers.ModelSerializer):
@@ -209,6 +213,11 @@ class CSVUploadSerializer(serializers.Serializer):
         allowed_extensions = getattr(settings, 'ALLOWED_CSV_EXTENSIONS', ['.csv'])
 
         if not any(file_name.endswith(ext) for ext in allowed_extensions):
+            # SECURITY LOG: Invalid file extension attempt
+            security_logger.warning(
+                f"SECURITY: File upload rejected - invalid extension. "
+                f"Filename: {value.name}, Size: {value.size} bytes"
+            )
             raise serializers.ValidationError(
                 f"Invalid file extension. Allowed: {', '.join(allowed_extensions)}"
             )
@@ -216,11 +225,19 @@ class CSVUploadSerializer(serializers.Serializer):
         # 2. Check file size
         max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 52428800)  # 50MB default
         if value.size > max_size:
+            # SECURITY LOG: File size exceeds maximum (potential DoS attack)
+            security_logger.warning(
+                f"SECURITY: File upload rejected - size exceeds maximum. "
+                f"Filename: {value.name}, Size: {value.size} bytes, Max: {max_size} bytes"
+            )
             raise serializers.ValidationError(
                 f"File size exceeds maximum ({max_size / (1024*1024):.0f} MB)"
             )
 
         if value.size == 0:
+            security_logger.warning(
+                f"SECURITY: File upload rejected - empty file. Filename: {value.name}"
+            )
             raise serializers.ValidationError("File is empty")
 
         # 3. Validate MIME type using magic numbers (if python-magic is available)
@@ -233,6 +250,11 @@ class CSVUploadSerializer(serializers.Serializer):
                 allowed_mime = ['text/plain', 'text/csv', 'application/csv',
                                'application/vnd.ms-excel', 'text/x-csv']
                 if file_type not in allowed_mime:
+                    # SECURITY LOG: MIME type mismatch (file type spoofing attempt)
+                    security_logger.warning(
+                        f"SECURITY: File upload rejected - MIME type mismatch. "
+                        f"Filename: {value.name}, Detected type: {file_type}, Expected: CSV"
+                    )
                     raise serializers.ValidationError(
                         f"Invalid file type: {file_type}. Expected CSV file."
                     )
@@ -317,6 +339,12 @@ class CSVUploadSerializer(serializers.Serializer):
                         )
         except UnicodeDecodeError:
             pass  # Already handled above
+
+        # SECURITY LOG: File validation successful
+        security_logger.info(
+            f"SECURITY: CSV file upload validated successfully. "
+            f"Filename: {value.name}, Size: {value.size} bytes"
+        )
 
         return value
 

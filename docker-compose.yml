@@ -7,10 +7,11 @@ services:
     container_name: azure-advisor-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: azure_advisor_reports
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${DB_NAME:-azure_advisor_reports}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?POSTGRES_PASSWORD must be set in .env file - use a strong password}
+      # SECURITY: POSTGRES_HOST_AUTH_METHOD=trust is disabled for security
+      # Always require password authentication
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -55,15 +56,15 @@ services:
     restart: unless-stopped
     environment:
       - DEBUG=True
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-azure_advisor_reports}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000
-      - CORS_ALLOW_ALL_ORIGINS=True
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
       - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       # - ./azure_advisor_reports:/app  # Commented out for initial testing
       - media_data:/app/media
@@ -100,10 +101,11 @@ services:
     restart: unless-stopped
     environment:
       - DEBUG=True
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-azure_advisor_reports}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./azure_advisor_reports:/app
       - media_data:/app/media
@@ -132,10 +134,11 @@ services:
     restart: unless-stopped
     environment:
       - DEBUG=True
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/azure_advisor_reports
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-azure_advisor_reports}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./azure_advisor_reports:/app
     networks:

@@ -68,18 +68,106 @@ class PlaywrightPDFGenerator:
     async def __aenter__(self):
         """Context manager entry - start Playwright."""
         self._playwright = await async_playwright().start()
+
+        # SECURITY: Configure browser args based on environment
+        browser_args = self._get_secure_browser_args()
+
         self._browser = await self._playwright.chromium.launch(
             headless=self.headless,
-            args=[
-                '--disable-web-security',  # Allow CORS for local resources
-                '--disable-features=IsolateOrigins,site-per-process',
-                '--no-sandbox',  # Required for Docker
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',  # Overcome limited resource problems
-            ]
+            args=browser_args
         )
-        logger.info("Playwright browser launched successfully")
+        logger.info(f"Playwright browser launched successfully (args: {len(browser_args)} flags)")
         return self
+
+    def _get_secure_browser_args(self) -> list:
+        """
+        Get secure browser arguments based on environment.
+
+        SECURITY CONSIDERATIONS:
+        - --disable-web-security: Only enabled in DEBUG mode (development)
+          This flag disables CORS and same-origin policy, which is a security risk
+          In production, we use proper CORS headers instead
+
+        - --no-sandbox: Only enabled in Docker environments
+          Sandboxing requires SUID which is typically disabled in containers
+          We detect Docker by checking for /.dockerenv or /proc/self/cgroup
+
+        Returns:
+            list: Secure browser arguments for current environment
+
+        Security References:
+        - Chromium Security: https://www.chromium.org/developers/design-documents/sandbox/
+        - Docker Security: https://docs.docker.com/engine/security/
+        """
+        import os
+        from django.conf import settings
+
+        args = [
+            '--disable-dev-shm-usage',  # Overcome limited resource problems (safe in all environments)
+        ]
+
+        # Check if running in DEBUG mode
+        is_debug = getattr(settings, 'DEBUG', False)
+
+        # Check if running in Docker
+        is_docker = self._is_running_in_docker()
+
+        # SECURITY: Only disable web security in DEBUG mode
+        if is_debug:
+            logger.warning(
+                "SECURITY: --disable-web-security enabled because DEBUG=True. "
+                "This should NEVER be enabled in production!"
+            )
+            args.extend([
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+            ])
+        else:
+            logger.info("SECURITY: Web security enabled (production mode)")
+
+        # Only disable sandbox in Docker (required for containers)
+        if is_docker:
+            logger.info("SECURITY: Running in Docker - disabling sandbox (required for containers)")
+            args.extend([
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ])
+        else:
+            logger.info("SECURITY: Sandbox enabled (not running in Docker)")
+
+        return args
+
+    @staticmethod
+    def _is_running_in_docker() -> bool:
+        """
+        Detect if the application is running inside a Docker container.
+
+        Detection methods:
+        1. Check for /.dockerenv file (created by Docker)
+        2. Check /proc/self/cgroup for docker/containerd references
+
+        Returns:
+            bool: True if running in Docker, False otherwise
+        """
+        # Method 1: Check for /.dockerenv
+        if os.path.exists('/.dockerenv'):
+            return True
+
+        # Method 2: Check cgroup for docker/containerd
+        try:
+            with open('/proc/self/cgroup', 'r') as f:
+                content = f.read()
+                if 'docker' in content or 'containerd' in content:
+                    return True
+        except (FileNotFoundError, PermissionError):
+            # /proc/self/cgroup doesn't exist (not Linux) or can't read it
+            pass
+
+        # Method 3: Check for common Docker environment variables
+        if os.environ.get('DOCKER_CONTAINER') or os.environ.get('KUBERNETES_SERVICE_HOST'):
+            return True
+
+        return False
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - cleanup Playwright."""

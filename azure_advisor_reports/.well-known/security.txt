@@ -1,0 +1,21 @@
+# Our security address
+Contact: mailto:security@azurereportsadvisor.com
+Contact: https://github.com/your-org/azure-advisor-reports/security/advisories/new
+
+# Our security policy
+Preferred-Languages: en, es
+
+# Expires: One year from now (RFC 3339 format)
+Expires: 2026-11-05T23:59:59.000Z
+
+# Our security acknowledgments page
+Acknowledgments: https://github.com/your-org/azure-advisor-reports/security/hall-of-fame
+
+# Our PGP key (optional - update if you have one)
+# Encryption: https://keys.openpgp.org/vks/v1/by-fingerprint/YOUR_PGP_FINGERPRINT
+
+# Security policy and disclosure guidelines
+Policy: https://github.com/your-org/azure-advisor-reports/security/policy
+
+# Canonical URI
+Canonical: https://azurereportsadvisor.com/.well-known/security.txt
