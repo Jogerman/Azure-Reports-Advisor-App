@@ -248,6 +248,12 @@ const ReportList: React.FC<ReportListProps> = ({
                       <FiCalendar className="w-4 h-4 mr-1" />
                       {format(new Date(report.created_at), 'MMM d, yyyy')}
                     </span>
+                    {report.created_by_name && (
+                      <span className="flex items-center">
+                        <FiUser className="w-4 h-4 mr-1" />
+                        Created by: {report.created_by_name}
+                      </span>
+                    )}
                     {report.processing_completed_at && (
                       <span className="text-xs">
                         Completed: {format(new Date(report.processing_completed_at), 'HH:mm')}

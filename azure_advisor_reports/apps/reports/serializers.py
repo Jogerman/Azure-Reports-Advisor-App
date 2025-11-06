@@ -140,6 +140,7 @@ class ReportListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing reports."""
 
     client_name = serializers.CharField(source='client.company_name', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True, allow_null=True)
     recommendation_count = serializers.IntegerField(read_only=True)
     total_potential_savings = serializers.DecimalField(
         max_digits=12,
@@ -153,6 +154,8 @@ class ReportListSerializer(serializers.ModelSerializer):
             'id',
             'client',
             'client_name',
+            'created_by',
+            'created_by_name',
             'report_type',
             'title',
             'status',
@@ -165,7 +168,7 @@ class ReportListSerializer(serializers.ModelSerializer):
             'processing_completed_at',
             'error_message',
         ]
-        read_only_fields = ['id', 'status', 'html_file', 'pdf_file', 'created_at', 'updated_at', 'processing_completed_at', 'error_message']
+        read_only_fields = ['id', 'created_by', 'status', 'html_file', 'pdf_file', 'created_at', 'updated_at', 'processing_completed_at', 'error_message']
 
 
 class CSVUploadSerializer(serializers.Serializer):
