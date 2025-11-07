@@ -2,8 +2,9 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } f
 import { msalInstance } from '../context/AuthContext';
 import { tokenRequest } from '../config/authConfig';
 import { showToast } from '../components/common/Toast';
+import { getEnv } from '../config/env';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = getEnv('REACT_APP_API_URL') || 'http://localhost:8000/api/v1';
 
 /**
  * Create Axios instance with default configuration
