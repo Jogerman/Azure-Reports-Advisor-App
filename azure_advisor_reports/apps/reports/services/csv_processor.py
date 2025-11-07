@@ -102,7 +102,7 @@ class AzureAdvisorCSVProcessor:
 
         This method ensures that:
         1. The file path is absolute
-        2. The file is located within MEDIA_ROOT (no path traversal)
+        2. The file is located within MEDIA_ROOT or system temp directory (no path traversal)
         3. The path doesn't contain dangerous sequences like ../ or symbolic links
 
         Args:
@@ -137,22 +137,33 @@ class AzureAdvisorCSVProcessor:
         media_root_abs = os.path.abspath(media_root)
         media_root_real = os.path.realpath(media_root_abs)
 
-        # CRITICAL: Check that file is within MEDIA_ROOT (prevents path traversal)
-        # Use os.path.commonpath to safely check if file is within allowed directory
-        try:
-            common = os.path.commonpath([media_root_real, real_path])
-        except ValueError:
-            # Paths are on different drives (Windows) or one is relative
-            raise CSVProcessingError(
-                f"File path validation failed: paths on different drives or invalid"
-            )
+        # Get system temp directory (for temporary CSV downloads from Azure Blob Storage)
+        import tempfile
+        temp_dir = os.path.realpath(tempfile.gettempdir())
 
-        if common != media_root_real:
+        # CRITICAL: Check that file is within MEDIA_ROOT or temp directory (prevents path traversal)
+        # Use os.path.commonpath to safely check if file is within allowed directory
+        allowed_dirs = [media_root_real, temp_dir]
+        is_within_allowed = False
+
+        for allowed_dir in allowed_dirs:
+            try:
+                common = os.path.commonpath([allowed_dir, real_path])
+                if common == allowed_dir:
+                    is_within_allowed = True
+                    logger.debug(f"Path validation passed: {real_path} is within {allowed_dir}")
+                    break
+            except ValueError:
+                # Paths are on different drives (Windows) or one is relative
+                continue
+
+        if not is_within_allowed:
             logger.error(
                 f"SECURITY: Path traversal attempt detected! "
                 f"Attempted path: {file_path}, "
                 f"Real path: {real_path}, "
-                f"MEDIA_ROOT: {media_root_real}"
+                f"MEDIA_ROOT: {media_root_real}, "
+                f"Temp dir: {temp_dir}"
             )
             raise CSVProcessingError(
                 f"Access denied: File must be within allowed directory. "
@@ -167,7 +178,6 @@ class AzureAdvisorCSVProcessor:
                     f"SECURITY: Suspicious pattern '{pattern}' detected in path: {file_path}"
                 )
 
-        logger.debug(f"Path validation passed: {real_path} is within {media_root_real}")
         return real_path
 
     def validate_file(self) -> bool:
