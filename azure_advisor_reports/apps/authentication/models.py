@@ -209,3 +209,116 @@ class TokenBlacklist(models.Model):
         self.revoked_at = timezone.now()
         self.revoked_reason = reason
         self.save(update_fields=['is_revoked', 'revoked_at', 'revoked_reason'])
+
+
+class APIKey(models.Model):
+    """
+    API Key model for external integrations
+
+    Supports automatic key rotation and expiration tracking
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # User ownership
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='api_keys',
+        help_text="User who owns this API key"
+    )
+
+    # Key identification
+    name = models.CharField(
+        max_length=255,
+        help_text="Descriptive name for this API key"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description of key purpose"
+    )
+
+    # Key storage (hashed for security)
+    key_prefix = models.CharField(
+        max_length=8,
+        help_text="First 8 characters of key for identification"
+    )
+    key_hash = models.CharField(
+        max_length=64,
+        help_text="SHA256 hash of the full API key"
+    )
+
+    # Status and rotation
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the key is currently active"
+    )
+    expires_at = models.DateTimeField(
+        help_text="When the key expires"
+    )
+    last_used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last time the key was used"
+    )
+    rotated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the key was rotated"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'auth_api_key'
+        indexes = [
+            models.Index(fields=['key_hash'], name='idx_key_hash'),
+            models.Index(fields=['key_prefix'], name='idx_key_prefix'),
+            models.Index(fields=['user', 'is_active'], name='idx_user_active'),
+            models.Index(fields=['expires_at'], name='idx_api_expires_at'),
+            models.Index(fields=['created_at'], name='idx_api_created_at'),
+        ]
+        ordering = ['-created_at']
+        verbose_name = 'API Key'
+        verbose_name_plural = 'API Keys'
+
+    def __str__(self):
+        status = 'Active' if self.is_active else 'Inactive'
+        return f"{self.name} ({self.key_prefix}...) - {status}"
+
+    @property
+    def is_expired(self):
+        """Check if the key is expired"""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    @property
+    def days_until_expiry(self):
+        """Get number of days until key expires"""
+        from django.utils import timezone
+        if self.is_expired:
+            return 0
+        delta = self.expires_at - timezone.now()
+        return delta.days
+
+    def mark_used(self):
+        """Update last_used_at timestamp"""
+        from django.utils import timezone
+        self.last_used_at = timezone.now()
+        self.save(update_fields=['last_used_at'])
+
+    @classmethod
+    def cleanup_expired(cls):
+        """
+        Deactivate expired API keys
+
+        Returns:
+            int: Number of keys deactivated
+        """
+        from django.utils import timezone
+        count = cls.objects.filter(
+            is_active=True,
+            expires_at__lt=timezone.now()
+        ).update(is_active=False)
+        return count

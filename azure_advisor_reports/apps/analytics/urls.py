@@ -23,6 +23,9 @@ urlpatterns = [
     # System health endpoint
     path('system-health/', views.SystemHealthView.as_view(), name='system-health'),
 
+    # Cost insights endpoint
+    path('cost-insights/', views.CostInsightsView.as_view(), name='cost-insights'),
+
     # Cache management
     path('cache/invalidate/', views.CacheInvalidationView.as_view(), name='cache-invalidate'),
 ]

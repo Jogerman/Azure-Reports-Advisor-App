@@ -19,6 +19,7 @@ from .serializers import (
     UserActivityResponseSerializer,
     ActivitySummaryResponseSerializer,
     SystemHealthSerializer,
+    CostInsightsSerializer,
 )
 
 
@@ -445,5 +446,69 @@ class SystemHealthView(APIView):
         except Exception as e:
             return Response(
                 {'error': str(e), 'message': 'Failed to retrieve system health metrics'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CostInsightsView(APIView):
+    """
+    Get cost insights including total cost analyzed, potential savings, and trends.
+
+    Query Parameters:
+        - date_from: Start date in ISO format (optional)
+        - date_to: End date in ISO format (optional)
+        - report_type: Filter by report type (optional, can be array)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get cost insights."""
+        try:
+            from datetime import datetime
+
+            # Build filters dict from query params
+            filters = {}
+
+            # Parse date filters
+            date_from_str = request.query_params.get('date_from', None)
+            date_to_str = request.query_params.get('date_to', None)
+
+            if date_from_str:
+                try:
+                    filters['date_from'] = datetime.fromisoformat(date_from_str.replace('Z', '+00:00'))
+                except ValueError:
+                    return Response(
+                        {'error': 'Invalid date_from format. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            if date_to_str:
+                try:
+                    filters['date_to'] = datetime.fromisoformat(date_to_str.replace('Z', '+00:00'))
+                except ValueError:
+                    return Response(
+                        {'error': 'Invalid date_to format. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # Parse report type filter
+            report_type = request.query_params.get('report_type', None)
+            if report_type:
+                # Support both single value and array
+                filters['report_type'] = report_type.split(',') if ',' in report_type else report_type
+
+            # Get cost insights data
+            cost_insights = AnalyticsService.get_cost_insights(filters if filters else None)
+            serializer = CostInsightsSerializer(cost_insights)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response(
+                {'error': str(e), 'message': 'Invalid parameter format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'message': 'Failed to retrieve cost insights'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

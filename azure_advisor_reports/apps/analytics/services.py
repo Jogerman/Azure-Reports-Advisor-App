@@ -25,12 +25,18 @@ class AnalyticsService:
         """
         Calculate all dashboard metrics including trends.
         Returns metrics with percentage changes vs last month.
+        This method provides data for the Analytics page KPI cards.
         """
-        cache_key = 'dashboard_metrics'
+        cache_key = 'dashboard_metrics_v2'
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return cached_data
+
+        from django.contrib.auth import get_user_model
+        import os
+
+        User = get_user_model()
 
         # Current period (this month)
         now = timezone.now()
@@ -44,38 +50,122 @@ class AnalyticsService:
 
         last_month_end = current_month_start
 
-        # Calculate current metrics
-        current_metrics = cls._calculate_period_metrics(current_month_start, now)
+        # Total reports (all time)
+        total_reports = Report.objects.count()
+        total_reports_last_month = Report.objects.filter(
+            created_at__lt=last_month_end
+        ).count()
 
-        # Calculate last month metrics for comparison
-        last_month_metrics = cls._calculate_period_metrics(last_month_start, last_month_end)
+        # Active users (users who have created at least one report)
+        active_users = User.objects.filter(
+            created_reports__isnull=False
+        ).distinct().count()
+
+        active_users_last_month = User.objects.filter(
+            created_reports__created_at__lt=last_month_end
+        ).distinct().count()
+
+        # Total cost analyzed (sum of all potential savings * multiplier)
+        total_savings = Recommendation.objects.aggregate(
+            total=Sum('potential_savings')
+        )['total'] or Decimal('0')
+        total_cost_analyzed = float(total_savings) * 5  # Assuming 20% savings rate
+
+        total_savings_last_month = Recommendation.objects.filter(
+            report__created_at__lt=last_month_end
+        ).aggregate(
+            total=Sum('potential_savings')
+        )['total'] or Decimal('0')
+        total_cost_analyzed_last_month = float(total_savings_last_month) * 5
+
+        # Average generation time (seconds)
+        completed_reports = Report.objects.filter(
+            status='completed',
+            processing_started_at__isnull=False,
+            processing_completed_at__isnull=False
+        )
+
+        avg_generation_time = 0.0
+        if completed_reports.exists():
+            processing_times = [
+                (r.processing_completed_at - r.processing_started_at).total_seconds()
+                for r in completed_reports[:100]  # Sample last 100
+            ]
+            if processing_times:
+                avg_generation_time = sum(processing_times) / len(processing_times)
+
+        # For change calculation, get last month's avg
+        completed_reports_last_month = Report.objects.filter(
+            status='completed',
+            processing_started_at__isnull=False,
+            processing_completed_at__isnull=False,
+            processing_completed_at__lt=last_month_end
+        )
+
+        avg_generation_time_last_month = 0.0
+        if completed_reports_last_month.exists():
+            processing_times_lm = [
+                (r.processing_completed_at - r.processing_started_at).total_seconds()
+                for r in completed_reports_last_month[:100]
+            ]
+            if processing_times_lm:
+                avg_generation_time_last_month = sum(processing_times_lm) / len(processing_times_lm)
+
+        # Storage used
+        try:
+            from django.conf import settings
+            media_root = getattr(settings, 'MEDIA_ROOT', None)
+
+            storage_used_bytes = 0
+            if media_root and os.path.exists(media_root):
+                for dirpath, dirnames, filenames in os.walk(media_root):
+                    for filename in filenames:
+                        filepath = os.path.join(dirpath, filename)
+                        if os.path.exists(filepath):
+                            storage_used_bytes += os.path.getsize(filepath)
+
+            storage_gb = storage_used_bytes / (1024 * 1024 * 1024)
+            storage_mb = storage_used_bytes / (1024 * 1024)
+
+            if storage_gb >= 1:
+                storage_used_formatted = f"{storage_gb:.2f} GB"
+            else:
+                storage_used_formatted = f"{storage_mb:.2f} MB"
+
+        except Exception:
+            storage_used_bytes = 0
+            storage_used_formatted = "0 MB"
+
+        # Success rate
+        completed_count = Report.objects.filter(status='completed').count()
+        success_rate = (completed_count / total_reports * 100) if total_reports > 0 else 0.0
 
         # Calculate percentage changes
-        trends = {
-            'recommendations': cls._calculate_percentage_change(
-                current_metrics['total_recommendations'],
-                last_month_metrics['total_recommendations']
-            ),
-            'savings': cls._calculate_percentage_change(
-                float(current_metrics['total_savings']),
-                float(last_month_metrics['total_savings'])
-            ),
-            'clients': cls._calculate_percentage_change(
-                current_metrics['active_clients'],
-                last_month_metrics['active_clients']
-            ),
-            'reports': cls._calculate_percentage_change(
-                current_metrics['reports_generated'],
-                last_month_metrics['reports_generated']
-            ),
-        }
+        total_reports_change = cls._calculate_percentage_change(
+            total_reports, total_reports_last_month
+        )
+        active_users_change = cls._calculate_percentage_change(
+            active_users, active_users_last_month
+        )
+        total_cost_analyzed_change = cls._calculate_percentage_change(
+            total_cost_analyzed, total_cost_analyzed_last_month
+        )
+        avg_generation_time_change = cls._calculate_percentage_change(
+            avg_generation_time, avg_generation_time_last_month
+        )
 
         result = {
-            'totalRecommendations': current_metrics['total_recommendations'],
-            'totalPotentialSavings': float(current_metrics['total_savings']),
-            'activeClients': current_metrics['active_clients'],
-            'reportsGeneratedThisMonth': current_metrics['reports_generated'],
-            'trends': trends
+            'total_reports': total_reports,
+            'total_reports_change': round(total_reports_change, 2),
+            'active_users': active_users,
+            'active_users_change': round(active_users_change, 2),
+            'total_cost_analyzed': round(total_cost_analyzed, 2),
+            'total_cost_analyzed_change': round(total_cost_analyzed_change, 2),
+            'avg_generation_time': round(avg_generation_time, 2),
+            'avg_generation_time_change': round(avg_generation_time_change, 2),
+            'storage_used': storage_used_bytes,
+            'storage_used_formatted': storage_used_formatted,
+            'success_rate': round(success_rate, 1),
         }
 
         # Cache for 15 minutes
@@ -207,18 +297,26 @@ class AnalyticsService:
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
 
-        # Get reports grouped by date
-        reports_by_date = Report.objects.filter(
+        # Get reports grouped by date and report type
+        reports_by_date_type = Report.objects.filter(
             created_at__gte=start_date,
             created_at__lte=end_date
         ).extra(
             select={'date': 'DATE(created_at)'}
-        ).values('date').annotate(
+        ).values('date', 'report_type').annotate(
             count=Count('id')
         ).order_by('date')
 
-        # Create a dictionary for quick lookup
-        date_counts = {item['date'].strftime('%Y-%m-%d'): item['count'] for item in reports_by_date}
+        # Create nested dictionary for quick lookup: {date: {type: count}}
+        date_type_counts = {}
+        for item in reports_by_date_type:
+            date_str = item['date'].strftime('%Y-%m-%d')
+            report_type = item['report_type']
+            count = item['count']
+
+            if date_str not in date_type_counts:
+                date_type_counts[date_str] = {}
+            date_type_counts[date_str][report_type] = count
 
         # Generate data points for all days (including days with 0 reports)
         data = []
@@ -226,19 +324,34 @@ class AnalyticsService:
         total = 0
         peak = 0
 
+        # Define all report types
+        report_types = ['cost', 'security', 'operations', 'detailed', 'executive']
+
         while current_date <= end_date.date():
             date_str = current_date.strftime('%Y-%m-%d')
-            count = date_counts.get(date_str, 0)
+            type_counts = date_type_counts.get(date_str, {})
+
+            # Get counts for each type, defaulting to 0
+            by_type = {
+                'cost': type_counts.get('cost', 0),
+                'security': type_counts.get('security', 0),
+                'operations': type_counts.get('operations', 0),
+                'detailed': type_counts.get('detailed', 0),
+                'executive': type_counts.get('executive', 0),
+            }
+
+            # Calculate total for this date
+            date_total = sum(by_type.values())
 
             data.append({
                 'date': date_str,
-                'value': count,
-                'label': current_date.strftime('%b %d')
+                'total': date_total,
+                'by_type': by_type
             })
 
-            total += count
-            if count > peak:
-                peak = count
+            total += date_total
+            if date_total > peak:
+                peak = date_total
 
             current_date += timedelta(days=1)
 
@@ -867,6 +980,114 @@ class AnalyticsService:
             },
             'group_by': group_by
         }
+
+        return result
+
+    @classmethod
+    def get_cost_insights(cls, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Get cost insights including total cost analyzed, potential savings, and trends.
+
+        Args:
+            filters: Optional filters for date range, report type, etc.
+
+        Returns:
+            Dictionary with cost insights data
+        """
+        cache_key = f'cost_insights_{str(filters) if filters else "all"}'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return cached_data
+
+        from django.db.models import Sum
+        from django.db.models.functions import TruncMonth
+        from decimal import Decimal
+
+        # Build base query for recommendations
+        recommendations_query = Recommendation.objects.all()
+
+        # Apply filters if provided
+        if filters:
+            # Date range filter
+            date_from = filters.get('date_from')
+            date_to = filters.get('date_to')
+
+            if date_from or date_to:
+                report_filter = Q()
+                if date_from:
+                    report_filter &= Q(report__created_at__gte=date_from)
+                if date_to:
+                    report_filter &= Q(report__created_at__lte=date_to)
+                recommendations_query = recommendations_query.filter(report_filter)
+
+            # Report type filter
+            report_type = filters.get('report_type')
+            if report_type:
+                if isinstance(report_type, list):
+                    recommendations_query = recommendations_query.filter(report__report_type__in=report_type)
+                else:
+                    recommendations_query = recommendations_query.filter(report__report_type=report_type)
+
+        # Calculate total potential savings (this represents cost analyzed/potential issues)
+        total_savings = recommendations_query.aggregate(
+            total=Sum('potential_savings')
+        )['total'] or Decimal('0')
+
+        # For total cost analyzed, we use a multiplier approach
+        # Assumption: potential savings typically represent 10-30% of total analyzed cost
+        # We'll use 20% as a reasonable estimate
+        total_cost_analyzed = float(total_savings) * 5  # If savings are 20%, total = savings / 0.2
+
+        # Potential savings is the actual sum
+        potential_savings = float(total_savings)
+
+        # Calculate savings percentage
+        savings_percentage = 20.0  # Based on our multiplier assumption
+        if total_cost_analyzed > 0:
+            savings_percentage = (potential_savings / total_cost_analyzed) * 100
+
+        # Get monthly trends (last 12 months)
+        now = timezone.now()
+        twelve_months_ago = now - timedelta(days=365)
+
+        # Query recommendations grouped by month
+        monthly_data = recommendations_query.filter(
+            report__created_at__gte=twelve_months_ago
+        ).annotate(
+            month=TruncMonth('report__created_at')
+        ).values('month').annotate(
+            total_savings=Sum('potential_savings')
+        ).order_by('month')
+
+        # Build trends array
+        trends = []
+        for item in monthly_data:
+            if item['month']:
+                month_cost = float(item['total_savings'] or 0) * 5  # Apply same multiplier
+                trends.append({
+                    'month': item['month'].strftime('%Y-%m'),
+                    'cost': round(month_cost, 2)
+                })
+
+        # If no data, return placeholder trends for last 6 months
+        if not trends:
+            for i in range(6, 0, -1):
+                month_date = now - timedelta(days=30 * i)
+                trends.append({
+                    'month': month_date.strftime('%Y-%m'),
+                    'cost': 0.0
+                })
+
+        result = {
+            'total_cost_analyzed': round(total_cost_analyzed, 2),
+            'potential_savings': round(potential_savings, 2),
+            'savings_percentage': round(savings_percentage, 2),
+            'trends': trends
+        }
+
+        # Cache for 15 minutes
+        cache.set(cache_key, result, cls.CACHE_TTL)
 
         return result
 

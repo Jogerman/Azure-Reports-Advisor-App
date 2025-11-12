@@ -18,14 +18,14 @@ import { analyticsService } from '../services';
 const Dashboard: React.FC = () => {
   // Use React Query for data fetching with auto-refresh every 30 seconds
   const {
-    data: analyticsData,
+    data: metricsData,
     isLoading: loading,
     error,
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['dashboard-analytics'],
-    queryFn: () => analyticsService.getDashboardAnalytics(),
+    queryKey: ['dashboard-metrics'],
+    queryFn: () => analyticsService.getDashboardMetrics(),
     refetchInterval: 30000, // Auto-refresh every 30 seconds
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
     staleTime: 20000, // Consider data stale after 20 seconds
@@ -136,37 +136,37 @@ const Dashboard: React.FC = () => {
       {/* Metrics Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
-          title="Active Clients"
-          value={loading ? '...' : formatNumber(analyticsData?.metrics.activeClients || 0)}
-          change={analyticsData?.metrics.trends.clients}
+          title="Active Users"
+          value={loading ? '...' : formatNumber(metricsData?.active_users || 0)}
+          change={metricsData?.active_users_change}
           changeLabel="vs last month"
           icon={<FiUsers className="w-6 h-6" />}
           color="azure"
           loading={loading}
         />
         <MetricCard
-          title="Reports Generated"
-          value={loading ? '...' : formatNumber(analyticsData?.metrics.reportsGeneratedThisMonth || 0)}
-          subtitle="This month"
-          change={analyticsData?.metrics.trends.reports}
+          title="Total Reports"
+          value={loading ? '...' : formatNumber(metricsData?.total_reports || 0)}
+          change={metricsData?.total_reports_change}
           changeLabel="vs last month"
           icon={<FiFileText className="w-6 h-6" />}
           color="success"
           loading={loading}
         />
         <MetricCard
-          title="Total Potential Savings"
-          value={loading ? '...' : formatCurrency(analyticsData?.metrics.totalPotentialSavings || 0)}
-          change={analyticsData?.metrics.trends.savings}
+          title="Total Cost Analyzed"
+          value={loading ? '...' : formatCurrency(metricsData?.total_cost_analyzed || 0)}
+          change={metricsData?.total_cost_analyzed_change}
           changeLabel="vs last month"
           icon={<FiDollarSign className="w-6 h-6" />}
           color="warning"
           loading={loading}
         />
         <MetricCard
-          title="Total Recommendations"
-          value={loading ? '...' : formatNumber(analyticsData?.metrics.totalRecommendations || 0)}
-          change={analyticsData?.metrics.trends.recommendations}
+          title="Avg Generation Time"
+          value={loading ? '...' : `${(metricsData?.avg_generation_time || 0).toFixed(1)}s`}
+          subtitle={metricsData?.storage_used_formatted}
+          change={metricsData?.avg_generation_time_change}
           changeLabel="vs last month"
           icon={<FiTrendingUp className="w-6 h-6" />}
           color="info"
@@ -174,37 +174,21 @@ const Dashboard: React.FC = () => {
         />
       </motion.div>
 
-      {/* Charts Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Category Distribution */}
-        <CategoryChart
-          data={analyticsData?.categoryDistribution || []}
-          title="Recommendations by Category"
-          subtitle="Distribution across Azure Advisor categories"
-          loading={loading}
-        />
-
-        {/* Trend Chart */}
-        <TrendChart
-          data={analyticsData?.trendData || []}
-          title="Report Generation Trend"
-          subtitle="Reports generated over time"
-          valueLabel="Reports"
-          loading={loading}
-          showTimeRangeSelector={true}
-        />
-      </motion.div>
-
-      {/* Recent Activity */}
+      {/* Additional Metrics */}
       <motion.div variants={itemVariants} className="mb-8">
-        <RecentActivity
-          activities={analyticsData?.recentActivity || []}
-          title="Recent Activity"
-          subtitle="Latest reports and system events"
-          maxItems={10}
-          loading={loading}
-          showActions={true}
-        />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">System Performance</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Success Rate</p>
+              <p className="text-2xl font-bold text-green-600">{loading ? '...' : `${(metricsData?.success_rate || 0).toFixed(1)}%`}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Storage Used</p>
+              <p className="text-2xl font-bold text-azure-600">{loading ? '...' : metricsData?.storage_used_formatted || '0 B'}</p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* Quick Actions */}

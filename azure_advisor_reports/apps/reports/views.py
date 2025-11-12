@@ -726,6 +726,317 @@ class ReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['get'], url_path='history/statistics')
+    def history_statistics(self, request):
+        """
+        Get statistics for report history
+
+        GET /api/reports/history/statistics/
+
+        Query params:
+        - client: Filter by client ID
+        - report_type: Filter by report type
+        - status: Filter by status
+        - created_by: Filter by user
+        - date_from: Start date (YYYY-MM-DD)
+        - date_to: End date (YYYY-MM-DD)
+
+        Returns:
+        {
+            "total_reports": 150,
+            "total_reports_change": 12.5,
+            "reports_this_month": 25,
+            "reports_this_month_change": 8.3,
+            "total_size": 1073741824,
+            "total_size_formatted": "1.0 GB",
+            "total_size_change": 5.2,
+            "breakdown": {
+                "cost": 45,
+                "security": 30,
+                "operations": 25,
+                "detailed": 35,
+                "executive": 15
+            }
+        }
+        """
+        from django.db.models import Count, Q, Sum, Avg, FloatField, IntegerField
+        from django.db.models.functions import TruncDate, TruncMonth
+        from django.db.models.expressions import RawSQL
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Get current month start and end
+        now = timezone.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            next_month_start = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            next_month_start = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Get previous month for comparison
+        if now.month == 1:
+            prev_month_start = now.replace(year=now.year - 1, month=12, day=1, hour=0, minute=0, second=0, microsecond=0)
+            prev_month_end = current_month_start
+        else:
+            prev_month_start = now.replace(month=now.month - 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            prev_month_end = current_month_start
+
+        # Calculate total reports
+        total_reports = queryset.count()
+
+        # Calculate reports this month
+        reports_this_month = queryset.filter(
+            created_at__gte=current_month_start,
+            created_at__lt=next_month_start
+        ).count()
+
+        # Calculate reports last month for comparison
+        reports_last_month = queryset.filter(
+            created_at__gte=prev_month_start,
+            created_at__lt=prev_month_end
+        ).count()
+
+        # Calculate percentage changes
+        total_reports_change = 0.0
+        reports_this_month_change = 0.0
+        if reports_last_month > 0:
+            reports_this_month_change = ((reports_this_month - reports_last_month) / reports_last_month) * 100
+
+        # Calculate total file sizes
+        total_csv_size = 0
+        total_html_size = 0
+        total_pdf_size = 0
+
+        for report in queryset:
+            if report.csv_file:
+                try:
+                    total_csv_size += report.csv_file.size
+                except (OSError, ValueError):
+                    pass
+            if report.html_file:
+                try:
+                    total_html_size += report.html_file.size
+                except (OSError, ValueError):
+                    pass
+            if report.pdf_file:
+                try:
+                    total_pdf_size += report.pdf_file.size
+                except (OSError, ValueError):
+                    pass
+
+        total_size = total_csv_size + total_html_size + total_pdf_size
+
+        # Format total size
+        def format_bytes(bytes_size):
+            """Convert bytes to human-readable format"""
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if bytes_size < 1024.0:
+                    return f"{bytes_size:.1f} {unit}"
+                bytes_size /= 1024.0
+            return f"{bytes_size:.1f} PB"
+
+        total_size_formatted = format_bytes(total_size)
+
+        # Calculate breakdown by report type
+        breakdown_data = queryset.values('report_type').annotate(count=Count('id'))
+        breakdown = {
+            'cost': 0,
+            'security': 0,
+            'operations': 0,
+            'detailed': 0,
+            'executive': 0,
+        }
+
+        for item in breakdown_data:
+            report_type = item['report_type']
+            if report_type in breakdown:
+                breakdown[report_type] = item['count']
+
+        # Calculate total size change (simplified - using 0 for now as we'd need historical data)
+        total_size_change = 0.0
+
+        # Build response matching frontend expectations
+        stats = {
+            'total_reports': total_reports,
+            'total_reports_change': round(total_reports_change, 1),
+            'reports_this_month': reports_this_month,
+            'reports_this_month_change': round(reports_this_month_change, 1),
+            'total_size': total_size,
+            'total_size_formatted': total_size_formatted,
+            'total_size_change': round(total_size_change, 1),
+            'breakdown': breakdown,
+        }
+
+        return Response(stats)
+
+    @action(detail=False, methods=['get'], url_path='history/trends')
+    def history_trends(self, request):
+        """
+        Get historical trends data
+
+        GET /api/reports/history/trends/
+
+        Query params:
+        - granularity: 'day', 'week', or 'month' (default: 'day')
+        - date_from: Start date
+        - date_to: End date
+
+        Returns:
+        {
+            "data": [
+                {
+                    "date": "2025-11-01",
+                    "total": 25,
+                    "by_type": {
+                        "cost": 10,
+                        "security": 5,
+                        "operations": 3,
+                        "detailed": 5,
+                        "executive": 2
+                    }
+                }
+            ]
+        }
+        """
+        from django.db.models import Count, Q
+        from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
+        from datetime import datetime, timedelta
+
+        queryset = self.filter_queryset(self.get_queryset())
+        granularity = request.query_params.get('granularity', 'day')
+
+        # Select truncation function based on granularity
+        trunc_func = {
+            'day': TruncDate,
+            'week': TruncWeek,
+            'month': TruncMonth
+        }.get(granularity, TruncDate)
+
+        # Group by date and count reports with breakdown by type
+        trends = queryset.annotate(
+            date=trunc_func('created_at')
+        ).values('date').annotate(
+            count=Count('id'),
+            cost_count=Count('id', filter=Q(report_type='cost')),
+            security_count=Count('id', filter=Q(report_type='security')),
+            operations_count=Count('id', filter=Q(report_type='operations')),
+            detailed_count=Count('id', filter=Q(report_type='detailed')),
+            executive_count=Count('id', filter=Q(report_type='executive'))
+        ).order_by('date')
+
+        # Format data for frontend with by_type breakdown
+        data = [
+            {
+                'date': item['date'].isoformat() if item['date'] else None,
+                'total': item['count'],
+                'by_type': {
+                    'cost': item['cost_count'],
+                    'security': item['security_count'],
+                    'operations': item['operations_count'],
+                    'detailed': item['detailed_count'],
+                    'executive': item['executive_count'],
+                }
+            }
+            for item in trends
+        ]
+
+        return Response({'data': data})
+
+    @action(detail=False, methods=['get'], url_path='users')
+    def get_users(self, request):
+        """
+        Get list of users who have created reports
+
+        GET /api/reports/users/
+
+        Returns:
+        {
+            "users": [
+                {
+                    "id": "uuid",
+                    "username": "jdoe",
+                    "full_name": "John Doe",
+                    "report_count": 15
+                }
+            ]
+        }
+        """
+        from django.contrib.auth import get_user_model
+        from django.db.models import Count
+
+        User = get_user_model()
+
+        # Get users with report counts
+        users_queryset = User.objects.filter(
+            created_reports__isnull=False
+        ).annotate(
+            report_count=Count('created_reports')
+        ).distinct()
+
+        # Format users with full_name
+        users_list = []
+        for user in users_queryset:
+            full_name = f"{user.first_name} {user.last_name}".strip()
+            if not full_name:
+                full_name = user.username
+
+            users_list.append({
+                'id': str(user.id),
+                'username': user.username,
+                'full_name': full_name,
+                'report_count': user.report_count
+            })
+
+        return Response({'users': users_list})
+
+    @action(detail=False, methods=['post'], url_path='export-csv')
+    def export_csv(self, request):
+        """
+        Export reports to CSV
+
+        POST /api/reports/export-csv/
+
+        Body: same filter params as list endpoint
+        """
+        import csv
+        from io import StringIO
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+
+        # Write header
+        writer.writerow([
+            'ID', 'Title', 'Client', 'Report Type', 'Status',
+            'Created By', 'Created At', 'Completed At',
+            'Total Recommendations', 'Potential Savings'
+        ])
+
+        # Write data
+        for report in queryset:
+            writer.writerow([
+                str(report.id),
+                report.title,
+                report.client.company_name,
+                report.report_type,
+                report.status,
+                report.created_by.username if report.created_by else '',
+                report.created_at.isoformat(),
+                report.processing_completed_at.isoformat() if report.processing_completed_at else '',
+                report.analysis_data.get('total_recommendations', 0) if report.analysis_data else 0,
+                report.analysis_data.get('total_potential_savings', 0) if report.analysis_data else 0
+            ])
+
+        # Create response
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="reports_export.csv"'
+
+        return response
+
 
 class RecommendationViewSet(viewsets.ReadOnlyModelViewSet):
     """

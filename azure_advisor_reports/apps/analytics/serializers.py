@@ -5,11 +5,20 @@ Serializers for analytics data.
 from rest_framework import serializers
 
 
+class ReportTypeCountSerializer(serializers.Serializer):
+    """Serializer for report counts by type."""
+    cost = serializers.IntegerField()
+    security = serializers.IntegerField()
+    operations = serializers.IntegerField()
+    detailed = serializers.IntegerField()
+    executive = serializers.IntegerField()
+
+
 class TrendDataSerializer(serializers.Serializer):
     """Serializer for trend data points."""
-    date = serializers.DateField()
-    value = serializers.IntegerField()
-    label = serializers.CharField(max_length=20)
+    date = serializers.CharField()  # ISO date string
+    total = serializers.IntegerField()
+    by_type = ReportTypeCountSerializer()
 
 
 class TrendSummarySerializer(serializers.Serializer):
@@ -48,12 +57,18 @@ class MetricTrendsSerializer(serializers.Serializer):
 
 
 class DashboardMetricsSerializer(serializers.Serializer):
-    """Serializer for dashboard metrics."""
-    totalRecommendations = serializers.IntegerField()
-    totalPotentialSavings = serializers.FloatField()
-    activeClients = serializers.IntegerField()
-    reportsGeneratedThisMonth = serializers.IntegerField()
-    trends = MetricTrendsSerializer()
+    """Serializer for dashboard metrics (Analytics page)."""
+    total_reports = serializers.IntegerField()
+    total_reports_change = serializers.FloatField()
+    active_users = serializers.IntegerField()
+    active_users_change = serializers.FloatField()
+    total_cost_analyzed = serializers.FloatField()
+    total_cost_analyzed_change = serializers.FloatField()
+    avg_generation_time = serializers.FloatField()
+    avg_generation_time_change = serializers.FloatField()
+    storage_used = serializers.IntegerField()
+    storage_used_formatted = serializers.CharField(max_length=50)
+    success_rate = serializers.FloatField()
 
 
 class ActivityItemSerializer(serializers.Serializer):
@@ -172,3 +187,17 @@ class SystemHealthSerializer(serializers.Serializer):
     storage_used_formatted = serializers.CharField(max_length=50)
     uptime = serializers.CharField(max_length=100)
     last_calculated = serializers.CharField(max_length=50)
+
+
+class CostTrendSerializer(serializers.Serializer):
+    """Serializer for cost trend data points."""
+    month = serializers.CharField(max_length=7)  # Format: YYYY-MM
+    cost = serializers.FloatField()
+
+
+class CostInsightsSerializer(serializers.Serializer):
+    """Serializer for cost insights data."""
+    total_cost_analyzed = serializers.FloatField()
+    potential_savings = serializers.FloatField()
+    savings_percentage = serializers.FloatField()
+    trends = CostTrendSerializer(many=True)

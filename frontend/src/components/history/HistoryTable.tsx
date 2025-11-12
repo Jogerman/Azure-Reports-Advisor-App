@@ -192,7 +192,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-600">{report.created_by || '-'}</span>
+                      <span className="text-sm text-gray-600">{report.created_by_name || 'Unknown'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{formatDate(report.created_at)}</div>
@@ -250,7 +250,7 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-gray-500">User:</span>
-                      <span className="ml-1 text-gray-900">{report.created_by || '-'}</span>
+                      <span className="ml-1 text-gray-900">{report.created_by_name || 'Unknown'}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Size:</span>
