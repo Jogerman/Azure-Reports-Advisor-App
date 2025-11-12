@@ -87,7 +87,13 @@ class ReportSerializer(serializers.ModelSerializer):
     )
     processing_duration = serializers.DurationField(read_only=True)
     client_name = serializers.CharField(source='client.company_name', read_only=True)
-    created_by_name = serializers.CharField(source='created_by.name', read_only=True, allow_null=True)
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        """Get the full name of the user who created the report."""
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
 
     class Meta:
         model = Report
@@ -140,13 +146,19 @@ class ReportListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing reports."""
 
     client_name = serializers.CharField(source='client.company_name', read_only=True)
-    created_by_name = serializers.CharField(source='created_by.name', read_only=True, allow_null=True)
+    created_by_name = serializers.SerializerMethodField()
     recommendation_count = serializers.IntegerField(read_only=True)
     total_potential_savings = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
         read_only=True
     )
+
+    def get_created_by_name(self, obj):
+        """Get the full name of the user who created the report."""
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
 
     class Meta:
         model = Report
@@ -416,7 +428,13 @@ class CSVUploadSerializer(serializers.Serializer):
 class ReportTemplateSerializer(serializers.ModelSerializer):
     """Serializer for ReportTemplate model."""
 
-    created_by_name = serializers.CharField(source='created_by.name', read_only=True, allow_null=True)
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        """Get the full name of the user who created the template."""
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
 
     class Meta:
         model = ReportTemplate
@@ -440,8 +458,14 @@ class ReportShareSerializer(serializers.ModelSerializer):
     """Serializer for ReportShare model."""
 
     report_title = serializers.CharField(source='report.title', read_only=True)
-    shared_by_name = serializers.CharField(source='shared_by.name', read_only=True)
+    shared_by_name = serializers.SerializerMethodField()
     is_expired = serializers.BooleanField(read_only=True)
+
+    def get_shared_by_name(self, obj):
+        """Get the full name of the user who shared the report."""
+        if obj.shared_by:
+            return obj.shared_by.get_full_name() or obj.shared_by.username
+        return None
 
     class Meta:
         model = ReportShare
