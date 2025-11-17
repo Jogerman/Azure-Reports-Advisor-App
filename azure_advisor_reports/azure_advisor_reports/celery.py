@@ -1,7 +1,13 @@
 """
 Celery configuration for azure_advisor_reports project.
 
-Windows Compatibility Notes:
+Production Configuration:
+- Uses gevent pool for better concurrency with I/O-bound tasks
+- 4 concurrent greenlets per worker (configurable via worker_concurrency)
+- Auto-scaling: 2-5 worker replicas in Azure Container Apps
+- Effective concurrency: 8-20 tasks simultaneously (2-5 workers × 4 greenlets)
+
+Windows Development Notes:
 - On Windows, use 'solo' pool: celery -A azure_advisor_reports worker -l info -P solo
 - Or use gevent pool: celery -A azure_advisor_reports worker -l info -P gevent
 - Default pool (prefork) doesn't work on Windows
@@ -73,8 +79,10 @@ app.conf.update(
     },
 
     # Worker configuration
-    worker_prefetch_multiplier=1,
+    worker_prefetch_multiplier=4,  # Increased for gevent pool (4 concurrent tasks per worker)
     worker_max_tasks_per_child=1000,
+    worker_pool='gevent',  # Use gevent pool for better concurrency with I/O-bound tasks
+    worker_concurrency=4,  # Number of concurrent greenlets per worker
 
     # Broker settings
     broker_connection_retry_on_startup=True,

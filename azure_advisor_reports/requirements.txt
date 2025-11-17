@@ -18,6 +18,7 @@ celery==5.3.6  # Updated from 5.3.4 - Security improvements in task serializatio
 redis==5.0.1
 django-celery-beat==2.5.0
 django-celery-results==2.5.1
+gevent==24.2.1  # For improved Celery worker concurrency with async I/O
 
 # File Processing
 numpy==1.26.4
@@ -30,6 +31,15 @@ Pillow==10.3.0  # Updated from 10.1.0 - Critical security fixes for CVE-2024-282
 
 # Cloud Storage
 azure-storage-blob==12.19.0
+
+# Azure Cost Management
+azure-identity==1.15.0
+azure-mgmt-costmanagement==4.0.1
+
+# Machine Learning & Statistics
+scikit-learn==1.4.0
+scipy==1.12.0
+prophet==1.1.5  # Optional: for advanced forecasting
 
 # Environment & Config
 python-decouple==3.8
