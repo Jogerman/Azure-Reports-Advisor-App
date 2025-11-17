@@ -39,6 +39,7 @@ LOCAL_APPS = [
     'apps.clients',
     'apps.reports',
     'apps.analytics',
+    'apps.cost_monitoring',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -172,7 +173,7 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 # CSV Upload and Validation Settings
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB maximum file size
 ALLOWED_CSV_EXTENSIONS = ['.csv', '.CSV']  # Allowed file extensions
-CSV_MAX_ROWS = 10000  # Maximum number of rows in CSV
+CSV_MAX_ROWS = 20000  # Maximum number of rows in CSV (increased from 10,000)
 CSV_ENCODING_OPTIONS = ['utf-8', 'utf-8-sig', 'latin-1', 'iso-8859-1', 'windows-1252']  # Encoding options to try
 
 # Create logs directory
