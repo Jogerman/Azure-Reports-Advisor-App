@@ -6,6 +6,7 @@ import logging
 import tempfile
 import os
 from celery import shared_task
+from celery.exceptions import Ignore, SoftTimeLimitExceeded
 from django.utils import timezone
 from django.db import transaction
 from django.core.files.storage import default_storage
@@ -16,7 +17,7 @@ from apps.reports.services.csv_processor import AzureAdvisorCSVProcessor, CSVPro
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=600, time_limit=660)
 def process_csv_file(self, report_id):
     """
     Process uploaded CSV file asynchronously and create recommendations.
@@ -138,9 +139,27 @@ def process_csv_file(self, report_id):
         }
 
     except Report.DoesNotExist:
-        error_msg = f"Report with ID {report_id} not found"
+        error_msg = f"Report with ID {report_id} not found - it may have been deleted"
         logger.error(error_msg)
-        return {'status': 'error', 'error': error_msg}
+        # Don't retry if the report doesn't exist - it was likely deleted
+        # Raise Ignore to mark this task as complete without retries
+        raise Ignore()
+
+    except SoftTimeLimitExceeded:
+        error_msg = "CSV processing timed out after 10 minutes. The file may be too large or complex."
+        logger.error(f"CSV processing timed out for report {report_id}")
+
+        # Update report status to failed
+        try:
+            report = Report.objects.get(id=report_id)
+            report.status = 'failed'
+            report.error_message = error_msg
+            report.processing_completed_at = timezone.now()
+            report.save(update_fields=['status', 'error_message', 'processing_completed_at'])
+        except:
+            pass
+
+        return {'status': 'error', 'error': error_msg, 'report_id': str(report_id)}
 
     except CSVProcessingError as e:
         error_msg = f"CSV processing error: {str(e)}"
@@ -207,7 +226,7 @@ def cleanup_old_csv_files():
     return {'deleted_reports': count}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=900, time_limit=960)
 def generate_report(self, report_id, report_type=None, format_type='both'):
     """
     Generate HTML and/or PDF report files asynchronously.
@@ -288,9 +307,10 @@ def generate_report(self, report_id, report_type=None, format_type='both'):
         }
 
     except Report.DoesNotExist:
-        error_msg = f"Report with ID {report_id} not found"
+        error_msg = f"Report with ID {report_id} not found - it may have been deleted"
         logger.error(error_msg)
-        return {'status': 'error', 'error': error_msg}
+        # Don't retry if the report doesn't exist - it was likely deleted
+        raise Ignore()
 
     except Exception as e:
         error_msg = f"Report generation error: {str(e)}"
