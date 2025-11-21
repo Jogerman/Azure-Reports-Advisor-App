@@ -9,6 +9,10 @@ import {
   FiUser,
   FiRefreshCw,
   FiBarChart2,
+  FiFile,
+  FiCloud,
+  FiEye,
+  FiFileText,
 } from 'react-icons/fi';
 import reportService, { Report, ReportListParams, ReportType, ReportStatus } from '../../services/reportService';
 import apiClient from '../../services/apiClient';
@@ -92,6 +96,25 @@ const ReportList: React.FC<ReportListProps> = ({
     },
   });
 
+  // Generate PDF only mutation (on-demand)
+  const generatePdfMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const response = await apiClient.post(
+        `/reports/${reportId}/generate/`,
+        { format: 'pdf', async: true }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      showToast.success('PDF generation started! Check back in a few minutes.');
+    },
+    onError: (error: any) => {
+      const errorMsg = error?.response?.data?.message || 'Failed to generate PDF';
+      showToast.error(errorMsg);
+    },
+  });
+
   // Download mutation
   const downloadMutation = useMutation({
     mutationFn: ({ id, format }: { id: string; format: 'html' | 'pdf' }) =>
@@ -109,6 +132,30 @@ const ReportList: React.FC<ReportListProps> = ({
 
   const handleDownload = (report: Report, format: 'html' | 'pdf') => {
     downloadMutation.mutate({ id: report.id, format });
+  };
+
+  const handleViewHtml = async (report: Report) => {
+    if (report.html_file) {
+      try {
+        // Fetch HTML through authenticated API
+        const response = await apiClient.get(`/reports/${report.id}/download/html/`, {
+          responseType: 'blob'
+        });
+
+        // Create a blob URL and open it in a new tab
+        const blob = new Blob([response.data], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+
+        // Clean up the blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+
+        showToast.info('Tip: Use Ctrl+P (Cmd+P on Mac) to print or save as PDF');
+      } catch (error) {
+        showToast.error('Failed to open report');
+        console.error('Error viewing HTML report:', error);
+      }
+    }
   };
 
   const handleDelete = (report: Report) => {
@@ -244,6 +291,29 @@ const ReportList: React.FC<ReportListProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                    {/* Data Source Badge */}
+                    {report.data_source && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                          report.data_source === 'csv'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                      >
+                        {report.data_source === 'csv' ? (
+                          <>
+                            <FiFile className="w-3 h-3" />
+                            CSV
+                          </>
+                        ) : (
+                          <>
+                            <FiCloud className="w-3 h-3" />
+                            Azure API
+                          </>
+                        )}
+                      </span>
+                    )}
+
                     <span className="flex items-center">
                       <FiCalendar className="w-4 h-4 mr-1" />
                       {format(new Date(report.created_at), 'MMM d, yyyy')}
@@ -260,6 +330,13 @@ const ReportList: React.FC<ReportListProps> = ({
                       </span>
                     )}
                   </div>
+
+                  {/* Azure Subscription Info */}
+                  {report.data_source === 'azure_api' && report.azure_subscription && (
+                    <p className="mt-1 text-xs text-gray-600">
+                      Azure Subscription: <span className="font-medium">{report.azure_subscription.name}</span>
+                    </p>
+                  )}
 
                   {report.error_message && (
                     <p className="mt-2 text-sm text-red-600">{report.error_message}</p>
@@ -290,28 +367,45 @@ const ReportList: React.FC<ReportListProps> = ({
                     </Button>
                   )}
 
-                  {/* Download buttons - always show for completed reports, disable when files not ready */}
-                  {report.status === 'completed' && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<FiDownload />}
-                        onClick={() => handleDownload(report, 'pdf')}
-                        disabled={downloadMutation.isPending || !report.pdf_file}
-                      >
-                        PDF
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<FiDownload />}
-                        onClick={() => handleDownload(report, 'html')}
-                        disabled={downloadMutation.isPending || !report.html_file}
-                      >
-                        HTML
-                      </Button>
-                    </>
+                  {/* View HTML Report - Opens in new tab */}
+                  {report.status === 'completed' && report.html_file && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<FiEye />}
+                      onClick={() => handleViewHtml(report)}
+                      title="View report in browser. Use Ctrl+P to print or save as PDF"
+                    >
+                      View Report
+                    </Button>
+                  )}
+
+                  {/* Generate PDF - On demand */}
+                  {report.status === 'completed' && report.html_file && !report.pdf_file && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<FiFileText />}
+                      onClick={() => generatePdfMutation.mutate(report.id)}
+                      disabled={generatePdfMutation.isPending}
+                      loading={generatePdfMutation.isPending}
+                      title="Generate PDF file (optional - you can also print from browser)"
+                    >
+                      Generate PDF
+                    </Button>
+                  )}
+
+                  {/* Download PDF - When PDF exists */}
+                  {report.status === 'completed' && report.pdf_file && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<FiDownload />}
+                      onClick={() => handleDownload(report, 'pdf')}
+                      disabled={downloadMutation.isPending}
+                    >
+                      Download PDF
+                    </Button>
                   )}
 
                   {(report.status === 'processing' || report.status === 'generating' || report.status === 'uploaded') && (

@@ -67,6 +67,9 @@ RUN mkdir -p /app/media /app/staticfiles
 # Collect static files (will run during container startup)
 # RUN python manage.py collectstatic --noinput
 
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' django \
     && chown -R django:django /app
@@ -85,5 +88,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Production command using Gunicorn
-CMD ["gunicorn", "azure_advisor_reports.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+# Use entrypoint script that runs migrations before starting Gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]

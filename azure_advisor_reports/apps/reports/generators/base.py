@@ -126,6 +126,9 @@ class BaseReportGenerator(ABC):
             # Subscription metrics
             'subscriptions': self.get_subscription_metrics(),
 
+            # Saving Plans & Reserved Instances metrics (v1.6.3)
+            'reservation_metrics': self.get_reservation_metrics(),
+
             # Summary statistics
             'high_impact_count': self.get_impact_count('high'),
             'medium_impact_count': self.get_impact_count('medium'),
@@ -222,6 +225,120 @@ class BaseReportGenerator(ABC):
         ).order_by('-total_savings')
 
         return list(subscriptions)
+
+    def get_reservation_metrics(self):
+        """
+        Get metrics for Saving Plans & Reserved Instances recommendations (v1.6.3 - Memory Optimized).
+
+        Analyzes reservation-based recommendations and calculates:
+        - Total count of reservation recommendations
+        - Breakdown by reservation type
+        - Breakdown by commitment term
+        - Total commitment savings over the full term
+        - Average savings per reservation
+
+        Returns:
+            dict: Dictionary containing reservation metrics and grouped data
+        """
+        from django.db.models import F, Case, When, DecimalField, Value
+
+        # Filter only reservation recommendations and annotate with commitment savings
+        reservations = self.recommendations.filter(
+            is_reservation_recommendation=True
+        ).annotate(
+            commitment_savings=Case(
+                When(
+                    commitment_term_years__isnull=False,
+                    potential_savings__isnull=False,
+                    then=F('potential_savings') * F('commitment_term_years')
+                ),
+                default=F('potential_savings'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        reservation_count = reservations.count()
+
+        if reservation_count == 0:
+            return {
+                'has_reservations': False,
+                'total_count': 0,
+                'total_annual_savings': 0,
+                'total_commitment_savings': 0,
+                'by_type': [],
+                'by_term': [],
+                'recommendations': [],
+            }
+
+        # Calculate totals using database aggregation (memory efficient)
+        totals = reservations.aggregate(
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+        total_annual_savings = totals['total_annual'] or 0
+        total_commitment_savings = float(totals['total_commitment'] or 0)
+
+        # Group by reservation type using database aggregation
+        by_type = []
+        type_groups = reservations.values('reservation_type').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+            commitment_savings=Sum('commitment_savings')
+        ).order_by('-annual_savings')
+
+        for group in type_groups:
+            if group['reservation_type']:
+                # Get display name for type
+                type_display = {
+                    'reserved_instance': 'Reserved VM Instance',
+                    'savings_plan': 'Savings Plan',
+                    'reserved_capacity': 'Reserved Capacity',
+                    'other': 'Other Reservation',
+                }.get(group['reservation_type'], group['reservation_type'])
+
+                by_type.append({
+                    'type': group['reservation_type'],
+                    'type_display': type_display,
+                    'count': group['count'],
+                    'annual_savings': float(group['annual_savings'] or 0),
+                    'commitment_savings': float(group['commitment_savings'] or 0),
+                })
+
+        # Group by commitment term using database aggregation
+        by_term = []
+        term_groups = reservations.values('commitment_term_years').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+            commitment_savings=Sum('commitment_savings')
+        ).order_by('commitment_term_years')
+
+        for group in term_groups:
+            if group['commitment_term_years']:
+                term_display = f"{group['commitment_term_years']}-Year Commitment"
+
+                by_term.append({
+                    'term_years': group['commitment_term_years'],
+                    'term_display': term_display,
+                    'count': group['count'],
+                    'annual_savings': float(group['annual_savings'] or 0),
+                    'commitment_savings': float(group['commitment_savings'] or 0),
+                })
+
+        # Get top reservation recommendations using database ordering (memory efficient)
+        top_reservations = list(
+            reservations.order_by('-commitment_savings')[:10]
+        )
+
+        return {
+            'has_reservations': True,
+            'total_count': reservation_count,
+            'total_annual_savings': float(total_annual_savings),
+            'total_commitment_savings': total_commitment_savings,
+            'average_annual_savings': float(total_annual_savings / reservation_count) if reservation_count > 0 else 0,
+            'by_type': by_type,
+            'by_term': by_term,
+            'recommendations': top_reservations,
+        }
 
     def group_by_category(self):
         """

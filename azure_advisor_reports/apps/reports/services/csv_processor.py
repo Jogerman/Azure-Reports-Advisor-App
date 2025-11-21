@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from .reservation_analyzer import ReservationAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -494,10 +495,14 @@ class AzureAdvisorCSVProcessor:
                     except Exception:
                         logger.warning(f"Failed to parse retirement date: {raw_date}")
 
+                # Extract base recommendation data
+                recommendation_text = row.get('Recommendation', row.get('Description', ''))
+                potential_benefits_text = row.get('Potential Benefits', '')
+
                 recommendation_data = {
                     'category': category,
                     'business_impact': business_impact,
-                    'recommendation': row.get('Recommendation', row.get('Description', '')),
+                    'recommendation': recommendation_text,
                     'subscription_id': row.get('Subscription ID', ''),
                     'subscription_name': row.get('Subscription Name', ''),
                     'resource_group': row.get('Resource Group', ''),
@@ -505,12 +510,27 @@ class AzureAdvisorCSVProcessor:
                     'resource_type': row.get('Resource Type', ''),
                     'potential_savings': potential_savings,
                     'currency': row.get('Currency', 'USD'),
-                    'potential_benefits': row.get('Potential Benefits', ''),
+                    'potential_benefits': potential_benefits_text,
                     'retirement_date': retirement_date,
                     'retiring_feature': row.get('Retiring Feature', ''),
                     'advisor_score_impact': advisor_score_impact,
                     'csv_row_number': idx + 2,  # +2 because: 0-indexed + 1 for header row
                 }
+
+                # Analyze for Saving Plans & Reserved Instances (v1.6.3 feature)
+                try:
+                    reservation_analysis = ReservationAnalyzer.analyze_recommendation(
+                        recommendation_text,
+                        potential_benefits_text
+                    )
+                    recommendation_data['is_reservation_recommendation'] = reservation_analysis['is_reservation']
+                    recommendation_data['reservation_type'] = reservation_analysis['reservation_type']
+                    recommendation_data['commitment_term_years'] = reservation_analysis['commitment_term_years']
+                except Exception as e:
+                    logger.warning(f"Failed to analyze reservation for row {idx}: {str(e)}")
+                    recommendation_data['is_reservation_recommendation'] = False
+                    recommendation_data['reservation_type'] = None
+                    recommendation_data['commitment_term_years'] = None
 
                 recommendations.append(recommendation_data)
 

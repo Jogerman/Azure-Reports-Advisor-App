@@ -8,13 +8,13 @@ FROM node:18-alpine as build
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm ci
 
 # Copy application code
-COPY . .
+COPY frontend/ .
 
 # Build the application for production
 # The REACT_APP_API_URL will be injected by Container App environment variables
@@ -29,13 +29,13 @@ RUN npm run build
 FROM nginx:alpine
 
 # Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
 # Copy environment injection script
-COPY env.sh /docker-entrypoint.d/40-generate-env.sh
+COPY frontend/env.sh /docker-entrypoint.d/40-generate-env.sh
 
 # Create nginx user (if not exists)
 RUN addgroup -g 101 -S nginx 2>/dev/null || true

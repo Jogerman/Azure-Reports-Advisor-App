@@ -105,6 +105,7 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',  # OpenAPI 3.0 schema generation and Swagger UI
     'csp',  # Content Security Policy
     # Celery apps disabled for testing to avoid dependency issues
     # 'django_celery_beat',
@@ -117,6 +118,7 @@ LOCAL_APPS = [
     'apps.clients',
     'apps.reports',
     'apps.analytics',
+    'apps.azure_integration',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -276,7 +278,18 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
+}
+
+# DRF Spectacular Settings (OpenAPI 3.0 / Swagger UI)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Azure Advisor Reports API',
+    'DESCRIPTION': 'REST API for managing Azure Advisor reports with dual data sources (CSV upload and Azure API integration)',
+    'VERSION': '2.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/v1/',
 }
 
 # Log the configured authentication classes to verify settings are loaded

@@ -103,6 +103,10 @@ def process_csv_file(self, report_id):
                     retiring_feature=str(rec_data.get('retiring_feature', ''))[:255],
                     advisor_score_impact=rec_data.get('advisor_score_impact', 0),
                     csv_row_number=rec_data.get('csv_row_number'),
+                    # Reservation fields
+                    is_reservation_recommendation=rec_data.get('is_reservation_recommendation', False),
+                    reservation_type=rec_data.get('reservation_type'),
+                    commitment_term_years=rec_data.get('commitment_term_years'),
                 )
                 recommendation_instances.append(recommendation)
 
@@ -122,13 +126,13 @@ def process_csv_file(self, report_id):
 
         logger.info(f"CSV processing completed successfully for report {report_id}")
 
-        # Automatically trigger report generation after successful CSV processing
+        # Automatically trigger HTML report generation only (PDF on-demand for better performance)
         try:
-            logger.info(f"Triggering automatic report generation for {report_id}")
-            generate_report.delay(str(report_id), format_type='both')
-            logger.info(f"Report generation task dispatched for {report_id}")
+            logger.info(f"Triggering automatic HTML report generation for {report_id}")
+            generate_report.delay(str(report_id), format_type='html')
+            logger.info(f"HTML report generation task dispatched for {report_id}")
         except Exception as e:
-            logger.error(f"Failed to trigger report generation for {report_id}: {str(e)}", exc_info=True)
+            logger.error(f"Failed to trigger HTML report generation for {report_id}: {str(e)}", exc_info=True)
             # Don't fail the CSV processing task if report generation fails to dispatch
 
         return {

@@ -6,6 +6,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from apps.clients.models import Client
 
@@ -13,6 +14,13 @@ from apps.clients.models import Client
 class Report(models.Model):
     """
     Report represents an Azure Advisor report generated for a client.
+
+    Supports dual data sources:
+    - CSV Upload: Traditional CSV file upload and processing
+    - Azure API: Direct integration with Azure Advisor API
+
+    Validation ensures XOR constraint: either csv_file OR azure_subscription
+    must be provided, but not both.
     """
     REPORT_TYPES = [
         ('detailed', 'Detailed Report'),
@@ -30,6 +38,11 @@ class Report(models.Model):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
+    ]
+
+    DATA_SOURCE_CHOICES = [
+        ('csv', 'CSV Upload'),
+        ('azure_api', 'Azure API'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -54,6 +67,29 @@ class Report(models.Model):
         max_length=255,
         blank=True,
         help_text="Custom report title (optional)"
+    )
+
+    # Data source configuration (v2.0 feature)
+    data_source = models.CharField(
+        max_length=20,
+        choices=DATA_SOURCE_CHOICES,
+        default='csv',
+        help_text="Source of report data: CSV upload or Azure API"
+    )
+
+    azure_subscription = models.ForeignKey(
+        'azure_integration.AzureSubscription',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reports',
+        help_text="Azure subscription for API-based reports"
+    )
+
+    api_sync_metadata = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Metadata from API sync (filters, timestamp, etc.)"
     )
 
     # File management
@@ -124,6 +160,51 @@ class Report(models.Model):
     def __str__(self):
         title = self.title or f"{self.get_report_type_display()} Report"
         return f"{title} - {self.client.company_name} ({self.get_status_display()})"
+
+    def clean(self):
+        """
+        Validate data source constraints.
+
+        Ensures XOR validation:
+        - If data_source='csv', require csv_file
+        - If data_source='azure_api', require azure_subscription
+        - csv_file and azure_subscription are mutually exclusive
+        """
+        super().clean()
+
+        has_csv = bool(self.csv_file)
+        has_azure = bool(self.azure_subscription)
+
+        # Validate based on data_source
+        if self.data_source == 'csv':
+            if not has_csv:
+                raise ValidationError({
+                    'csv_file': 'CSV file is required when data source is CSV.'
+                })
+            if has_azure:
+                raise ValidationError({
+                    'azure_subscription': 'Cannot specify Azure subscription when data source is CSV.'
+                })
+        elif self.data_source == 'azure_api':
+            if not has_azure:
+                raise ValidationError({
+                    'azure_subscription': 'Azure subscription is required when data source is Azure API.'
+                })
+            if has_csv:
+                raise ValidationError({
+                    'csv_file': 'Cannot specify CSV file when data source is Azure API.'
+                })
+
+        # XOR validation: cannot have both or neither
+        if has_csv and has_azure:
+            raise ValidationError(
+                'Report must have either a CSV file or an Azure subscription, not both.'
+            )
+
+        if not has_csv and not has_azure:
+            raise ValidationError(
+                'Report must have either a CSV file or an Azure subscription.'
+            )
 
     @property
     def processing_duration(self):
@@ -241,6 +322,30 @@ class Recommendation(models.Model):
         help_text="Original row number in CSV file"
     )
 
+    # Saving Plans & Reserved Instances Analysis (v1.6.3 feature)
+    is_reservation_recommendation = models.BooleanField(
+        default=False,
+        help_text="Indicates if this is a reservation/savings plan recommendation"
+    )
+    reservation_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('reserved_instance', 'Reserved VM Instance'),
+            ('savings_plan', 'Savings Plan'),
+            ('reserved_capacity', 'Reserved Capacity'),
+            ('other', 'Other Reservation'),
+        ],
+        null=True,
+        blank=True,
+        help_text="Type of reservation or savings plan"
+    )
+    commitment_term_years = models.IntegerField(
+        null=True,
+        blank=True,
+        choices=[(1, '1 Year'), (3, '3 Years')],
+        help_text="Duration of the reservation commitment"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -251,6 +356,7 @@ class Recommendation(models.Model):
             models.Index(fields=['business_impact']),
             models.Index(fields=['potential_savings']),
             models.Index(fields=['subscription_id']),
+            models.Index(fields=['is_reservation_recommendation']),
         ]
 
     def __str__(self):
@@ -260,6 +366,18 @@ class Recommendation(models.Model):
     def monthly_savings(self):
         """Calculate monthly potential savings."""
         return self.potential_savings / 12 if self.potential_savings else 0
+
+    @property
+    def total_commitment_savings(self):
+        """Calculate total savings over the entire commitment period."""
+        if self.commitment_term_years and self.potential_savings:
+            return self.potential_savings * self.commitment_term_years
+        return self.potential_savings
+
+    @property
+    def is_long_term_commitment(self):
+        """Check if this is a multi-year commitment."""
+        return self.commitment_term_years is not None and self.commitment_term_years > 1
 
 
 class ReportTemplate(models.Model):

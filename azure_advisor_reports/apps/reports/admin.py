@@ -2,6 +2,7 @@
 Django admin configuration for report management.
 """
 
+import json
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
@@ -28,6 +29,8 @@ class ReportAdmin(admin.ModelAdmin):
         'get_title',
         'client',
         'report_type',
+        'data_source_display',
+        'azure_subscription',
         'status',
         'recommendation_count',
         'total_savings_display',
@@ -35,6 +38,7 @@ class ReportAdmin(admin.ModelAdmin):
         'created_at'
     ]
     list_filter = [
+        'data_source',
         'status',
         'report_type',
         'created_at',
@@ -55,7 +59,8 @@ class ReportAdmin(admin.ModelAdmin):
         'processing_started_at',
         'processing_completed_at',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'api_sync_metadata_display',
     ]
 
     fieldsets = (
@@ -66,6 +71,14 @@ class ReportAdmin(admin.ModelAdmin):
                 'title',
                 'created_by',
             )
+        }),
+        ('Data Source Configuration', {
+            'fields': (
+                'data_source',
+                'azure_subscription',
+                'api_sync_metadata_display',
+            ),
+            'description': 'Choose data source: CSV upload or Azure API integration.'
         }),
         ('File Management', {
             'fields': (
@@ -134,9 +147,35 @@ class ReportAdmin(admin.ModelAdmin):
     total_savings_display.short_description = 'Total Savings'
     total_savings_display.admin_order_field = 'total_potential_savings'
 
+    def data_source_display(self, obj):
+        """Display data source with icon."""
+        icons = {
+            'csv': '📄',
+            'azure_api': '☁️',
+        }
+        icon = icons.get(obj.data_source, '?')
+        return format_html(
+            '{} {}',
+            icon,
+            obj.get_data_source_display()
+        )
+    data_source_display.short_description = 'Data Source'
+    data_source_display.admin_order_field = 'data_source'
+
+    def api_sync_metadata_display(self, obj):
+        """Display API sync metadata as formatted JSON."""
+        if not obj.api_sync_metadata:
+            return "-"
+        try:
+            formatted_json = json.dumps(obj.api_sync_metadata, indent=2)
+            return format_html('<pre>{}</pre>', formatted_json)
+        except (TypeError, ValueError):
+            return str(obj.api_sync_metadata)
+    api_sync_metadata_display.short_description = 'API Sync Metadata'
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'client', 'created_by'
+            'client', 'created_by', 'azure_subscription'
         ).prefetch_related('recommendations')
 
     actions = ['retry_failed_reports', 'mark_as_completed']

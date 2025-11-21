@@ -18,6 +18,7 @@ from .serializers import (
     ReportSerializer,
     ReportListSerializer,
     CSVUploadSerializer,
+    ReportCreateSerializer,
     RecommendationSerializer,
     RecommendationListSerializer,
     ReportTemplateSerializer,
@@ -34,13 +35,17 @@ logger = logging.getLogger(__name__)
 
 class ReportViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Report CRUD operations and CSV upload.
+    ViewSet for Report CRUD operations with dual data source support.
+
+    Supports creating reports from:
+    - CSV file uploads (traditional method)
+    - Azure Advisor API (direct integration with Azure subscriptions)
     """
 
-    queryset = Report.objects.select_related('client', 'created_by').prefetch_related('recommendations')
+    queryset = Report.objects.select_related('client', 'created_by', 'azure_subscription').prefetch_related('recommendations')
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['client', 'report_type', 'status', 'created_by']
+    filterset_fields = ['client', 'report_type', 'status', 'created_by', 'data_source']
     search_fields = ['title', 'client__company_name']
     ordering_fields = ['created_at', 'updated_at', 'processing_completed_at']
     ordering = ['-created_at']
@@ -49,6 +54,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         """Return appropriate serializer class based on action."""
         if self.action == 'list':
             return ReportListSerializer
+        elif self.action == 'create':
+            return ReportCreateSerializer
         elif self.action == 'upload_csv':
             return CSVUploadSerializer
         return ReportSerializer
@@ -61,6 +68,89 @@ class ReportViewSet(viewsets.ModelViewSet):
         # For now, return all reports
 
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new report from either CSV upload or Azure API.
+
+        POST /api/v1/reports/
+
+        For CSV:
+            {
+                "client_id": "uuid",
+                "report_type": "detailed",
+                "data_source": "csv",
+                "csv_file": <file>
+            }
+
+        For Azure API:
+            {
+                "client_id": "uuid",
+                "report_type": "detailed",
+                "data_source": "azure_api",
+                "azure_subscription": "uuid",
+                "filters": {
+                    "category": "Cost",
+                    "impact": "High"
+                }
+            }
+
+        Returns:
+            201 Created: Report created successfully
+            {
+                "status": "success",
+                "message": "Report created successfully",
+                "data": {
+                    "report_id": "uuid",
+                    "report": {...}
+                }
+            }
+
+            400 Bad Request: Validation failed
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save()
+
+        # Trigger appropriate async task based on data source
+        if report.data_source == 'csv':
+            logger.info(
+                f"Triggering CSV processing for report {report.id} "
+                f"(client: {report.client.company_name})"
+            )
+            try:
+                process_csv_task.delay(str(report.id))
+            except Exception as e:
+                logger.error(
+                    f"Failed to trigger CSV processing task for report {report.id}: {str(e)}"
+                )
+
+        elif report.data_source == 'azure_api':
+            logger.info(
+                f"Triggering Azure API fetch for report {report.id} "
+                f"(subscription: {report.azure_subscription.name})"
+            )
+            try:
+                from apps.azure_integration.tasks import fetch_azure_recommendations
+                fetch_azure_recommendations.delay(str(report.id))
+            except Exception as e:
+                logger.error(
+                    f"Failed to trigger Azure fetch task for report {report.id}: {str(e)}"
+                )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                'status': 'success',
+                'message': 'Report created successfully',
+                'data': {
+                    'report_id': str(report.id),
+                    'report': ReportSerializer(report).data
+                }
+            },
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     @action(detail=False, methods=['post'], url_path='upload')
     def upload_csv(self, request):
@@ -196,13 +286,17 @@ class ReportViewSet(viewsets.ModelViewSet):
                 report.recommendations.all().delete()
 
                 # Create new recommendations
-                recommendations = [
-                    Recommendation(
+                recommendations = []
+                for rec_data in recommendations_data:
+                    # Ensure reservation fields are always present
+                    rec_data.setdefault('is_reservation_recommendation', False)
+                    rec_data.setdefault('reservation_type', None)
+                    rec_data.setdefault('commitment_term_years', None)
+
+                    recommendations.append(Recommendation(
                         report=report,
                         **rec_data
-                    )
-                    for rec_data in recommendations_data
-                ]
+                    ))
 
                 Recommendation.objects.bulk_create(recommendations, batch_size=500)
 
@@ -726,6 +820,77 @@ class ReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['get'], url_path='data-source-stats')
+    def data_source_stats(self, request):
+        """
+        Get statistics about reports by data source.
+
+        GET /api/v1/reports/data-source-stats/
+
+        Returns aggregated statistics showing:
+        - Total number of reports
+        - Breakdown by data source (csv vs azure_api)
+        - Breakdown by status (completed, processing, failed, etc.)
+        - Combined breakdown by data source and status
+
+        Returns:
+            200 OK: Statistics data
+            {
+                "total": 150,
+                "by_source": {
+                    "csv": 120,
+                    "azure_api": 30
+                },
+                "by_status": {
+                    "completed": 130,
+                    "processing": 10,
+                    "failed": 5,
+                    "uploaded": 5
+                },
+                "by_source_and_status": [
+                    {
+                        "data_source": "csv",
+                        "status": "completed",
+                        "count": 100
+                    },
+                    {
+                        "data_source": "azure_api",
+                        "status": "completed",
+                        "count": 30
+                    },
+                    ...
+                ]
+            }
+        """
+        from django.db.models import Count
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        stats = {
+            'total': queryset.count(),
+            'by_source': dict(
+                queryset.values('data_source').annotate(count=Count('id'))
+                .values_list('data_source', 'count')
+            ),
+            'by_status': dict(
+                queryset.values('status').annotate(count=Count('id'))
+                .values_list('status', 'count')
+            ),
+            'by_source_and_status': list(
+                queryset.values('data_source', 'status')
+                .annotate(count=Count('id'))
+                .order_by('data_source', 'status')
+            ),
+        }
+
+        logger.info(
+            f"Data source stats requested by user {request.user.email}: "
+            f"total={stats['total']}, csv={stats['by_source'].get('csv', 0)}, "
+            f"azure_api={stats['by_source'].get('azure_api', 0)}"
+        )
+
+        return Response(stats)
+
     @action(detail=False, methods=['get'], url_path='history/statistics')
     def history_statistics(self, request):
         """
@@ -1036,6 +1201,121 @@ class ReportViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename="reports_export.csv"'
 
         return response
+
+    @action(detail=True, methods=['post'], url_path='add-manual-recommendations')
+    def add_manual_recommendations(self, request, pk=None):
+        """
+        Add manual recommendations to a report (v1.7.0).
+
+        This endpoint allows users to manually input recommendations that may not be
+        captured by Azure Advisor or come from other sources.
+
+        POST /api/v1/reports/{id}/add-manual-recommendations/
+
+        Request Body:
+        {
+            "recommendations": [
+                {
+                    "category": "cost",
+                    "business_impact": "high",
+                    "recommendation": "Implement auto-shutdown for dev VMs",
+                    "subscription_id": "sub-123",
+                    "subscription_name": "Dev Subscription",
+                    "resource_group": "rg-dev",
+                    "resource_name": "vm-dev-01",
+                    "resource_type": "Microsoft.Compute/virtualMachines",
+                    "potential_savings": 1200.00,
+                    "currency": "USD",
+                    "potential_benefits": "Reduce costs by shutting down VMs outside business hours",
+                    "advisor_score_impact": 5.0
+                },
+                ...
+            ]
+        }
+
+        Response:
+        {
+            "status": "success",
+            "message": "3 manual recommendations added successfully",
+            "data": {
+                "recommendations_created": 3,
+                "total_recommendations": 45
+            }
+        }
+        """
+        from .serializers import BulkManualRecommendationSerializer
+
+        report = self.get_object()
+
+        # Validate report state - can only add to reports that have already been processed
+        # or are in pending state (for Azure API reports)
+        if report.status not in ['completed', 'pending', 'processing']:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': (
+                        f'Cannot add manual recommendations to report with status: {report.status}. '
+                        'Report must be completed or pending.'
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate and create recommendations
+        serializer = BulkManualRecommendationSerializer(
+            data=request.data,
+            context={'report': report}
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Validation failed',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Create the recommendations
+            created_recommendations = serializer.save()
+
+            logger.info(
+                f"Added {len(created_recommendations)} manual recommendations to report {report.id} "
+                f"by user {request.user.email if request.user else 'Anonymous'}"
+            )
+
+            # Get updated totals
+            total_recommendations = report.recommendations.count()
+            total_savings = report.total_potential_savings
+
+            return Response(
+                {
+                    'status': 'success',
+                    'message': f'{len(created_recommendations)} manual recommendation(s) added successfully',
+                    'data': {
+                        'recommendations_created': len(created_recommendations),
+                        'total_recommendations': total_recommendations,
+                        'total_potential_savings': float(total_savings),
+                    }
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to add manual recommendations to report {report.id}: {str(e)}",
+                exc_info=True
+            )
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Failed to add manual recommendations',
+                    'errors': {'detail': str(e)}
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class RecommendationViewSet(viewsets.ReadOnlyModelViewSet):

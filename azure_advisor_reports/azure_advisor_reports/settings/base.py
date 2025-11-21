@@ -31,15 +31,16 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'django_celery_beat',
     'django_celery_results',
+    'drf_spectacular',  # OpenAPI schema generation
 ]
 
 LOCAL_APPS = [
     'apps.core',
     'apps.authentication',
     'apps.clients',
+    'apps.azure_integration',
     'apps.reports',
     'apps.analytics',
-    'apps.cost_monitoring',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -110,7 +111,9 @@ STATICFILES_DIRS = [
 ]
 
 # Use WhiteNoise for static file compression and caching
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Using CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+# to avoid strict manifest mode failures for dynamically referenced files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Media files
 MEDIA_URL = '/media/'
@@ -153,7 +156,30 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
+        'azure_api': '100/hour',  # Azure API operations
+        'azure_connection_test': '20/hour',  # Connection tests
+        'azure_sync': '50/hour',  # Sync operations
+        'report_creation': '100/day',  # Report creation
     },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
+}
+
+# drf-spectacular settings for API documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Azure Advisor Reports API',
+    'DESCRIPTION': 'REST API for managing Azure Advisor reports with dual data sources (CSV upload and Azure API integration)',
+    'VERSION': '2.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/v1',
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }
 
 # Celery Configuration (base settings)

@@ -3,6 +3,7 @@ Django==4.2.11  # Updated from 4.2.7 - Security fixes for CVE-2024-24680, CVE-20
 djangorestframework==3.14.0
 django-cors-headers==4.3.1
 django-filter==23.3
+drf-spectacular==0.27.0  # OpenAPI 3.0 schema generation and Swagger UI
 
 # Database
 psycopg2-binary==2.9.7
@@ -32,9 +33,11 @@ Pillow==10.3.0  # Updated from 10.1.0 - Critical security fixes for CVE-2024-282
 # Cloud Storage
 azure-storage-blob==12.19.0
 
-# Azure Cost Management
+# Azure Cost Management & Advisor
 azure-identity==1.15.0
 azure-mgmt-costmanagement==4.0.1
+azure-mgmt-advisor==9.0.0
+azure-mgmt-core==1.4.0
 
 # Machine Learning & Statistics
 scikit-learn==1.4.0
@@ -44,6 +47,9 @@ prophet==1.1.5  # Optional: for advanced forecasting
 # Environment & Config
 python-decouple==3.8
 python-dotenv==1.0.0
+
+# Retry Logic
+tenacity==8.2.3
 
 # Monitoring & Logging
 sentry-sdk==1.38.0

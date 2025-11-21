@@ -5,6 +5,7 @@ import { FiArrowLeft, FiEdit2, FiTrash2, FiFileText, FiCalendar, FiDollarSign } 
 import { clientService, reportService } from '../services';
 import { Button, Card, LoadingSpinner, Modal, ConfirmDialog, showToast } from '../components/common';
 import ClientForm from '../components/clients/ClientForm';
+import ClientAzureSubscriptions from '../components/clients/ClientAzureSubscriptions';
 import { format } from 'date-fns';
 
 const ClientDetailPage: React.FC = () => {
@@ -198,22 +199,8 @@ const ClientDetailPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Azure Subscriptions */}
-      {client.azure_subscription_ids && client.azure_subscription_ids.length > 0 && (
-        <Card>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Azure Subscriptions</h2>
-          <div className="space-y-2">
-            {client.azure_subscription_ids.map((subscriptionId, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <code className="text-sm text-gray-700">{subscriptionId}</code>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* Azure Subscriptions - New integrated management */}
+      <ClientAzureSubscriptions clientId={id!} clientName={client.company_name} />
 
       {/* Reports History */}
       <Card>

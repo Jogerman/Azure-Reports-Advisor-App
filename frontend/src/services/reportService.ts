@@ -11,12 +11,53 @@ import {
 export type ReportType = 'detailed' | 'executive' | 'cost' | 'security' | 'operations';
 export type ReportStatus = 'pending' | 'uploaded' | 'processing' | 'generating' | 'completed' | 'failed' | 'cancelled';
 
+export type RecommendationCategory = 'cost' | 'security' | 'reliability' | 'operational_excellence' | 'performance';
+export type BusinessImpact = 'high' | 'medium' | 'low';
+
+export interface ManualRecommendation {
+  category: RecommendationCategory;
+  business_impact: BusinessImpact;
+  recommendation: string;
+  subscription_id?: string;
+  subscription_name?: string;
+  resource_group?: string;
+  resource_name?: string;
+  resource_type?: string;
+  potential_savings?: number;
+  currency?: string;
+  potential_benefits?: string;
+  retirement_date?: string;
+  retiring_feature?: string;
+  advisor_score_impact?: number;
+}
+
+export interface ManualRecommendationsRequest {
+  recommendations: ManualRecommendation[];
+}
+
+export interface ManualRecommendationsResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    recommendations_created: number;
+    total_recommendations: number;
+    total_potential_savings?: number;
+  };
+  errors?: any;
+}
+
 export interface Report {
   id: string;
   client_id: string;
   client_name?: string;
   report_type: ReportType;
   status: ReportStatus;
+  data_source?: 'csv' | 'azure_api';
+  azure_subscription?: {
+    id: string;
+    name: string;
+    subscription_id: string;
+  };
   csv_file?: string;
   html_file?: string;
   pdf_file?: string;
@@ -268,6 +309,20 @@ class ReportService {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Add manual recommendations to a report (v1.7.0)
+   */
+  async addManualRecommendations(
+    reportId: string,
+    recommendations: ManualRecommendation[]
+  ): Promise<ManualRecommendationsResponse> {
+    const response = await apiClient.post<ManualRecommendationsResponse>(
+      `/reports/${reportId}/add-manual-recommendations/`,
+      { recommendations }
+    );
+    return response.data;
   }
 }
 

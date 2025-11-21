@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from apps.authentication.views import UserViewSet
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 # Create main router for API endpoints
 router = DefaultRouter()
@@ -35,6 +36,12 @@ urlpatterns = [
     path('api/v1/clients/', include('apps.clients.urls')),
     path('api/v1/reports/', include('apps.reports.urls')),
     path('api/v1/analytics/', include('apps.analytics.urls')),
+    path('api/v1/azure/', include('apps.azure_integration.urls')),
+
+    # API Documentation (OpenAPI/Swagger)
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # Health check endpoint
     path('health/', include('apps.core.urls')),

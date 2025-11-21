@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1037,6 +1038,96 @@
             }
         }
 
+        /* Print Optimization - For browser print (Ctrl+P / Cmd+P) */
+        @media print {
+            /* Page setup */
+            @page {
+                size: A4;
+                margin: 15mm 10mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+                font-size: 10pt;
+            }
+
+            /* Ensure colors print */
+            .metric-card,
+            .category-header,
+            .recommendation-card,
+            .badge,
+            .cover-page {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Page breaks */
+            .cover-page,
+            .executive-summary,
+            .category-section {
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .recommendation-card {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* Hide interactive elements */
+            button,
+            .no-print {
+                display: none !important;
+            }
+
+            /* Optimize spacing for print */
+            .metrics-grid {
+                margin-bottom: 20px;
+            }
+
+            .recommendation-card {
+                margin-bottom: 15px;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+
+            /* Ensure good contrast */
+            .category-header {
+                border-bottom: 2px solid #333;
+            }
+
+            /* Links should show URLs in print */
+            a[href]:after {
+                content: " (" attr(href) ")";
+                font-size: 8pt;
+                color: #666;
+            }
+
+            /* Optimize tables for print */
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            tfoot {
+                display: table-footer-group;
+            }
+        }
+
         {% block extra_css %}{% endblock %}
     </style>
 </head>
@@ -1055,6 +1146,9 @@
 
         <div class="cover-main">
             <h1 class="cover-title">Azure Advisor<br>Analysis Report</h1>
+            <div style="margin: 30px 0; text-align: center;">
+                <img src="data:image/png;base64,{% include 'reports/partials/logo_base64.html' %}" alt="Solvex Logo" style="max-width: 300px; height: auto;">
+            </div>
             <p class="cover-subtitle">{{ report_type_display }}</p>
 
             <div class="cover-icon-container">

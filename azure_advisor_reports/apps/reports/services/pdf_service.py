@@ -140,31 +140,47 @@ class PlaywrightPDFGenerator:
     @staticmethod
     def _is_running_in_docker() -> bool:
         """
-        Detect if the application is running inside a Docker container.
+        Detect if the application is running inside a Docker container or containerized environment.
 
         Detection methods:
         1. Check for /.dockerenv file (created by Docker)
-        2. Check /proc/self/cgroup for docker/containerd references
+        2. Check /proc/self/cgroup for docker/containerd/kubepods references
+        3. Check for Azure Container Apps environment variables
+        4. Check for Kubernetes environment variables
+        5. Check for other container runtime indicators
 
         Returns:
-            bool: True if running in Docker, False otherwise
+            bool: True if running in a containerized environment, False otherwise
         """
         # Method 1: Check for /.dockerenv
         if os.path.exists('/.dockerenv'):
             return True
 
-        # Method 2: Check cgroup for docker/containerd
+        # Method 2: Check cgroup for container runtimes
         try:
             with open('/proc/self/cgroup', 'r') as f:
                 content = f.read()
-                if 'docker' in content or 'containerd' in content:
+                # Check for various container runtime indicators
+                if any(indicator in content for indicator in ['docker', 'containerd', 'kubepods', 'lxc']):
                     return True
         except (FileNotFoundError, PermissionError):
             # /proc/self/cgroup doesn't exist (not Linux) or can't read it
             pass
 
-        # Method 3: Check for common Docker environment variables
-        if os.environ.get('DOCKER_CONTAINER') or os.environ.get('KUBERNETES_SERVICE_HOST'):
+        # Method 3: Azure Container Apps specific detection
+        if os.environ.get('CONTAINER_APP_NAME') or \
+           os.environ.get('CONTAINER_APP_REVISION') or \
+           os.environ.get('CONTAINER_APP_REPLICA_NAME'):
+            return True
+
+        # Method 4: Kubernetes detection
+        if os.environ.get('KUBERNETES_SERVICE_HOST') or \
+           os.environ.get('KUBERNETES_PORT'):
+            return True
+
+        # Method 5: Other container indicators
+        if os.environ.get('DOCKER_CONTAINER') or \
+           os.path.exists('/run/.containerenv'):  # Podman
             return True
 
         return False

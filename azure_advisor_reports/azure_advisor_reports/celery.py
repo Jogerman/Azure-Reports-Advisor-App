@@ -46,13 +46,21 @@ app.conf.task_queues = (
     Queue('default', Exchange('default'), routing_key='default'),
     Queue('reports', Exchange('reports'), routing_key='reports.#'),
     Queue('priority', Exchange('priority'), routing_key='priority.#', priority=10),
+    Queue('azure_api', Exchange('azure_api'), routing_key='azure_api.#'),
 )
 
 # Configure task routes
 app.conf.task_routes = {
+    # Reports tasks
     'apps.reports.tasks.*': {'queue': 'reports'},
     'apps.reports.tasks.process_csv_file': {'queue': 'priority', 'priority': 9},
     'apps.reports.tasks.generate_report': {'queue': 'reports', 'priority': 8},
+
+    # Azure integration tasks
+    'apps.azure_integration.tasks.fetch_azure_recommendations': {'queue': 'azure_api', 'priority': 9},
+    'apps.azure_integration.tasks.test_azure_connection': {'queue': 'azure_api', 'priority': 7},
+    'apps.azure_integration.tasks.sync_azure_statistics': {'queue': 'azure_api', 'priority': 5},
+    'apps.azure_integration.tasks.generate_azure_report': {'queue': 'reports', 'priority': 8},
 }
 
 # Celery configuration

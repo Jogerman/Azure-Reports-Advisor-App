@@ -10,10 +10,12 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from apps.reports.models import Report, Recommendation, ReportTemplate, ReportShare
 from apps.clients.models import Client
+from apps.azure_integration.models import AzureSubscription
 
 User = get_user_model()
 
@@ -441,6 +443,356 @@ class TestReportModel:
 
         report = Report.objects.get(id=report_id)
         assert report.created_by is None
+
+    def test_report_default_data_source(self):
+        """Test that default data_source is 'csv'."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        csv_file = SimpleUploadedFile("test.csv", b"Category,Business Impact\nCost,High")
+
+        report = Report.objects.create(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            csv_file=csv_file
+        )
+
+        assert report.data_source == 'csv'
+
+    def test_report_creation_with_csv_data_source(self):
+        """Test creating report with data_source='csv' and csv_file."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        csv_file = SimpleUploadedFile("test.csv", b"Category,Business Impact\nCost,High")
+
+        report = Report.objects.create(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='csv',
+            csv_file=csv_file
+        )
+
+        assert report.data_source == 'csv'
+        assert report.csv_file is not None
+        assert report.azure_subscription is None
+        report.full_clean()  # Should not raise
+
+    def test_report_creation_with_azure_api_data_source(self):
+        """Test creating report with data_source='azure_api' and azure_subscription."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        report = Report.objects.create(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='azure_api',
+            azure_subscription=azure_sub
+        )
+
+        assert report.data_source == 'azure_api'
+        assert report.azure_subscription == azure_sub
+        assert report.csv_file.name == ''
+        report.full_clean()  # Should not raise
+
+    def test_report_validation_csv_requires_csv_file(self):
+        """Test that data_source='csv' requires csv_file."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='csv'
+            # Missing csv_file
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            report.full_clean()
+
+        assert 'csv_file' in exc_info.value.message_dict
+
+    def test_report_validation_azure_api_requires_subscription(self):
+        """Test that data_source='azure_api' requires azure_subscription."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='azure_api'
+            # Missing azure_subscription
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            report.full_clean()
+
+        assert 'azure_subscription' in exc_info.value.message_dict
+
+    def test_report_validation_xor_both_sources_fail(self):
+        """Test that having both csv_file and azure_subscription fails validation."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        csv_file = SimpleUploadedFile("test.csv", b"Category,Business Impact\nCost,High")
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='csv',
+            csv_file=csv_file,
+            azure_subscription=azure_sub  # Should fail - both sources
+        )
+
+        with pytest.raises(ValidationError):
+            report.full_clean()
+
+    def test_report_validation_xor_neither_source_fail(self):
+        """Test that having neither csv_file nor azure_subscription fails validation."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='csv'
+            # No csv_file or azure_subscription
+        )
+
+        with pytest.raises(ValidationError):
+            report.full_clean()
+
+    def test_report_validation_csv_with_azure_subscription_fail(self):
+        """Test that csv data_source cannot have azure_subscription."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        csv_file = SimpleUploadedFile("test.csv", b"Category,Business Impact\nCost,High")
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='csv',
+            csv_file=csv_file,
+            azure_subscription=azure_sub
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            report.full_clean()
+
+        assert 'azure_subscription' in exc_info.value.message_dict
+
+    def test_report_validation_azure_api_with_csv_file_fail(self):
+        """Test that azure_api data_source cannot have csv_file."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        csv_file = SimpleUploadedFile("test.csv", b"Category,Business Impact\nCost,High")
+
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='azure_api',
+            csv_file=csv_file,
+            azure_subscription=azure_sub
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            report.full_clean()
+
+        assert 'csv_file' in exc_info.value.message_dict
+
+    def test_report_api_sync_metadata_field(self):
+        """Test api_sync_metadata JSON field stores metadata."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        metadata = {
+            'sync_timestamp': '2024-01-15T10:30:00Z',
+            'filters_applied': {
+                'category': 'Cost',
+                'impact': 'High'
+            },
+            'recommendation_count': 42,
+            'api_version': '2023-01-01'
+        }
+
+        report = Report.objects.create(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='azure_api',
+            azure_subscription=azure_sub,
+            api_sync_metadata=metadata
+        )
+
+        assert report.api_sync_metadata == metadata
+        assert report.api_sync_metadata['sync_timestamp'] == '2024-01-15T10:30:00Z'
+        assert report.api_sync_metadata['recommendation_count'] == 42
+
+    def test_report_azure_subscription_set_null_on_deletion(self):
+        """Test azure_subscription is set to null when subscription is deleted."""
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123"
+        )
+
+        client = Client.objects.create(
+            company_name="Test Company",
+            contact_email="client@example.com"
+        )
+
+        azure_sub = AzureSubscription.objects.create(
+            name="Production Subscription",
+            subscription_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            client_id=str(uuid.uuid4()),
+            created_by=user
+        )
+
+        report = Report.objects.create(
+            client=client,
+            created_by=user,
+            report_type="detailed",
+            data_source='azure_api',
+            azure_subscription=azure_sub
+        )
+
+        report_id = report.id
+        azure_sub.delete()
+
+        report = Report.objects.get(id=report_id)
+        assert report.azure_subscription is None
 
 
 @pytest.mark.django_db

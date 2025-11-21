@@ -10,6 +10,7 @@ from io import StringIO
 from rest_framework import serializers
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from .models import Report, Recommendation, ReportTemplate, ReportShare
 
 # Try to import python-magic for enhanced file validation
@@ -32,6 +33,14 @@ class RecommendationSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    total_commitment_savings = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        read_only=True
+    )
+
+    is_long_term_commitment = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Recommendation
         fields = [
@@ -53,9 +62,21 @@ class RecommendationSerializer(serializers.ModelSerializer):
             'retiring_feature',
             'advisor_score_impact',
             'csv_row_number',
+            # Saving Plans & Reserved Instances fields (v1.6.3)
+            'is_reservation_recommendation',
+            'reservation_type',
+            'commitment_term_years',
+            'total_commitment_savings',
+            'is_long_term_commitment',
             'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'monthly_savings']
+        read_only_fields = [
+            'id',
+            'created_at',
+            'monthly_savings',
+            'total_commitment_savings',
+            'is_long_term_commitment',
+        ]
 
 
 class RecommendationListSerializer(serializers.ModelSerializer):
@@ -89,10 +110,23 @@ class ReportSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source='client.company_name', read_only=True)
     created_by_name = serializers.SerializerMethodField()
 
+    # v2.0 dual data source fields
+    azure_subscription_detail = serializers.SerializerMethodField()
+
     def get_created_by_name(self, obj):
         """Get the full name of the user who created the report."""
         if obj.created_by:
             return obj.created_by.get_full_name() or obj.created_by.username
+        return None
+
+    def get_azure_subscription_detail(self, obj):
+        """Get Azure subscription details if using API data source."""
+        if obj.azure_subscription:
+            return {
+                'id': str(obj.azure_subscription.id),
+                'name': obj.azure_subscription.name,
+                'subscription_id': obj.azure_subscription.subscription_id,
+            }
         return None
 
     class Meta:
@@ -105,7 +139,11 @@ class ReportSerializer(serializers.ModelSerializer):
             'created_by_name',
             'report_type',
             'title',
+            'data_source',
             'csv_file',
+            'azure_subscription',
+            'azure_subscription_detail',
+            'api_sync_metadata',
             'html_file',
             'pdf_file',
             'status',
@@ -125,6 +163,9 @@ class ReportSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'created_by',
+            'data_source',
+            'azure_subscription_detail',
+            'api_sync_metadata',
             'html_file',
             'pdf_file',
             'status',
@@ -170,6 +211,7 @@ class ReportListSerializer(serializers.ModelSerializer):
             'created_by_name',
             'report_type',
             'title',
+            'data_source',
             'status',
             'html_file',
             'pdf_file',
@@ -180,7 +222,7 @@ class ReportListSerializer(serializers.ModelSerializer):
             'processing_completed_at',
             'error_message',
         ]
-        read_only_fields = ['id', 'created_by', 'status', 'html_file', 'pdf_file', 'created_at', 'updated_at', 'processing_completed_at', 'error_message']
+        read_only_fields = ['id', 'created_by', 'data_source', 'status', 'html_file', 'pdf_file', 'created_at', 'updated_at', 'processing_completed_at', 'error_message']
 
 
 class CSVUploadSerializer(serializers.Serializer):
@@ -425,6 +467,252 @@ class CSVUploadSerializer(serializers.Serializer):
         return report
 
 
+class ReportCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating reports with dual data source support.
+
+    Handles XOR validation between CSV upload and Azure API data sources.
+    A report must have either a CSV file OR an Azure subscription, but not both.
+
+    Fields:
+        - client_id: Client UUID (required)
+        - report_type: Type of report (default: 'detailed')
+        - title: Custom report title (optional)
+        - data_source: 'csv' or 'azure_api' (default: 'csv')
+        - csv_file: CSV file (required if data_source='csv')
+        - azure_subscription: Azure subscription ID (required if data_source='azure_api')
+        - filters: Azure API filters (optional, only for azure_api)
+    """
+
+    client_id = serializers.UUIDField(required=True)
+    report_type = serializers.ChoiceField(
+        choices=Report.REPORT_TYPES,
+        default='detailed',
+        required=False
+    )
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    # Data source selection
+    data_source = serializers.ChoiceField(
+        choices=Report.DATA_SOURCE_CHOICES,
+        default='csv',
+        required=False,
+        help_text="Source of report data: 'csv' or 'azure_api'"
+    )
+
+    # CSV upload fields
+    csv_file = serializers.FileField(required=False, allow_null=True)
+
+    # Azure API fields - queryset set dynamically in __init__
+    azure_subscription = serializers.PrimaryKeyRelatedField(
+        read_only=True,  # Temporarily set to read_only, overridden in __init__
+        required=False,
+        allow_null=True,
+        help_text="Azure subscription for API-based reports"
+    )
+
+    filters = serializers.JSONField(
+        required=False,
+        allow_null=True,
+        help_text="Filters for Azure API queries (category, impact, resource_group)"
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Initialize with AzureSubscription queryset."""
+        super().__init__(*args, **kwargs)
+        # Import here to avoid circular imports
+        from apps.azure_integration.models import AzureSubscription
+        # Override the field to make it writable with a queryset
+        self.fields['azure_subscription'] = serializers.PrimaryKeyRelatedField(
+            queryset=AzureSubscription.objects.filter(is_active=True),
+            required=False,
+            allow_null=True,
+            help_text="Azure subscription for API-based reports"
+        )
+
+    def validate_client_id(self, value):
+        """Validate that the client exists."""
+        from apps.clients.models import Client
+
+        try:
+            Client.objects.get(id=value)
+        except Client.DoesNotExist:
+            raise serializers.ValidationError(f"Client with ID {value} does not exist")
+
+        return value
+
+    def validate_csv_file(self, value):
+        """Validate CSV file using existing CSVUploadSerializer validation."""
+        if value is None:
+            return value
+
+        # Use the comprehensive CSV validation from CSVUploadSerializer
+        csv_serializer = CSVUploadSerializer(data={})
+        validated_file = csv_serializer.validate_csv_file(value)
+        return validated_file
+
+    def validate_filters(self, value):
+        """
+        Validate filters for Azure API data source.
+
+        Allowed filter keys: category, impact, resource_group
+        Validates category and impact values against Azure Advisor spec.
+        """
+        if not value:
+            return value
+
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('Filters must be a JSON object.')
+
+        allowed_keys = {'category', 'impact', 'resource_group'}
+        invalid_keys = set(value.keys()) - allowed_keys
+
+        if invalid_keys:
+            raise serializers.ValidationError(
+                f"Invalid filter keys: {', '.join(invalid_keys)}. "
+                f"Allowed: {', '.join(allowed_keys)}"
+            )
+
+        # Validate category values
+        if 'category' in value:
+            valid_categories = [
+                'Cost', 'HighAvailability', 'Performance',
+                'Security', 'OperationalExcellence'
+            ]
+            if value['category'] not in valid_categories:
+                raise serializers.ValidationError({
+                    'category': f'Invalid category. Must be one of: {", ".join(valid_categories)}'
+                })
+
+        # Validate impact values
+        if 'impact' in value:
+            valid_impacts = ['High', 'Medium', 'Low']
+            if value['impact'] not in valid_impacts:
+                raise serializers.ValidationError({
+                    'impact': f'Invalid impact. Must be one of: {", ".join(valid_impacts)}'
+                })
+
+        return value
+
+    def validate(self, data):
+        """
+        Validate XOR constraint between CSV and Azure API data sources.
+
+        Rules:
+        1. If data_source='csv': csv_file required, azure_subscription forbidden
+        2. If data_source='azure_api': azure_subscription required, csv_file forbidden
+        3. Azure subscription must be active
+        4. Filters only allowed for azure_api data source
+        """
+        data_source = data.get('data_source', 'csv')
+        csv_file = data.get('csv_file')
+        azure_subscription = data.get('azure_subscription')
+        filters = data.get('filters')
+
+        if data_source == 'csv':
+            # CSV data source validation
+            if not csv_file:
+                raise serializers.ValidationError({
+                    'csv_file': 'CSV file is required when data_source is "csv".'
+                })
+            if azure_subscription:
+                raise serializers.ValidationError({
+                    'azure_subscription': 'Cannot specify Azure subscription when using CSV data source.'
+                })
+            if filters:
+                raise serializers.ValidationError({
+                    'filters': 'Filters are only applicable for Azure API data source.'
+                })
+
+        elif data_source == 'azure_api':
+            # Azure API data source validation
+            if not azure_subscription:
+                raise serializers.ValidationError({
+                    'azure_subscription': 'Azure subscription is required when data_source is "azure_api".'
+                })
+            if csv_file:
+                raise serializers.ValidationError({
+                    'csv_file': 'Cannot upload CSV when using Azure API data source.'
+                })
+
+            # Validate subscription is active
+            if not azure_subscription.is_active:
+                raise serializers.ValidationError({
+                    'azure_subscription': 'Selected Azure subscription is not active.'
+                })
+
+        else:
+            raise serializers.ValidationError({
+                'data_source': 'Invalid data source. Must be "csv" or "azure_api".'
+            })
+
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a Report instance from validated data.
+
+        For CSV reports: Creates report with uploaded file
+        For Azure API reports: Creates report with subscription and filters
+
+        Args:
+            validated_data: Validated data dictionary
+
+        Returns:
+            Report instance
+        """
+        from apps.clients.models import Client
+
+        client = Client.objects.get(id=validated_data['client_id'])
+        user = self.context.get('request').user if self.context.get('request') else None
+
+        # Extract optional fields
+        filters = validated_data.get('filters')
+        data_source = validated_data.get('data_source', 'csv')
+
+        # Create report based on data source
+        report = Report(
+            client=client,
+            created_by=user,
+            report_type=validated_data.get('report_type', 'detailed'),
+            title=validated_data.get('title', ''),
+            data_source=data_source,
+        )
+
+        # Set data source-specific fields
+        if data_source == 'csv':
+            report.csv_file = validated_data['csv_file']
+            report.status = 'uploaded'
+            report.csv_uploaded_at = timezone.now()
+        else:  # azure_api
+            report.azure_subscription = validated_data['azure_subscription']
+            report.status = 'pending'
+
+            # Store filters in api_sync_metadata
+            if filters:
+                report.api_sync_metadata = {
+                    'filters': filters,
+                    'requested_at': timezone.now().isoformat(),
+                }
+
+        report.save()
+
+        # Trigger processing for CSV reports
+        if data_source == 'csv':
+            try:
+                from .tasks import process_csv_file as process_csv_task
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Triggering async CSV processing for report {report.id}")
+                process_csv_task.delay(str(report.id))
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to trigger CSV processing task for report {report.id}: {str(e)}")
+
+        return report
+
+
 class ReportTemplateSerializer(serializers.ModelSerializer):
     """Serializer for ReportTemplate model."""
 
@@ -493,3 +781,211 @@ class ReportShareSerializer(serializers.ModelSerializer):
             'last_accessed_at',
             'created_at',
         ]
+
+
+class ManualRecommendationInputSerializer(serializers.Serializer):
+    """
+    Serializer for manual input of recommendations (v1.7.0).
+
+    Allows users to manually add recommendations to a report before generation.
+    This is useful for adding data not captured by Azure Advisor or custom
+    recommendations from other sources.
+
+    All fields match the structure of the Recommendation model to maintain
+    consistency with CSV-imported data.
+    """
+
+    # Required fields
+    category = serializers.ChoiceField(
+        choices=Recommendation.CATEGORY_CHOICES,
+        required=True,
+        help_text="Recommendation category"
+    )
+    business_impact = serializers.ChoiceField(
+        choices=Recommendation.IMPACT_CHOICES,
+        required=True,
+        help_text="Business impact level"
+    )
+    recommendation = serializers.CharField(
+        required=True,
+        max_length=5000,
+        help_text="Recommendation description"
+    )
+
+    # Azure resource information (optional)
+    subscription_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+    subscription_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+    resource_group = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+    resource_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+    resource_type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+
+    # Financial impact
+    potential_savings = serializers.DecimalField(
+        required=False,
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Potential annual cost savings"
+    )
+    currency = serializers.CharField(
+        required=False,
+        max_length=3,
+        default='USD'
+    )
+
+    # Additional details (optional)
+    potential_benefits = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=5000,
+        default=''
+    )
+    retirement_date = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None
+    )
+    retiring_feature = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        default=''
+    )
+    advisor_score_impact = serializers.DecimalField(
+        required=False,
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="Impact on Azure Advisor Score"
+    )
+
+    def validate_potential_savings(self, value):
+        """Ensure potential savings is non-negative."""
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Potential savings cannot be negative")
+        return value
+
+    def validate_advisor_score_impact(self, value):
+        """Ensure advisor score impact is within valid range."""
+        if value is not None and (value < 0 or value > 100):
+            raise serializers.ValidationError("Advisor score impact must be between 0 and 100")
+        return value
+
+
+class BulkManualRecommendationSerializer(serializers.Serializer):
+    """
+    Serializer for bulk adding manual recommendations to a report (v1.7.0).
+
+    Accepts a list of recommendations and creates them all at once.
+    Automatically analyzes each recommendation for reservation detection.
+    """
+
+    recommendations = ManualRecommendationInputSerializer(many=True, required=True)
+
+    def validate_recommendations(self, value):
+        """Ensure at least one recommendation is provided."""
+        if not value or len(value) == 0:
+            raise serializers.ValidationError("At least one recommendation must be provided")
+
+        if len(value) > 100:
+            raise serializers.ValidationError("Maximum 100 recommendations can be added at once")
+
+        return value
+
+    def create(self, validated_data):
+        """
+        Create multiple recommendations for a report.
+
+        Automatically analyzes each recommendation using ReservationAnalyzer
+        to detect Saving Plans and Reserved Instances.
+
+        Args:
+            validated_data: Dictionary with 'report' and 'recommendations' list
+
+        Returns:
+            List of created Recommendation instances
+        """
+        from .services.reservation_analyzer import ReservationAnalyzer
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        report = self.context.get('report')
+        if not report:
+            raise serializers.ValidationError("Report context is required")
+
+        recommendations_data = validated_data['recommendations']
+        created_recommendations = []
+
+        for idx, rec_data in enumerate(recommendations_data):
+            try:
+                # Analyze for reservations using ReservationAnalyzer
+                reservation_analysis = ReservationAnalyzer.analyze_recommendation(
+                    rec_data.get('recommendation', ''),
+                    rec_data.get('potential_benefits', '')
+                )
+
+                # Create recommendation with analyzed data
+                recommendation = Recommendation.objects.create(
+                    report=report,
+                    category=rec_data['category'],
+                    business_impact=rec_data['business_impact'],
+                    recommendation=rec_data['recommendation'],
+                    subscription_id=rec_data.get('subscription_id', ''),
+                    subscription_name=rec_data.get('subscription_name', ''),
+                    resource_group=rec_data.get('resource_group', ''),
+                    resource_name=rec_data.get('resource_name', ''),
+                    resource_type=rec_data.get('resource_type', ''),
+                    potential_savings=rec_data.get('potential_savings', 0),
+                    currency=rec_data.get('currency', 'USD'),
+                    potential_benefits=rec_data.get('potential_benefits', ''),
+                    retirement_date=rec_data.get('retirement_date'),
+                    retiring_feature=rec_data.get('retiring_feature', ''),
+                    advisor_score_impact=rec_data.get('advisor_score_impact', 0),
+                    # Reservation analysis results
+                    is_reservation_recommendation=reservation_analysis['is_reservation'],
+                    reservation_type=reservation_analysis['reservation_type'],
+                    commitment_term_years=reservation_analysis['commitment_term_years'],
+                    # Mark as manually added (use csv_row_number = -1 to indicate manual)
+                    csv_row_number=-1,
+                )
+
+                created_recommendations.append(recommendation)
+
+            except Exception as e:
+                logger.error(f"Failed to create manual recommendation {idx}: {str(e)}")
+                raise serializers.ValidationError(
+                    f"Failed to create recommendation {idx + 1}: {str(e)}"
+                )
+
+        logger.info(
+            f"Successfully created {len(created_recommendations)} manual recommendations "
+            f"for report {report.id}"
+        )
+
+        return created_recommendations

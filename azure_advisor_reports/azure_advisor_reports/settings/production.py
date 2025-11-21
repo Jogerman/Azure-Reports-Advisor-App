@@ -195,7 +195,9 @@ CELERY_REDIS_BACKEND_USE_SSL = {
 # ============================================================================
 
 # Use WhiteNoise for static files (more efficient for Container Apps)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Using CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+# to avoid strict manifest mode failures for dynamically referenced files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_URL = '/static/'
 
