@@ -1,4 +1,5 @@
 {% extends 'reports/base.html' %}
+{% load report_filters %}
 
 {% block title %}Operational Excellence Report - {{ client.company_name }}{% endblock %}
 
@@ -181,15 +182,15 @@
                     Operational Health Score
                 </div>
                 <div class="health-score-value health-{{ operational_summary.health_color }}">
-                    {{ operational_summary.health_score }}
+                    {{ operational_summary.health_score|intcomma }}
                 </div>
                 <div style="font-size: 1.4em; font-weight: 600; color: var(--gray-800); margin-top: 10px;">
                     {{ operational_summary.health_status }}
                 </div>
                 <div style="margin-top: 20px; font-size: 0.95em; color: #666; line-height: 1.6;">
-                    Based on {{ operational_summary.total_recommendations }} operational findings
+                    Based on {{ operational_summary.total_recommendations|intcomma }} operational findings
                     <div style="margin-top: 8px; font-size: 1.1em; color: var(--primary-color);">
-                        <strong>{{ operational_summary.best_practices_adherence }}%</strong> Best Practice Adherence
+                        <strong>{{ operational_summary.best_practices_adherence|intcomma }}%</strong> Best Practice Adherence
                     </div>
                 </div>
             </div>
@@ -198,7 +199,7 @@
                 <div class="best-practice-card" style="border-color: #FFCE56;">
                     <div style="font-size: 2.5em; margin-bottom: 10px;">🔄</div>
                     <div style="font-size: 2.2em; font-weight: 300; color: #FFCE56; margin-bottom: 8px;">
-                        {{ operational_summary.reliability_count }}
+                        {{ operational_summary.reliability_count|intcomma }}
                     </div>
                     <div style="font-weight: 600; color: var(--gray-800);">Reliability</div>
                     <div style="font-size: 0.9em; color: #666; margin-top: 5px;">High Availability</div>
@@ -207,7 +208,7 @@
                 <div class="best-practice-card" style="border-color: #4BC0C0;">
                     <div style="font-size: 2.5em; margin-bottom: 10px;">✨</div>
                     <div style="font-size: 2.2em; font-weight: 300; color: #4BC0C0; margin-bottom: 8px;">
-                        {{ operational_summary.opex_count }}
+                        {{ operational_summary.opex_count|intcomma }}
                     </div>
                     <div style="font-weight: 600; color: var(--gray-800);">Excellence</div>
                     <div style="font-size: 0.9em; color: #666; margin-top: 5px;">Best Practices</div>
@@ -216,7 +217,7 @@
                 <div class="best-practice-card" style="border-color: #9966FF;">
                     <div style="font-size: 2.5em; margin-bottom: 10px;">⚡</div>
                     <div style="font-size: 2.2em; font-weight: 300; color: #9966FF; margin-bottom: 8px;">
-                        {{ operational_summary.performance_count }}
+                        {{ operational_summary.performance_count|intcomma }}
                     </div>
                     <div style="font-weight: 600; color: var(--gray-800);">Performance</div>
                     <div style="font-size: 0.9em; color: #666; margin-top: 5px;">Optimization</div>
@@ -229,26 +230,26 @@
     <div class="summary-stats">
         <div class="stat-card" style="border-left-color: #dc3545;">
             <div class="stat-label">High Priority Items</div>
-            <div class="stat-value text-danger">{{ operational_summary.high_priority_count }}</div>
+            <div class="stat-value text-danger">{{ operational_summary.high_priority_count|intcomma }}</div>
             <div class="stat-subtitle">Require immediate attention</div>
         </div>
 
         <div class="stat-card" style="border-left-color: #4BC0C0;">
             <div class="stat-label">Automation Opportunities</div>
-            <div class="stat-value" style="color: #4BC0C0;">{{ automation_opportunities|length }}</div>
+            <div class="stat-value" style="color: #4BC0C0;">{{ automation_opportunities|length|intcomma }}</div>
             <div class="stat-subtitle">Identified for efficiency gains</div>
         </div>
 
         <div class="stat-card" style="border-left-color: #FFCE56;">
             <div class="stat-label">Reliability Improvements</div>
-            <div class="stat-value" style="color: #FFCE56;">{{ improvement_areas.reliability.count }}</div>
-            <div class="stat-subtitle">{{ improvement_areas.reliability.percentage }}% of total</div>
+            <div class="stat-value" style="color: #FFCE56;">{{ improvement_areas.reliability.count|intcomma }}</div>
+            <div class="stat-subtitle">{{ improvement_areas.reliability.percentage|intcomma }}% of total</div>
         </div>
 
         <div class="stat-card" style="border-left-color: #9966FF;">
             <div class="stat-label">Performance Enhancements</div>
-            <div class="stat-value" style="color: #9966FF;">{{ improvement_areas.performance.count }}</div>
-            <div class="stat-subtitle">{{ improvement_areas.performance.percentage }}% of total</div>
+            <div class="stat-value" style="color: #9966FF;">{{ improvement_areas.performance.count|intcomma }}</div>
+            <div class="stat-subtitle">{{ improvement_areas.performance.percentage|intcomma }}% of total</div>
         </div>
     </div>
 
@@ -261,11 +262,11 @@
             <div class="improvement-content">
                 <h3 style="margin: 0 0 12px 0; color: var(--gray-900);">Reliability & High Availability</h3>
                 <p style="color: #666; margin-bottom: 12px;">
-                    {{ improvement_areas.reliability.count }} recommendations to improve system reliability, fault tolerance, and disaster recovery capabilities.
+                    {{ improvement_areas.reliability.count|intcomma }} recommendations to improve system reliability, fault tolerance, and disaster recovery capabilities.
                 </p>
                 <div class="metric-progress-bar">
                     <div class="progress-fill" style="width: {{ improvement_areas.reliability.percentage }}%; background: linear-gradient(90deg, #FFCE56 0%, #FFD700 100%);">
-                        {{ improvement_areas.reliability.percentage }}%
+                        {{ improvement_areas.reliability.percentage|intcomma }}%
                     </div>
                 </div>
             </div>
@@ -276,11 +277,11 @@
             <div class="improvement-content">
                 <h3 style="margin: 0 0 12px 0; color: var(--gray-900);">Operational Excellence</h3>
                 <p style="color: #666; margin-bottom: 12px;">
-                    {{ improvement_areas.operational_excellence.count }} recommendations for operational best practices, automation, and standardization.
+                    {{ improvement_areas.operational_excellence.count|intcomma }} recommendations for operational best practices, automation, and standardization.
                 </p>
                 <div class="metric-progress-bar">
                     <div class="progress-fill" style="width: {{ improvement_areas.operational_excellence.percentage }}%; background: linear-gradient(90deg, #4BC0C0 0%, #5FD4D4 100%);">
-                        {{ improvement_areas.operational_excellence.percentage }}%
+                        {{ improvement_areas.operational_excellence.percentage|intcomma }}%
                     </div>
                 </div>
             </div>
@@ -291,11 +292,11 @@
             <div class="improvement-content">
                 <h3 style="margin: 0 0 12px 0; color: var(--gray-900);">Performance Optimization</h3>
                 <p style="color: #666; margin-bottom: 12px;">
-                    {{ improvement_areas.performance.count }} recommendations to optimize resource performance, response times, and throughput.
+                    {{ improvement_areas.performance.count|intcomma }} recommendations to optimize resource performance, response times, and throughput.
                 </p>
                 <div class="metric-progress-bar">
                     <div class="progress-fill" style="width: {{ improvement_areas.performance.percentage }}%; background: linear-gradient(90deg, #9966FF 0%, #B088FF 100%);">
-                        {{ improvement_areas.performance.percentage }}%
+                        {{ improvement_areas.performance.percentage|intcomma }}%
                     </div>
                 </div>
             </div>
@@ -308,7 +309,7 @@
         <h2 class="section-title">🚨 High Priority Operational Issues</h2>
 
         <div class="warning-box">
-            <p><strong>⚠️ Immediate Action Required:</strong> These {{ high_priority_items.count }} high-priority operational issues could impact service availability, performance, or reliability. Address these items promptly to maintain optimal operations.</p>
+            <p><strong>⚠️ Immediate Action Required:</strong> These {{ high_priority_items.count|intcomma }} high-priority operational issues could impact service availability, performance, or reliability. Address these items promptly to maintain optimal operations.</p>
         </div>
 
         <table class="recommendation-table">
@@ -367,7 +368,7 @@
 
         <div class="info-box" style="border-left-color: #fbbf24; background: #fffbeb;">
             <h3 style="color: #92400e; margin-bottom: 10px;">💡 Efficiency Through Automation</h3>
-            <p>These {{ automation_opportunities|length }} recommendations represent opportunities to automate manual processes, improve consistency, and reduce operational overhead.</p>
+            <p>These {{ automation_opportunities|length|intcomma }} recommendations represent opportunities to automate manual processes, improve consistency, and reduce operational overhead.</p>
         </div>
 
         {% for rec in automation_opportunities %}
@@ -500,15 +501,15 @@
                 <tr>
                     <td><strong>{{ sub.subscription_name|default:"Unknown Subscription"|truncatewords:5 }}</strong></td>
                     <td class="text-center">
-                        <span class="badge badge-reliability">{{ sub.reliability_count }}</span>
+                        <span class="badge badge-reliability">{{ sub.reliability_count|intcomma }}</span>
                     </td>
                     <td class="text-center">
-                        <span class="badge badge-opex">{{ sub.opex_count }}</span>
+                        <span class="badge badge-opex">{{ sub.opex_count|intcomma }}</span>
                     </td>
                     <td class="text-center">
-                        <span class="badge badge-performance">{{ sub.performance_count }}</span>
+                        <span class="badge badge-performance">{{ sub.performance_count|intcomma }}</span>
                     </td>
-                    <td class="text-center"><strong>{{ sub.total_count }}</strong></td>
+                    <td class="text-center"><strong>{{ sub.total_count|intcomma }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -644,7 +645,7 @@
             <div style="margin-top: 20px;">
                 <h4 style="color: #dc3545; margin-bottom: 15px;">Phase 1: Critical Operations (Week 1-2)</h4>
                 <ul style="line-height: 2;">
-                    <li>Address all {{ operational_summary.high_priority_count }} high-priority operational issues</li>
+                    <li>Address all {{ operational_summary.high_priority_count|intcomma }} high-priority operational issues</li>
                     <li>Implement quick reliability improvements with immediate impact</li>
                     <li>Establish monitoring baselines for critical services</li>
                     <li>Document current operational procedures</li>

@@ -1,4 +1,5 @@
 {% extends 'reports/base_redesigned.html' %}
+{% load report_filters %}
 
 {% block title %}Detailed Azure Advisor Report - {{ client.company_name }}{% endblock %}
 
@@ -15,28 +16,28 @@
             <div class="metric-card">
                 <div class="metric-icon">📊</div>
                 <div class="metric-label">Total Recommendations</div>
-                <div class="metric-value">{{ total_recommendations }}</div>
+                <div class="metric-value">{{ total_recommendations|intcomma }}</div>
                 <div class="metric-subtitle">Across all categories</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Potential Annual Savings</div>
-                <div class="metric-value">${{ total_savings|floatformat:0 }}</div>
-                <div class="metric-subtitle">${{ monthly_savings|floatformat:0 }} per month</div>
+                <div class="metric-value">${{ total_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">${{ monthly_savings|floatformat:0|intcomma }} per month</div>
             </div>
 
             <div class="metric-card metric-critical">
                 <div class="metric-icon">⚠️</div>
                 <div class="metric-label">High Priority Items</div>
-                <div class="metric-value">{{ high_impact_count }}</div>
+                <div class="metric-value">{{ high_impact_count|intcomma }}</div>
                 <div class="metric-subtitle">Immediate attention required</div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-icon">🎯</div>
                 <div class="metric-label">Categories Affected</div>
-                <div class="metric-value">{{ category_distribution|length }}</div>
+                <div class="metric-value">{{ category_distribution|length|intcomma }}</div>
                 <div class="metric-subtitle">Azure Advisor pillars</div>
             </div>
         </div>
@@ -45,19 +46,19 @@
         <div class="metrics-grid" style="margin-top: 40px;">
             <div class="metric-card metric-critical">
                 <div class="metric-label">High Impact</div>
-                <div class="metric-value" style="font-size: 3rem;">{{ high_impact_count }}</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ high_impact_count|intcomma }}</div>
                 <div class="metric-subtitle">Critical recommendations</div>
             </div>
 
             <div class="metric-card metric-security">
                 <div class="metric-label">Medium Impact</div>
-                <div class="metric-value" style="font-size: 3rem;">{{ medium_impact_count }}</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ medium_impact_count|intcomma }}</div>
                 <div class="metric-subtitle">Important items</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-label">Low Impact</div>
-                <div class="metric-value" style="font-size: 3rem;">{{ low_impact_count }}</div>
+                <div class="metric-value" style="font-size: 3rem;">{{ low_impact_count|intcomma }}</div>
                 <div class="metric-subtitle">Optimization opportunities</div>
             </div>
         </div>
@@ -140,20 +141,20 @@
                             <span class="font-bold text-lg">{{ cat.category }}</span>
                         </td>
                         <td style="text-align: center;">
-                            <span class="font-bold text-xl">{{ cat.count }}</span>
+                            <span class="font-bold text-xl">{{ cat.count|intcomma }}</span>
                         </td>
                         <td style="text-align: center;">
                             {% if cat.high_impact > 0 %}
-                            <span class="badge badge-high">{{ cat.high_impact }}</span>
+                            <span class="badge badge-high">{{ cat.high_impact|intcomma }}</span>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                         <td style="text-align: right;">
-                            <span class="font-bold text-success text-lg">${{ cat.total_savings|floatformat:2 }}</span>
+                            <span class="font-bold text-success text-lg">${{ cat.total_savings|floatformat:2|intcomma }}</span>
                         </td>
                         <td style="text-align: right;">
-                            <span class="text-muted">${{ cat.avg_savings|floatformat:2 }}</span>
+                            <span class="text-muted">${{ cat.avg_savings|floatformat:2|intcomma }}</span>
                         </td>
                         <td style="text-align: center;">
                             <div style="width: 100%; background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
@@ -215,7 +216,7 @@
                             {% endif %}
                             {% if rec.advisor_score_impact > 0 %}
                             <div class="text-xs text-primary" style="margin-top: 6px;">
-                                <strong>Advisor Score Impact:</strong> +{{ rec.advisor_score_impact }}
+                                <strong>Advisor Score Impact:</strong> +{{ rec.advisor_score_impact|intcomma }}
                             </div>
                             {% endif %}
                         </td>
@@ -237,10 +238,10 @@
                         <td style="text-align: right;">
                             {% if rec.potential_savings > 0 %}
                             <div class="font-bold text-success text-lg" style="margin-bottom: 4px;">
-                                ${{ rec.potential_savings|floatformat:2 }}
+                                ${{ rec.potential_savings|floatformat:2|intcomma }}
                             </div>
                             <div class="text-xs text-muted">
-                                ${{ rec.monthly_savings|floatformat:2 }}/month
+                                ${{ rec.monthly_savings|floatformat:2|intcomma }}/month
                             </div>
                             {% else %}
                             <span class="text-muted">—</span>
@@ -295,11 +296,11 @@
                             </code>
                         </td>
                         <td style="text-align: center;">
-                            <span class="font-bold text-xl">{{ sub.rec_count }}</span>
+                            <span class="font-bold text-xl">{{ sub.rec_count|intcomma }}</span>
                         </td>
                         <td style="text-align: right;">
                             {% if sub.total_savings %}
-                            <span class="font-bold text-success text-lg">${{ sub.total_savings|floatformat:2 }}</span>
+                            <span class="font-bold text-success text-lg">${{ sub.total_savings|floatformat:2|intcomma }}</span>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}
@@ -363,7 +364,7 @@
                         </td>
                         <td style="text-align: right;">
                             {% if rec.potential_savings > 0 %}
-                            <span class="font-bold text-success text-lg">${{ rec.potential_savings|floatformat:2 }}</span>
+                            <span class="font-bold text-success text-lg">${{ rec.potential_savings|floatformat:2|intcomma }}</span>
                             {% else %}
                             <span class="text-muted">Non-financial</span>
                             {% endif %}
@@ -385,7 +386,7 @@
         <div class="success-box">
             <h3>Phase 1: Immediate Actions (Week 1-2)</h3>
             <ol style="margin-left: 20px; margin-top: 15px; line-height: 2;">
-                <li><strong>Review High-Impact Items:</strong> Analyze all {{ high_impact_count }} high-priority recommendations with stakeholders</li>
+                <li><strong>Review High-Impact Items:</strong> Analyze all {{ high_impact_count|intcomma }} high-priority recommendations with stakeholders</li>
                 <li><strong>Security First:</strong> Address critical security recommendations immediately</li>
                 <li><strong>Quick Wins:</strong> Implement low-risk, high-value cost optimizations</li>
             </ol>
@@ -426,7 +427,7 @@
                     {% if total_savings > 0 %}High{% else %}Medium{% endif %}
                 </div>
                 <div class="metric-subtitle">
-                    Based on ${{ total_savings|floatformat:0 }} annual savings potential
+                    Based on ${{ total_savings|floatformat:0|intcomma }} annual savings potential
                 </div>
             </div>
 
@@ -441,7 +442,7 @@
                 <div class="metric-value" style="font-size: 2.5rem;">
                     {% if high_impact_count > 10 %}High{% elif high_impact_count > 5 %}Med{% else %}Low{% endif %}
                 </div>
-                <div class="metric-subtitle">Based on high-priority items</div>
+                <div class="metric-subtitle">Based on {{ high_impact_count|intcomma }} high-priority items</div>
             </div>
 
             <div class="metric-card">
@@ -455,9 +456,9 @@
             <div class="info-box-icon">📊</div>
             <h3>Analysis Summary</h3>
             <div style="line-height: 2; margin-top: 15px;">
-                <p><strong>Total Optimization Opportunities:</strong> {{ total_recommendations }} recommendations across {{ category_distribution|length }} Azure Advisor categories</p>
-                <p><strong>Financial Impact:</strong> Potential annual savings of ${{ total_savings|floatformat:2 }} (${{ monthly_savings|floatformat:2 }}/month)</p>
-                <p><strong>Priority Distribution:</strong> {{ high_impact_count }} high-priority, {{ medium_impact_count }} medium-priority, and {{ low_impact_count }} low-priority items</p>
+                <p><strong>Total Optimization Opportunities:</strong> {{ total_recommendations|intcomma }} recommendations across {{ category_distribution|length|intcomma }} Azure Advisor categories</p>
+                <p><strong>Financial Impact:</strong> Potential annual savings of ${{ total_savings|floatformat:2|intcomma }} (${{ monthly_savings|floatformat:2|intcomma }}/month)</p>
+                <p><strong>Priority Distribution:</strong> {{ high_impact_count|intcomma }} high-priority, {{ medium_impact_count|intcomma }} medium-priority, and {{ low_impact_count|intcomma }} low-priority items</p>
                 <p><strong>Implementation Effort:</strong> Estimated 4-8 weeks for comprehensive implementation of high and medium priority items</p>
             </div>
         </div>

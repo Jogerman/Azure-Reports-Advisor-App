@@ -322,9 +322,10 @@ class Recommendation(models.Model):
         help_text="Original row number in CSV file"
     )
 
-    # Saving Plans & Reserved Instances Analysis (v1.6.3 feature)
+    # Saving Plans & Reserved Instances Analysis (v2.0 - Enhanced Multi-Dimensional)
     is_reservation_recommendation = models.BooleanField(
         default=False,
+        db_index=True,
         help_text="Indicates if this is a reservation/savings plan recommendation"
     )
     reservation_type = models.CharField(
@@ -337,13 +338,37 @@ class Recommendation(models.Model):
         ],
         null=True,
         blank=True,
-        help_text="Type of reservation or savings plan"
+        db_index=True,
+        help_text="Specific type of reservation or commitment"
     )
     commitment_term_years = models.IntegerField(
         null=True,
         blank=True,
         choices=[(1, '1 Year'), (3, '3 Years')],
+        db_index=True,
         help_text="Duration of the reservation commitment"
+    )
+
+    # NEW FIELDS - Enhanced categorization for Savings Plans separation
+    is_savings_plan = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="TRUE if this is a Savings Plan (Azure Compute Savings Plan), "
+                  "FALSE if traditional reservation (VM, capacity, etc.)"
+    )
+    commitment_category = models.CharField(
+        max_length=50,
+        choices=[
+            ('pure_reservation_1y', 'Pure Reservation - 1 Year'),
+            ('pure_reservation_3y', 'Pure Reservation - 3 Years'),
+            ('pure_savings_plan', 'Pure Savings Plan'),
+            ('combined_sp_1y', 'Savings Plan + 1Y Reservation'),
+            ('combined_sp_3y', 'Savings Plan + 3Y Reservation'),
+            ('uncategorized', 'Uncategorized'),
+        ],
+        default='uncategorized',
+        db_index=True,
+        help_text="Granular categorization for multi-dimensional analysis"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -378,6 +403,26 @@ class Recommendation(models.Model):
     def is_long_term_commitment(self):
         """Check if this is a multi-year commitment."""
         return self.commitment_term_years is not None and self.commitment_term_years > 1
+
+    @property
+    def is_pure_reservation(self):
+        """
+        Pure reservation means traditional reservation WITHOUT Savings Plan.
+        Examples: Reserved VM Instances, Reserved Capacity
+        """
+        return (
+            self.is_reservation_recommendation
+            and not self.is_savings_plan
+            and self.reservation_type in ['reserved_instance', 'reserved_capacity']
+        )
+
+    @property
+    def is_combined_commitment(self):
+        """
+        Combined commitment means recommendation involves BOTH
+        Savings Plans AND Reservations together.
+        """
+        return self.commitment_category in ['combined_sp_1y', 'combined_sp_3y']
 
 
 class ReportTemplate(models.Model):

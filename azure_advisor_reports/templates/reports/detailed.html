@@ -1,4 +1,5 @@
 {% extends 'reports/base_redesigned.html' %}
+{% load report_filters %}
 
 {% block title %}Detailed Azure Advisor Report - {{ client.company_name }}{% endblock %}
 
@@ -15,21 +16,21 @@
             <div class="metric-card">
                 <div class="metric-icon">📊</div>
                 <div class="metric-label">Total Recommendations</div>
-                <div class="metric-value">{{ total_recommendations }}</div>
+                <div class="metric-value">{{ total_recommendations|intcomma }}</div>
                 <div class="metric-subtitle">Across all categories</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Potential Annual Savings</div>
-                <div class="metric-value">${{ total_savings|floatformat:0 }}</div>
-                <div class="metric-subtitle">${{ monthly_savings|floatformat:0 }} per month</div>
+                <div class="metric-value">${{ total_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">${{ monthly_savings|floatformat:0|intcomma }} per month</div>
             </div>
 
             <div class="metric-card metric-critical">
                 <div class="metric-icon">⚠️</div>
                 <div class="metric-label">High Priority Items</div>
-                <div class="metric-value">{{ high_impact_count }}</div>
+                <div class="metric-value">{{ high_impact_count|intcomma }}</div>
                 <div class="metric-subtitle">Immediate attention required</div>
             </div>
 

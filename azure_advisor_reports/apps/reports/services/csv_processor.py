@@ -517,7 +517,7 @@ class AzureAdvisorCSVProcessor:
                     'csv_row_number': idx + 2,  # +2 because: 0-indexed + 1 for header row
                 }
 
-                # Analyze for Saving Plans & Reserved Instances (v1.6.3 feature)
+                # Analyze for Saving Plans & Reserved Instances (v2.0 - Enhanced Multi-Dimensional)
                 try:
                     reservation_analysis = ReservationAnalyzer.analyze_recommendation(
                         recommendation_text,
@@ -526,11 +526,18 @@ class AzureAdvisorCSVProcessor:
                     recommendation_data['is_reservation_recommendation'] = reservation_analysis['is_reservation']
                     recommendation_data['reservation_type'] = reservation_analysis['reservation_type']
                     recommendation_data['commitment_term_years'] = reservation_analysis['commitment_term_years']
+
+                    # NEW FIELDS - Enhanced categorization
+                    recommendation_data['is_savings_plan'] = reservation_analysis['is_savings_plan']
+                    recommendation_data['commitment_category'] = reservation_analysis['commitment_category']
+
                 except Exception as e:
                     logger.warning(f"Failed to analyze reservation for row {idx}: {str(e)}")
                     recommendation_data['is_reservation_recommendation'] = False
                     recommendation_data['reservation_type'] = None
                     recommendation_data['commitment_term_years'] = None
+                    recommendation_data['is_savings_plan'] = False
+                    recommendation_data['commitment_category'] = 'uncategorized'
 
                 recommendations.append(recommendation_data)
 

@@ -1,3 +1,4 @@
+{% load report_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -625,11 +626,11 @@
                     </td>
                     <td>
                         <div class="cover-footer-label">Security Score</div>
-                        <div class="cover-footer-value">{{ security_score|default:75 }}/100</div>
+                        <div class="cover-footer-value">{{ security_score|default:75|intcomma }}/100</div>
                     </td>
                     <td>
                         <div class="cover-footer-label">Total Findings</div>
-                        <div class="cover-footer-value">{{ total_security_findings }}</div>
+                        <div class="cover-footer-value">{{ total_security_findings|intcomma }}</div>
                     </td>
                 </tr>
             </table>
@@ -679,7 +680,7 @@
                                 <div class="metric-card metric-critical">
                                     <div class="metric-icon">🚨</div>
                                     <div class="metric-label">Immediate</div>
-                                    <div class="metric-value">{{ critical_count }}</div>
+                                    <div class="metric-value">{{ critical_count|intcomma }}</div>
                                     <div class="metric-subtitle">Within 24 hours</div>
                                     <div class="threat-bar">
                                         {% for i in "12345" %}
@@ -694,7 +695,7 @@
                                 <div class="metric-card metric-security">
                                     <div class="metric-icon">⚠️</div>
                                     <div class="metric-label">Short-term</div>
-                                    <div class="metric-value">{{ high_count }}</div>
+                                    <div class="metric-value">{{ high_count|intcomma }}</div>
                                     <div class="metric-subtitle">Within 1 week</div>
                                     <div class="threat-bar">
                                         {% for i in "12345" %}
@@ -709,7 +710,7 @@
                                 <div class="metric-card metric-cost">
                                     <div class="metric-icon">📋</div>
                                     <div class="metric-label">Medium-term</div>
-                                    <div class="metric-value">{{ medium_count }}</div>
+                                    <div class="metric-value">{{ medium_count|intcomma }}</div>
                                     <div class="metric-subtitle">Within 1 month</div>
                                     <div class="threat-bar">
                                         {% for i in "12345" %}
@@ -735,12 +736,12 @@
         <div class="warning-box">
             <h3>Security Posture Summary</h3>
             <p>
-                Azure Advisor has identified <strong>{{ total_security_findings }} security findings</strong> across your Azure environment.
+                Azure Advisor has identified <strong>{{ total_security_findings|intcomma }} security findings</strong> across your Azure environment.
                 {% if critical_count > 0 %}
-                <strong style="color: #D13438;">{{ critical_count }} critical vulnerabilities</strong> pose significant risk and require immediate remediation within 24 hours to prevent potential security breaches.
+                <strong style="color: #D13438;">{{ critical_count|intcomma }} critical vulnerabilities</strong> pose significant risk and require immediate remediation within 24 hours to prevent potential security breaches.
                 {% endif %}
                 {% if high_count > 0 %}
-                An additional <strong>{{ high_count }} high-priority issues</strong> should be addressed within one week to maintain a strong security posture.
+                An additional <strong>{{ high_count|intcomma }} high-priority issues</strong> should be addressed within one week to maintain a strong security posture.
                 {% endif %}
             </p>
         </div>
@@ -754,7 +755,7 @@
                         <div class="chart-subtitle">Risk distribution analysis</div>
 
                         <div class="bar-chart-item">
-                            <div class="bar-chart-label">Critical ({{ critical_count }})</div>
+                            <div class="bar-chart-label">Critical ({{ critical_count|intcomma }})</div>
                             <div class="bar-chart-bar">
                                 <div class="bar-chart-fill" style="width: {% widthratio critical_count total_security_findings 100 %}%; background-color: #D13438;"></div>
                                 <div class="bar-chart-value">{% widthratio critical_count total_security_findings 100 %}%</div>
@@ -762,7 +763,7 @@
                         </div>
 
                         <div class="bar-chart-item">
-                            <div class="bar-chart-label">High Priority ({{ high_count }})</div>
+                            <div class="bar-chart-label">High Priority ({{ high_count|intcomma }})</div>
                             <div class="bar-chart-bar">
                                 <div class="bar-chart-fill" style="width: {% widthratio high_count total_security_findings 100 %}%; background-color: #FF8C00;"></div>
                                 <div class="bar-chart-value">{% widthratio high_count total_security_findings 100 %}%</div>
@@ -770,7 +771,7 @@
                         </div>
 
                         <div class="bar-chart-item">
-                            <div class="bar-chart-label">Medium Priority ({{ medium_count }})</div>
+                            <div class="bar-chart-label">Medium Priority ({{ medium_count|intcomma }})</div>
                             <div class="bar-chart-bar">
                                 <div class="bar-chart-fill" style="width: {% widthratio medium_count total_security_findings 100 %}%; background-color: #FFB900;"></div>
                                 <div class="bar-chart-value">{% widthratio medium_count total_security_findings 100 %}%</div>
@@ -789,7 +790,7 @@
                             <div class="bar-chart-label">{{ item.resource_type|truncatechars:25 }}</div>
                             <div class="bar-chart-bar">
                                 <div class="bar-chart-fill" style="width: {% widthratio item.count total_security_findings 100 %}%; background-color: #FF8C00;"></div>
-                                <div class="bar-chart-value">{{ item.count }}</div>
+                                <div class="bar-chart-value">{{ item.count|intcomma }}</div>
                             </div>
                         </div>
                         {% endfor %}
@@ -809,7 +810,7 @@
         </div>
 
         <div class="danger-box">
-            <p><strong>HIGH RISK:</strong> These {{ critical_issues.count }} critical security issues pose significant risk to your environment and require immediate remediation to prevent potential security breaches, data loss, or compliance violations. Executive escalation recommended.</p>
+            <p><strong>HIGH RISK:</strong> These {{ critical_issues.count|intcomma }} critical security issues pose significant risk to your environment and require immediate remediation to prevent potential security breaches, data loss, or compliance violations. Executive escalation recommended.</p>
         </div>
 
         <table class="data-table">
@@ -858,7 +859,7 @@
         </div>
 
         <div class="warning-box">
-            <p>These {{ high_priority_issues.count }} security issues should be addressed within one week to maintain a strong security posture and prevent potential exploitation.</p>
+            <p>These {{ high_priority_issues.count|intcomma }} security issues should be addressed within one week to maintain a strong security posture and prevent potential exploitation.</p>
         </div>
 
         <table class="data-table">
@@ -921,26 +922,26 @@
                     <td><strong>{{ sub.subscription_name|default:"Unknown Subscription"|truncatechars:35 }}</strong></td>
                     <td class="text-center">
                         {% if sub.critical_count > 0 %}
-                        <span class="badge badge-high">{{ sub.critical_count }}</span>
+                        <span class="badge badge-high">{{ sub.critical_count|intcomma }}</span>
                         {% else %}
                         <span class="text-muted">—</span>
                         {% endif %}
                     </td>
                     <td class="text-center">
                         {% if sub.high_count > 0 %}
-                        <span class="badge badge-medium">{{ sub.high_count }}</span>
+                        <span class="badge badge-medium">{{ sub.high_count|intcomma }}</span>
                         {% else %}
                         <span class="text-muted">—</span>
                         {% endif %}
                     </td>
                     <td class="text-center">
                         {% if sub.medium_count > 0 %}
-                        <span class="badge badge-low">{{ sub.medium_count }}</span>
+                        <span class="badge badge-low">{{ sub.medium_count|intcomma }}</span>
                         {% else %}
                         <span class="text-muted">—</span>
                         {% endif %}
                     </td>
-                    <td class="text-center"><strong>{{ sub.total_count }}</strong></td>
+                    <td class="text-center"><strong>{{ sub.total_count|intcomma }}</strong></td>
                     <td>
                         <div class="risk-distribution-bar">
                             {% widthratio sub.critical_count sub.total_count 100 as crit_pct %}
@@ -1034,7 +1035,7 @@
         <div class="danger-box">
             <h3>Phase 1: Critical Response (24 Hours)</h3>
             <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
-                <li><strong>Emergency Triage:</strong> Convene security team to review all {{ critical_count }} critical findings within 2 hours</li>
+                <li><strong>Emergency Triage:</strong> Convene security team to review all {{ critical_count|intcomma }} critical findings within 2 hours</li>
                 <li><strong>Immediate Mitigations:</strong> Implement temporary security controls and workarounds</li>
                 <li><strong>Incident Response:</strong> Activate procedures if any active exploitation detected</li>
                 <li><strong>Executive Notification:</strong> Brief leadership on critical security posture</li>
@@ -1045,7 +1046,7 @@
         <div class="warning-box">
             <h3>Phase 2: Short-term Hardening (Week 1)</h3>
             <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
-                <li><strong>High Priority Remediation:</strong> Address all {{ high_count }} high-priority findings</li>
+                <li><strong>High Priority Remediation:</strong> Address all {{ high_count|intcomma }} high-priority findings</li>
                 <li><strong>Security Policy Updates:</strong> Review and update policies, firewall rules, access controls</li>
                 <li><strong>MFA Enforcement:</strong> Ensure multi-factor authentication for all privileged accounts</li>
                 <li><strong>Security Awareness:</strong> Conduct targeted training for teams</li>
@@ -1056,7 +1057,7 @@
         <div class="success-box">
             <h3>Phase 3: Continuous Improvement (Month 1 & Ongoing)</h3>
             <ol style="margin-left: 20px; margin-top: 10px; line-height: 2;">
-                <li><strong>Complete Remediation:</strong> Address all {{ medium_count }} medium-priority findings</li>
+                <li><strong>Complete Remediation:</strong> Address all {{ medium_count|intcomma }} medium-priority findings</li>
                 <li><strong>Security Automation:</strong> Implement Azure Policy and automated guardrails</li>
                 <li><strong>Regular Assessments:</strong> Establish weekly Azure Advisor security reviews</li>
                 <li><strong>Penetration Testing:</strong> Conduct third-party security assessment</li>

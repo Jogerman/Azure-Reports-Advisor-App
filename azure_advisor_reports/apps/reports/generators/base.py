@@ -126,8 +126,11 @@ class BaseReportGenerator(ABC):
             # Subscription metrics
             'subscriptions': self.get_subscription_metrics(),
 
-            # Saving Plans & Reserved Instances metrics (v1.6.3)
-            'reservation_metrics': self.get_reservation_metrics(),
+            # Saving Plans & Reserved Instances metrics (v2.0 - Enhanced Multi-Dimensional)
+            'reservation_metrics': self.get_reservation_metrics(),  # Keep for backward compatibility
+            'pure_reservation_metrics': self.get_pure_reservation_metrics_by_term(),  # NEW
+            'savings_plan_metrics': self.get_savings_plan_metrics(),  # NEW
+            'combined_commitment_metrics': self.get_combined_commitment_metrics(),  # NEW
 
             # Summary statistics
             'high_impact_count': self.get_impact_count('high'),
@@ -339,6 +342,275 @@ class BaseReportGenerator(ABC):
             'by_term': by_term,
             'recommendations': top_reservations,
         }
+
+    def get_pure_reservation_metrics_by_term(self):
+        """
+        Get metrics for PURE RESERVATIONS ONLY (excluding Savings Plans).
+        Separated by commitment term (1-year vs 3-year).
+
+        Version 2.0 - Enhanced Multi-Dimensional Analysis
+
+        Returns:
+            dict: Nested structure with separate 1-year and 3-year data
+        """
+        from django.db.models import F, Sum, Count, DecimalField, Case, When, Q
+
+        # Filter only pure traditional reservations (NOT Savings Plans)
+        pure_reservations = self.recommendations.filter(
+            Q(commitment_category='pure_reservation_1y') |
+            Q(commitment_category='pure_reservation_3y')
+        ).annotate(
+            commitment_savings=Case(
+                When(
+                    commitment_term_years__isnull=False,
+                    potential_savings__isnull=False,
+                    then=F('potential_savings') * F('commitment_term_years')
+                ),
+                default=F('potential_savings'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        # Separate 1-year and 3-year reservations
+        one_year_reservations = pure_reservations.filter(commitment_term_years=1)
+        three_year_reservations = pure_reservations.filter(commitment_term_years=3)
+
+        # Calculate 1-year metrics
+        one_year_totals = one_year_reservations.aggregate(
+            count=Count('id'),
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+
+        # Calculate 3-year metrics
+        three_year_totals = three_year_reservations.aggregate(
+            count=Count('id'),
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+
+        # Get top recommendations for each term
+        top_1y = list(one_year_reservations.order_by('-commitment_savings')[:10])
+        top_3y = list(three_year_reservations.order_by('-commitment_savings')[:10])
+
+        # Group by resource type for each term
+        one_year_by_type = one_year_reservations.values('reservation_type').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+            commitment_savings=Sum('commitment_savings')
+        ).order_by('-annual_savings')
+
+        three_year_by_type = three_year_reservations.values('reservation_type').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+            commitment_savings=Sum('commitment_savings')
+        ).order_by('-annual_savings')
+
+        return {
+            'has_pure_reservations': pure_reservations.exists(),
+            'total_count': pure_reservations.count(),
+
+            # 1-Year Reservations
+            'one_year': {
+                'count': one_year_totals['count'] or 0,
+                'total_annual_savings': float(one_year_totals['total_annual'] or 0),
+                'total_commitment_savings': float(one_year_totals['total_commitment'] or 0),
+                'average_annual_savings': (
+                    float(one_year_totals['total_annual'] / one_year_totals['count'])
+                    if one_year_totals['count'] else 0
+                ),
+                'by_type': [
+                    {
+                        'type': item['reservation_type'],
+                        'type_display': self._get_reservation_type_display(item['reservation_type']),
+                        'count': item['count'],
+                        'annual_savings': float(item['annual_savings'] or 0),
+                        'commitment_savings': float(item['commitment_savings'] or 0),
+                    }
+                    for item in one_year_by_type
+                ],
+                'top_recommendations': top_1y,
+            },
+
+            # 3-Year Reservations
+            'three_year': {
+                'count': three_year_totals['count'] or 0,
+                'total_annual_savings': float(three_year_totals['total_annual'] or 0),
+                'total_commitment_savings': float(three_year_totals['total_commitment'] or 0),
+                'average_annual_savings': (
+                    float(three_year_totals['total_annual'] / three_year_totals['count'])
+                    if three_year_totals['count'] else 0
+                ),
+                'by_type': [
+                    {
+                        'type': item['reservation_type'],
+                        'type_display': self._get_reservation_type_display(item['reservation_type']),
+                        'count': item['count'],
+                        'annual_savings': float(item['annual_savings'] or 0),
+                        'commitment_savings': float(item['commitment_savings'] or 0),
+                    }
+                    for item in three_year_by_type
+                ],
+                'top_recommendations': top_3y,
+            },
+        }
+
+    def get_savings_plan_metrics(self):
+        """
+        Get metrics for PURE SAVINGS PLANS ONLY (excluding traditional reservations).
+
+        Savings Plans are flexible compute commitments across VM families.
+
+        Version 2.0 - Enhanced Multi-Dimensional Analysis
+
+        Returns:
+            dict: Savings Plan specific metrics
+        """
+        from django.db.models import F, Sum, Count, DecimalField, Case, When
+
+        # Filter only pure Savings Plans
+        savings_plans = self.recommendations.filter(
+            commitment_category='pure_savings_plan'
+        ).annotate(
+            commitment_savings=Case(
+                When(
+                    commitment_term_years__isnull=False,
+                    potential_savings__isnull=False,
+                    then=F('potential_savings') * F('commitment_term_years')
+                ),
+                default=F('potential_savings'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        count = savings_plans.count()
+
+        if count == 0:
+            return {
+                'has_savings_plans': False,
+                'count': 0,
+                'total_annual_savings': 0,
+                'total_commitment_savings': 0,
+                'average_annual_savings': 0,
+                'by_term': [],
+                'top_recommendations': [],
+            }
+
+        # Calculate totals
+        totals = savings_plans.aggregate(
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+
+        # Group by commitment term
+        by_term = savings_plans.values('commitment_term_years').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+            commitment_savings=Sum('commitment_savings')
+        ).order_by('commitment_term_years')
+
+        # Get top recommendations
+        top_recommendations = list(savings_plans.order_by('-commitment_savings')[:10])
+
+        return {
+            'has_savings_plans': True,
+            'count': count,
+            'total_annual_savings': float(totals['total_annual'] or 0),
+            'total_commitment_savings': float(totals['total_commitment'] or 0),
+            'average_annual_savings': float(totals['total_annual'] / count) if count else 0,
+            'by_term': [
+                {
+                    'term_years': item['commitment_term_years'],
+                    'term_display': f"{item['commitment_term_years']}-Year" if item['commitment_term_years'] else 'Unspecified',
+                    'count': item['count'],
+                    'annual_savings': float(item['annual_savings'] or 0),
+                    'commitment_savings': float(item['commitment_savings'] or 0),
+                }
+                for item in by_term
+            ],
+            'top_recommendations': top_recommendations,
+        }
+
+    def get_combined_commitment_metrics(self):
+        """
+        Get metrics for COMBINED COMMITMENTS (Savings Plans + Reservations together).
+
+        Some recommendations suggest combining both for optimal savings.
+
+        Version 2.0 - Enhanced Multi-Dimensional Analysis
+
+        Returns:
+            dict: Combined commitment metrics separated by term
+        """
+        from django.db.models import F, Sum, Count, DecimalField, Case, When, Q
+
+        # Filter combined commitments
+        combined = self.recommendations.filter(
+            Q(commitment_category='combined_sp_1y') |
+            Q(commitment_category='combined_sp_3y')
+        ).annotate(
+            commitment_savings=Case(
+                When(
+                    commitment_term_years__isnull=False,
+                    potential_savings__isnull=False,
+                    then=F('potential_savings') * F('commitment_term_years')
+                ),
+                default=F('potential_savings'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        # Separate by term
+        combined_1y = combined.filter(commitment_category='combined_sp_1y')
+        combined_3y = combined.filter(commitment_category='combined_sp_3y')
+
+        # Calculate metrics for each
+        totals_1y = combined_1y.aggregate(
+            count=Count('id'),
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+
+        totals_3y = combined_3y.aggregate(
+            count=Count('id'),
+            total_annual=Sum('potential_savings'),
+            total_commitment=Sum('commitment_savings')
+        )
+
+        # Get top recommendations
+        top_1y = list(combined_1y.order_by('-commitment_savings')[:5])
+        top_3y = list(combined_3y.order_by('-commitment_savings')[:5])
+
+        return {
+            'has_combined_commitments': combined.exists(),
+            'total_count': combined.count(),
+
+            # Savings Plan + 1-Year Reservations
+            'sp_plus_1y': {
+                'count': totals_1y['count'] or 0,
+                'total_annual_savings': float(totals_1y['total_annual'] or 0),
+                'total_commitment_savings': float(totals_1y['total_commitment'] or 0),
+                'top_recommendations': top_1y,
+            },
+
+            # Savings Plan + 3-Year Reservations
+            'sp_plus_3y': {
+                'count': totals_3y['count'] or 0,
+                'total_annual_savings': float(totals_3y['total_annual'] or 0),
+                'total_commitment_savings': float(totals_3y['total_commitment'] or 0),
+                'top_recommendations': top_3y,
+            },
+        }
+
+    def _get_reservation_type_display(self, reservation_type):
+        """Helper to get human-readable reservation type."""
+        type_map = {
+            'reserved_instance': 'Reserved VM Instance',
+            'savings_plan': 'Savings Plan',
+            'reserved_capacity': 'Reserved Capacity',
+            'other': 'Other Reservation',
+        }
+        return type_map.get(reservation_type, reservation_type or 'Unknown')
 
     def group_by_category(self):
         """
