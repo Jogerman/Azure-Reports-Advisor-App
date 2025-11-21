@@ -23,5 +23,8 @@ export type {
   ReportListParams,
   ReportListResponse,
   ReportStatusResponse,
+  ManualRecommendation,
+  RecommendationCategory,
+  BusinessImpact,
 } from './reportService';
 // Analytics types are exported from types/analytics.ts

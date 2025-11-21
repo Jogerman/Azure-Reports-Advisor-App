@@ -1,14 +1,468 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiChevronRight, FiList, FiUploadCloud, FiCloud } from 'react-icons/fi';
-import { clientService, reportService, ReportType } from '../services';
+import { FiArrowRight, FiChevronRight, FiList, FiUploadCloud, FiCloud, FiPlus, FiTrash2, FiEdit3, FiCheck } from 'react-icons/fi';
+import { clientService, reportService, ReportType, ManualRecommendation, RecommendationCategory, BusinessImpact } from '../services';
 import { Button, Card, LoadingSpinner, showToast } from '../components/common';
 import { CSVUploader, ReportTypeSelector, ReportList } from '../components/reports';
 import { azureSubscriptionApi, createReportFromAzureAPI } from '../services/azureIntegrationApi';
 import { DataSource, AzureReportFilters } from '../types/azureIntegration';
 
-type Step = 'select-client' | 'select-data-source' | 'upload-csv' | 'select-azure-subscription' | 'select-type' | 'view-reports';
+type Step = 'select-client' | 'select-data-source' | 'upload-csv' | 'select-azure-subscription' | 'manual-input' | 'select-type' | 'view-reports';
+
+// Constants for form options
+const CATEGORY_OPTIONS: { value: RecommendationCategory; label: string }[] = [
+  { value: 'cost', label: 'Cost Optimization' },
+  { value: 'security', label: 'Security' },
+  { value: 'reliability', label: 'Reliability' },
+  { value: 'operational_excellence', label: 'Operational Excellence' },
+  { value: 'performance', label: 'Performance' },
+];
+
+const IMPACT_OPTIONS: { value: BusinessImpact; label: string }[] = [
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+
+const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'MXN'];
+
+const emptyRecommendation = (): ManualRecommendation => ({
+  category: 'cost',
+  business_impact: 'medium',
+  recommendation: '',
+  subscription_id: '',
+  subscription_name: '',
+  resource_group: '',
+  resource_name: '',
+  resource_type: '',
+  potential_savings: undefined,
+  currency: 'USD',
+  potential_benefits: '',
+  advisor_score_impact: undefined,
+});
+
+// ManualInputStep Component
+interface ManualInputStepProps {
+  selectedClient: any;
+  dataSource: DataSource;
+  selectedFile: File | null;
+  wantsManualInput: boolean | null;
+  manualRecommendations: ManualRecommendation[];
+  onWantsManualInputChange: (wants: boolean | null) => void;
+  onRecommendationsChange: (recs: ManualRecommendation[]) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}
+
+const ManualInputStep: React.FC<ManualInputStepProps> = ({
+  selectedClient,
+  dataSource,
+  selectedFile,
+  wantsManualInput,
+  manualRecommendations,
+  onWantsManualInputChange,
+  onRecommendationsChange,
+  onBack,
+  onContinue,
+}) => {
+  const handleAddRecommendation = () => {
+    onRecommendationsChange([...manualRecommendations, emptyRecommendation()]);
+  };
+
+  const handleRemoveRecommendation = (index: number) => {
+    if (manualRecommendations.length === 1) return;
+    onRecommendationsChange(manualRecommendations.filter((_, i) => i !== index));
+  };
+
+  const handleRecommendationChange = (
+    index: number,
+    field: keyof ManualRecommendation,
+    value: any
+  ) => {
+    const updated = [...manualRecommendations];
+    updated[index] = { ...updated[index], [field]: value };
+    onRecommendationsChange(updated);
+  };
+
+  const canContinue = wantsManualInput === false ||
+    (wantsManualInput === true && manualRecommendations.length > 0 &&
+     manualRecommendations.every(rec => rec.category && rec.business_impact && rec.recommendation.trim()));
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Step 4: Manual Recommendations (Optional)
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Client: <span className="font-medium">{selectedClient?.company_name}</span> •
+            Data Source: <span className="font-medium">{dataSource === 'csv' ? 'CSV Upload' : 'Azure API'}</span>
+            {dataSource === 'csv' && selectedFile && (
+              <> • File: <span className="font-medium">{selectedFile.name}</span></>
+            )}
+          </p>
+        </div>
+        <Button variant="ghost" onClick={onBack}>
+          Back
+        </Button>
+      </div>
+
+      {/* Question Card */}
+      {wantsManualInput === null && (
+        <div className="space-y-6">
+          <div className="bg-azure-50 border border-azure-200 rounded-lg p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <FiEdit3 className="h-6 w-6 text-azure-600" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  ¿Deseas agregar recomendaciones manuales?
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Puedes añadir recomendaciones personalizadas que se incluirán en el reporte junto con las recomendaciones de Azure Advisor.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => onWantsManualInputChange(false)}
+                  >
+                    No, continuar sin recomendaciones
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      onWantsManualInputChange(true);
+                      if (manualRecommendations.length === 0) {
+                        onRecommendationsChange([emptyRecommendation()]);
+                      }
+                    }}
+                  >
+                    Sí, agregar recomendaciones
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form Area */}
+      {wantsManualInput === true && (
+        <div className="space-y-6">
+          {/* Summary Badge */}
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <FiCheck className="h-5 w-5 text-green-600 mr-2" />
+              <span className="text-sm font-medium text-green-900">
+                {manualRecommendations.length} recomendación(es) agregada(s)
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onWantsManualInputChange(null);
+                onRecommendationsChange([]);
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+
+          {/* Recommendations Forms */}
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {manualRecommendations.map((rec, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-4"
+              >
+                {/* Header with remove button */}
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Recomendación #{index + 1}
+                  </h4>
+                  {manualRecommendations.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRecommendation(index)}
+                      className="text-red-600 hover:text-red-800 flex items-center text-sm"
+                    >
+                      <FiTrash2 className="mr-1" size={16} />
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+
+                {/* Required fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Categoría <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={rec.category}
+                      onChange={(e) =>
+                        handleRecommendationChange(
+                          index,
+                          'category',
+                          e.target.value as RecommendationCategory
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                      required
+                    >
+                      {CATEGORY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Impacto de Negocio <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={rec.business_impact}
+                      onChange={(e) =>
+                        handleRecommendationChange(
+                          index,
+                          'business_impact',
+                          e.target.value as BusinessImpact
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                      required
+                    >
+                      {IMPACT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Recommendation text */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Recomendación <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={rec.recommendation}
+                    onChange={(e) =>
+                      handleRecommendationChange(index, 'recommendation', e.target.value)
+                    }
+                    rows={3}
+                    maxLength={5000}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                    placeholder="Describe la recomendación en detalle..."
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {rec.recommendation.length}/5000 caracteres
+                  </p>
+                </div>
+
+                {/* Optional fields - Azure Resource Information */}
+                <details className="group">
+                  <summary className="text-sm font-medium text-azure-600 cursor-pointer hover:text-azure-700 flex items-center">
+                    <FiChevronRight className="mr-1 transition-transform group-open:rotate-90" />
+                    Detalles de Recursos Azure (Opcional)
+                  </summary>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pl-6">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        ID de Suscripción
+                      </label>
+                      <input
+                        type="text"
+                        value={rec.subscription_id || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'subscription_id', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., sub-123"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Nombre de Suscripción
+                      </label>
+                      <input
+                        type="text"
+                        value={rec.subscription_name || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'subscription_name', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., Producción"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Grupo de Recursos
+                      </label>
+                      <input
+                        type="text"
+                        value={rec.resource_group || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'resource_group', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., rg-produccion"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Nombre de Recurso
+                      </label>
+                      <input
+                        type="text"
+                        value={rec.resource_name || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'resource_name', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., vm-web-01"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Tipo de Recurso
+                      </label>
+                      <input
+                        type="text"
+                        value={rec.resource_type || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'resource_type', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., Microsoft.Compute/virtualMachines"
+                      />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Optional fields - Cost Information */}
+                <details className="group">
+                  <summary className="text-sm font-medium text-azure-600 cursor-pointer hover:text-azure-700 flex items-center">
+                    <FiChevronRight className="mr-1 transition-transform group-open:rotate-90" />
+                    Detalles de Costo e Impacto (Opcional)
+                  </summary>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pl-6">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Ahorro Potencial
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={rec.potential_savings || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(
+                            index,
+                            'potential_savings',
+                            e.target.value ? parseFloat(e.target.value) : undefined
+                          )
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., 1200.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Moneda
+                      </label>
+                      <select
+                        value={rec.currency || 'USD'}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'currency', e.target.value)
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                      >
+                        {CURRENCY_OPTIONS.map((curr) => (
+                          <option key={curr} value={curr}>
+                            {curr}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Impacto en Advisor Score (0-100)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={rec.advisor_score_impact || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(
+                            index,
+                            'advisor_score_impact',
+                            e.target.value ? parseFloat(e.target.value) : undefined
+                          )
+                        }
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="ej., 5.0"
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Beneficios Potenciales
+                      </label>
+                      <textarea
+                        value={rec.potential_benefits || ''}
+                        onChange={(e) =>
+                          handleRecommendationChange(index, 'potential_benefits', e.target.value)
+                        }
+                        rows={2}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-azure-500 focus:border-azure-500"
+                        placeholder="Describe los beneficios esperados..."
+                      />
+                    </div>
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+
+          {/* Add recommendation button */}
+          <div>
+            <button
+              type="button"
+              onClick={handleAddRecommendation}
+              className="flex items-center text-azure-600 hover:text-azure-800 text-sm font-medium"
+            >
+              <FiPlus className="mr-1" size={16} />
+              Agregar otra recomendación
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Continue button */}
+      {(wantsManualInput === false || (wantsManualInput === true && canContinue)) && (
+        <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+          <Button
+            variant="primary"
+            icon={<FiArrowRight />}
+            onClick={onContinue}
+          >
+            Continuar al Tipo de Reporte
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+};
 
 const ReportsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -21,6 +475,8 @@ const ReportsPage: React.FC = () => {
   const [selectedAzureSubscription, setSelectedAzureSubscription] = useState<string | null>(null);
   const [azureFilters, setAzureFilters] = useState<AzureReportFilters>({});
   const [selectedReportType, setSelectedReportType] = useState<ReportType | null>(null);
+  const [manualRecommendations, setManualRecommendations] = useState<ManualRecommendation[]>([]);
+  const [wantsManualInput, setWantsManualInput] = useState<boolean | null>(null);
 
   // Fetch clients
   const { data: clientsData, isLoading: loadingClients } = useQuery({
@@ -39,9 +495,19 @@ const ReportsPage: React.FC = () => {
   const uploadMutation = useMutation({
     mutationFn: (data: { client_id: string; csv_file: File; report_type?: ReportType }) =>
       reportService.uploadCSV(data),
-    onSuccess: (report) => {
+    onSuccess: async (report) => {
       showToast.success('CSV uploaded successfully! Report is being processed...');
       queryClient.invalidateQueries({ queryKey: ['reports'] });
+
+      // If there are manual recommendations, add them to the report
+      if (manualRecommendations.length > 0) {
+        try {
+          await reportService.addManualRecommendations(report.id, manualRecommendations);
+          showToast.success(`Added ${manualRecommendations.length} manual recommendation(s) to the report`);
+        } catch (error) {
+          showToast.error('Report created, but failed to add manual recommendations');
+        }
+      }
 
       // Reset and go to view reports
       setTimeout(() => {
@@ -62,9 +528,19 @@ const ReportsPage: React.FC = () => {
       azure_subscription: string;
       filters?: AzureReportFilters;
     }) => createReportFromAzureAPI(data),
-    onSuccess: () => {
+    onSuccess: async (report) => {
       showToast.success('Report creation initiated from Azure API!');
       queryClient.invalidateQueries({ queryKey: ['reports'] });
+
+      // If there are manual recommendations, add them to the report
+      if (manualRecommendations.length > 0) {
+        try {
+          await reportService.addManualRecommendations(report.id, manualRecommendations);
+          showToast.success(`Added ${manualRecommendations.length} manual recommendation(s) to the report`);
+        } catch (error) {
+          showToast.error('Report created, but failed to add manual recommendations');
+        }
+      }
 
       // Reset and go to view reports
       setTimeout(() => {
@@ -103,10 +579,15 @@ const ReportsPage: React.FC = () => {
     setSelectedFile(null);
   };
 
-  const handleContinueToReportType = () => {
+  const handleContinueToManualInput = () => {
     if ((dataSource === 'csv' && selectedFile) || (dataSource === 'azure_api' && selectedAzureSubscription)) {
-      setCurrentStep('select-type');
+      setCurrentStep('manual-input');
+      setWantsManualInput(null); // Reset manual input choice
     }
+  };
+
+  const handleContinueToReportType = () => {
+    setCurrentStep('select-type');
   };
 
   const handleReportTypeSelect = (type: ReportType) => {
@@ -121,7 +602,7 @@ const ReportsPage: React.FC = () => {
     }));
   };
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     if (!selectedClientId || !selectedReportType) return;
 
     if (dataSource === 'csv' && selectedFile) {
@@ -147,6 +628,8 @@ const ReportsPage: React.FC = () => {
     setSelectedAzureSubscription(null);
     setAzureFilters({});
     setSelectedReportType(null);
+    setManualRecommendations([]);
+    setWantsManualInput(null);
     setCurrentStep('select-client');
   };
 
@@ -155,6 +638,7 @@ const ReportsPage: React.FC = () => {
       { id: 'select-client', label: 'Select Client' },
       { id: 'select-data-source', label: 'Data Source' },
       { id: dataSource === 'csv' ? 'upload-csv' : 'select-azure-subscription', label: dataSource === 'csv' ? 'Upload CSV' : 'Azure Subscription' },
+      { id: 'manual-input', label: 'Manual Input' },
       { id: 'select-type', label: 'Select Type' },
     ];
 
@@ -372,10 +856,10 @@ const ReportsPage: React.FC = () => {
             <Button
               variant="primary"
               icon={<FiArrowRight />}
-              onClick={handleContinueToReportType}
+              onClick={handleContinueToManualInput}
               disabled={!selectedFile}
             >
-              Continue to Report Type
+              Continue to Manual Input
             </Button>
           </div>
         </Card>
@@ -507,22 +991,37 @@ const ReportsPage: React.FC = () => {
             <Button
               variant="primary"
               icon={<FiArrowRight />}
-              onClick={handleContinueToReportType}
+              onClick={handleContinueToManualInput}
               disabled={!selectedAzureSubscription}
             >
-              Continue to Report Type
+              Continue to Manual Input
             </Button>
           </div>
         </Card>
       )}
 
-      {/* Step 4: Select Report Type */}
+      {/* Step 4: Manual Input */}
+      {currentStep === 'manual-input' && (
+        <ManualInputStep
+          selectedClient={selectedClient}
+          dataSource={dataSource}
+          selectedFile={selectedFile}
+          wantsManualInput={wantsManualInput}
+          manualRecommendations={manualRecommendations}
+          onWantsManualInputChange={setWantsManualInput}
+          onRecommendationsChange={setManualRecommendations}
+          onBack={() => setCurrentStep(dataSource === 'csv' ? 'upload-csv' : 'select-azure-subscription')}
+          onContinue={handleContinueToReportType}
+        />
+      )}
+
+      {/* Step 5: Select Report Type */}
       {currentStep === 'select-type' && (
         <Card>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Step 4: Select Report Type
+                Step 5: Select Report Type
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Client: <span className="font-medium">{selectedClient?.company_name}</span> •
@@ -534,7 +1033,7 @@ const ReportsPage: React.FC = () => {
             </div>
             <Button
               variant="ghost"
-              onClick={() => setCurrentStep(dataSource === 'csv' ? 'upload-csv' : 'select-azure-subscription')}
+              onClick={() => setCurrentStep('manual-input')}
             >
               Back
             </Button>
