@@ -171,10 +171,10 @@
                             <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success">${{ rec.monthly_savings|floatformat:0 }}</strong>
+                            <strong class="text-success">${{ rec.monthly_savings|floatformat:0|intcomma }}</strong>
                         </td>
                     </tr>
                     {% empty %}
@@ -192,7 +192,7 @@
                             <strong>Total (Top {{ top_cost_savers.count }}):</strong>
                         </td>
                         <td class="text-right" style="font-size: 1.2em; color: var(--success-green); padding: 15px;">
-                            ${{ top_cost_savers_total|floatformat:0 }}
+                            ${{ top_cost_savers_total|floatformat:0|intcomma }}
                         </td>
                         <td class="text-right" style="font-size: 1.1em; color: var(--success-green); padding: 15px;">
                             ${% widthratio top_cost_savers_total 12 1 %}
@@ -214,7 +214,7 @@
 
         <div class="info-box">
             <div class="info-box-icon">🚀</div>
-            <p><strong>Low Effort, High Impact:</strong> These {{ quick_wins.count }} recommendations can be implemented quickly with minimal disruption while providing immediate cost savings. Total potential: <strong>${{ quick_wins_total|floatformat:0 }}/year (${{ quick_wins_monthly|floatformat:0 }}/month)</strong>.</p>
+            <p><strong>Low Effort, High Impact:</strong> These {{ quick_wins.count }} recommendations can be implemented quickly with minimal disruption while providing immediate cost savings. Total potential: <strong>${{ quick_wins_total|floatformat:0|intcomma }}/year (${{ quick_wins_monthly|floatformat:0|intcomma }}/month)</strong>.</p>
         </div>
 
         <div class="table-container">
@@ -241,7 +241,7 @@
                             <span class="badge badge-low">Low Effort</span>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                     </tr>
                     {% empty %}
@@ -281,13 +281,13 @@
                             <strong>{{ item.resource_type|truncatechars:50 }}</strong>
                         </td>
                         <td class="text-center">
-                            <strong class="text-lg">{{ item.count }}</strong>
+                            <strong class="text-lg">{{ item.count|intcomma }}</strong>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ item.total_savings|floatformat:0 }}</strong>
+                            <strong class="text-success text-lg">${{ item.total_savings|floatformat:0|intcomma }}</strong>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success">${{ item.monthly_savings|floatformat:0 }}</strong>
+                            <strong class="text-success">${{ item.monthly_savings|floatformat:0|intcomma }}</strong>
                         </td>
                         <td class="text-center">
                             <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
@@ -321,32 +321,32 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             Reservations and Saving Plans provide significant long-term cost reduction through committed usage.
-            Total potential commitment savings: <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</strong> over the full terms.
+            Total potential commitment savings: <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0|intcomma }}</strong> over the full terms.
         </p>
 
         <!-- Summary Metrics -->
         <div class="metrics-grid" style="margin-bottom: 40px;">
             <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                 <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Reservations</div>
-                <div class="metric-value" style="font-size: 2.5rem;">{{ reservation_metrics.total_count }}</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ reservation_metrics.total_count|intcomma }}</div>
                 <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">Recommendations</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-label">Annual Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_annual_savings|floatformat:0 }}</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_annual_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">Per Year</div>
             </div>
 
             <div class="metric-card metric-security">
                 <div class="metric-label">Total Commitment Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_commitment_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">Over Full Term</div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">Average per Reservation</div>
-                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ reservation_metrics.average_annual_savings|floatformat:0 }}</div>
+                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ reservation_metrics.average_annual_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">Annual Savings</div>
             </div>
         </div>
@@ -374,13 +374,13 @@
                             <tr>
                                 <td><strong>{{ type_data.type_display }}</strong></td>
                                 <td class="text-center">
-                                    <strong class="text-lg">{{ type_data.count }}</strong>
+                                    <strong class="text-lg">{{ type_data.count|intcomma }}</strong>
                                 </td>
                                 <td class="text-right">
-                                    <strong class="text-success">${{ type_data.annual_savings|floatformat:0 }}</strong>
+                                    <strong class="text-success">${{ type_data.annual_savings|floatformat:0|intcomma }}</strong>
                                 </td>
                                 <td class="text-right">
-                                    <strong class="text-success text-lg">${{ type_data.commitment_savings|floatformat:0 }}</strong>
+                                    <strong class="text-success text-lg">${{ type_data.commitment_savings|floatformat:0|intcomma }}</strong>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -411,13 +411,13 @@
                             <tr>
                                 <td><strong>{{ term_data.term_display }}</strong></td>
                                 <td class="text-center">
-                                    <strong class="text-lg">{{ term_data.count }}</strong>
+                                    <strong class="text-lg">{{ term_data.count|intcomma }}</strong>
                                 </td>
                                 <td class="text-right">
-                                    <strong class="text-success">${{ term_data.annual_savings|floatformat:0 }}</strong>
+                                    <strong class="text-success">${{ term_data.annual_savings|floatformat:0|intcomma }}</strong>
                                 </td>
                                 <td class="text-right">
-                                    <strong class="text-success text-lg">${{ term_data.commitment_savings|floatformat:0 }}</strong>
+                                    <strong class="text-success text-lg">${{ term_data.commitment_savings|floatformat:0|intcomma }}</strong>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -476,14 +476,14 @@
                             </strong>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                         <td class="text-right">
                             <strong class="text-lg" style="color: #007bff;">
                                 {% if rec.commitment_term_years and rec.potential_savings %}
-                                ${{ rec.potential_savings|multiply:rec.commitment_term_years|floatformat:0 }}
+                                ${{ rec.potential_savings|multiply:rec.commitment_term_years|floatformat:0|intcomma }}
                                 {% else %}
-                                ${{ rec.potential_savings|floatformat:0 }}
+                                ${{ rec.potential_savings|floatformat:0|intcomma }}
                                 {% endif %}
                             </strong>
                         </td>
@@ -499,9 +499,9 @@
             <div class="info-box-icon">💡</div>
             <h3>Key Insights - Reservation Strategy</h3>
             <ul style="margin: 10px 0 0 0; padding-left: 20px; line-height: 1.8;">
-                <li>Total potential commitment savings of <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</strong> over the full reservation terms</li>
-                <li>Average annual savings per reservation: <strong>${{ reservation_metrics.average_annual_savings|floatformat:0 }}</strong></li>
-                <li>{{ reservation_metrics.total_count }} reservation opportunities identified across {{ reservation_metrics.by_type|length }} different types</li>
+                <li>Total potential commitment savings of <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0|intcomma }}</strong> over the full reservation terms</li>
+                <li>Average annual savings per reservation: <strong>${{ reservation_metrics.average_annual_savings|floatformat:0|intcomma }}</strong></li>
+                <li>{{ reservation_metrics.total_count|intcomma }} reservation opportunities identified across {{ reservation_metrics.by_type|length }} different types</li>
                 {% if reservation_metrics.by_term %}
                 <li>Commitment terms available:
                     {% for term in reservation_metrics.by_term %}
@@ -529,7 +529,7 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             These optimization opportunities may require more planning and coordination but offer substantial long-term value.
-            Total potential: <strong>${{ long_term_total|floatformat:0 }}/year</strong>.
+            Total potential: <strong>${{ long_term_total|floatformat:0|intcomma }}/year</strong>.
         </p>
 
         <div class="table-container">
@@ -555,7 +555,7 @@
                             <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                     </tr>
                     {% endfor %}
@@ -576,7 +576,7 @@
             <div class="metric-card metric-critical">
                 <div class="metric-label">Phase 1 - Immediate</div>
                 <div class="metric-value text-danger" style="font-size: 2.5rem;">Week 1-2</div>
-                <div class="metric-subtitle">${{ quick_wins_total|floatformat:0 }} quick wins</div>
+                <div class="metric-subtitle">${{ quick_wins_total|floatformat:0|intcomma }} quick wins</div>
             </div>
 
             <div class="metric-card metric-security">
@@ -588,7 +588,7 @@
             <div class="metric-card metric-cost">
                 <div class="metric-label">Phase 3 - Long-term</div>
                 <div class="metric-value text-success" style="font-size: 2.5rem;">Month 2-3</div>
-                <div class="metric-subtitle">${{ long_term_total|floatformat:0 }} strategic optimizations</div>
+                <div class="metric-subtitle">${{ long_term_total|floatformat:0|intcomma }} strategic optimizations</div>
             </div>
 
             <div class="metric-card">
@@ -604,7 +604,7 @@
                 <li><strong>Resource Right-sizing:</strong> Implement immediate VM and storage right-sizing recommendations</li>
                 <li><strong>Unused Resources:</strong> Identify and decommission or deallocate unused resources</li>
                 <li><strong>Low-hanging Fruit:</strong> Address simple configuration changes with immediate impact</li>
-                <li><strong>Estimated Savings:</strong> ${{ quick_wins_total|floatformat:0 }}/year (~{{ quick_wins.count }} recommendations)</li>
+                <li><strong>Estimated Savings:</strong> ${{ quick_wins_total|floatformat:0|intcomma }}/year (~{{ quick_wins.count|intcomma }} recommendations)</li>
                 <li><strong>Implementation Time:</strong> 2-4 hours per recommendation</li>
             </ol>
         </div>
@@ -626,7 +626,7 @@
                 <li><strong>Architectural Changes:</strong> Implement significant architecture optimizations</li>
                 <li><strong>Hybrid Solutions:</strong> Evaluate on-premises vs. cloud cost-benefit analysis</li>
                 <li><strong>Automation:</strong> Deploy automated scaling and optimization policies</li>
-                <li><strong>Estimated Savings:</strong> ${{ long_term_total|floatformat:0 }}/year</li>
+                <li><strong>Estimated Savings:</strong> ${{ long_term_total|floatformat:0|intcomma }}/year</li>
                 <li><strong>Implementation Time:</strong> 2-4 weeks with architectural review</li>
             </ol>
         </div>
