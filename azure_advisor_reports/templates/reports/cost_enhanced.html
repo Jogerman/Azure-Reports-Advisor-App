@@ -1,4 +1,5 @@
 {% extends 'reports/base.html' %}
+{% load report_filters %}
 
 {% block title %}Cost Optimization Report - {{ client.company_name }}{% endblock %}
 
@@ -15,21 +16,21 @@
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Total Annual Savings</div>
-                <div class="metric-value">${{ total_annual_savings|floatformat:0 }}</div>
-                <div class="metric-subtitle">${{ total_monthly_savings|floatformat:0 }}/month opportunity</div>
+                <div class="metric-value">${{ total_annual_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">${{ total_monthly_savings|floatformat:0|intcomma }}/month opportunity</div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-icon">📊</div>
                 <div class="metric-label">Cost Recommendations</div>
-                <div class="metric-value">{{ cost_recommendations.count }}</div>
+                <div class="metric-value">{{ cost_recommendations.count|intcomma }}</div>
                 <div class="metric-subtitle">Optimization opportunities</div>
             </div>
 
             <div class="metric-card metric-security">
                 <div class="metric-icon">🎯</div>
                 <div class="metric-label">High-Value Opportunities</div>
-                <div class="metric-value">{{ quick_wins.count }}</div>
+                <div class="metric-value">{{ quick_wins.count|intcomma }}</div>
                 <div class="metric-subtitle">>$1,000/year savings each</div>
             </div>
 
@@ -53,12 +54,12 @@
             <div class="info-box-icon">📈</div>
             <h3>Cost Optimization Opportunity</h3>
             <p style="font-size: 1.1em; line-height: 1.8; margin-top: 15px;">
-                Azure Advisor has identified <strong>${{ total_annual_savings|floatformat:0 }} in annual cost savings</strong>
-                across {{ cost_recommendations.count }} optimization opportunities. This represents
-                <strong>${{ total_monthly_savings|floatformat:0 }} per month</strong> in potential savings.
+                Azure Advisor has identified <strong>${{ total_annual_savings|floatformat:0|intcomma }} in annual cost savings</strong>
+                across {{ cost_recommendations.count|intcomma }} optimization opportunities. This represents
+                <strong>${{ total_monthly_savings|floatformat:0|intcomma }} per month</strong> in potential savings.
                 Implementation of these recommendations will significantly reduce your Azure spending while maintaining or improving service quality.
                 {% if roi_analysis.roi_percentage > 100 %}
-                With an estimated ROI of <strong>{{ roi_analysis.roi_percentage|floatformat:0 }}%</strong>, this represents an exceptional investment opportunity.
+                With an estimated ROI of <strong>{{ roi_analysis.roi_percentage|floatformat:0|intcomma }}%</strong>, this represents an exceptional investment opportunity.
                 {% endif %}
             </p>
         </div>
@@ -67,25 +68,25 @@
         <div class="metrics-grid" style="margin-top: 40px;">
             <div class="metric-card">
                 <div class="metric-label">Estimated Implementation Cost</div>
-                <div class="metric-value text-warning" style="font-size: 2.5rem;">${{ roi_analysis.estimated_implementation_cost|floatformat:0 }}</div>
+                <div class="metric-value text-warning" style="font-size: 2.5rem;">${{ roi_analysis.estimated_implementation_cost|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">One-time engineering investment</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-label">First Year Net Benefit</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ roi_analysis.net_benefit|floatformat:0 }}</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ roi_analysis.net_benefit|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">After implementation costs</div>
             </div>
 
             <div class="metric-card metric-security">
                 <div class="metric-label">Return on Investment</div>
-                <div class="metric-value" style="font-size: 2.5rem;">{{ roi_analysis.roi_percentage|floatformat:0 }}%</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ roi_analysis.roi_percentage|floatformat:0|intcomma }}%</div>
                 <div class="metric-subtitle">Conservative estimate</div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">3-Year Total Savings</div>
-                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ three_year_savings|floatformat:0 }}</div>
+                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ three_year_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">Projected cumulative savings</div>
             </div>
         </div>
@@ -308,6 +309,211 @@
             </table>
         </div>
     </div>
+
+    <!-- Saving Plans & Reserved Instances Section -->
+    {% if reservation_metrics.has_reservations %}
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💰</div>
+            <h2 class="section-title">Saving Plans & Reserved Instances Analysis</h2>
+            <span class="section-count">{{ reservation_metrics.total_count }} opportunities</span>
+        </div>
+
+        <p class="section-description" style="margin-bottom: 30px;">
+            Reservations and Saving Plans provide significant long-term cost reduction through committed usage.
+            Total potential commitment savings: <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</strong> over the full terms.
+        </p>
+
+        <!-- Summary Metrics -->
+        <div class="metrics-grid" style="margin-bottom: 40px;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Reservations</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ reservation_metrics.total_count }}</div>
+                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">Recommendations</div>
+            </div>
+
+            <div class="metric-card metric-cost">
+                <div class="metric-label">Annual Savings</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_annual_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">Per Year</div>
+            </div>
+
+            <div class="metric-card metric-security">
+                <div class="metric-label">Total Commitment Savings</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">Over Full Term</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average per Reservation</div>
+                <div class="metric-value text-success" style="font-size: 2.5rem;">${{ reservation_metrics.average_annual_savings|floatformat:0 }}</div>
+                <div class="metric-subtitle">Annual Savings</div>
+            </div>
+        </div>
+
+        <!-- Breakdown Tables -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
+            <!-- By Reservation Type -->
+            {% if reservation_metrics.by_type %}
+            <div>
+                <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
+                    📊 Breakdown by Reservation Type
+                </h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th style="text-align: center;">Count</th>
+                                <th style="text-align: right;">Annual Savings</th>
+                                <th style="text-align: right;">Commitment Savings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for type_data in reservation_metrics.by_type %}
+                            <tr>
+                                <td><strong>{{ type_data.type_display }}</strong></td>
+                                <td class="text-center">
+                                    <strong class="text-lg">{{ type_data.count }}</strong>
+                                </td>
+                                <td class="text-right">
+                                    <strong class="text-success">${{ type_data.annual_savings|floatformat:0 }}</strong>
+                                </td>
+                                <td class="text-right">
+                                    <strong class="text-success text-lg">${{ type_data.commitment_savings|floatformat:0 }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- By Commitment Term -->
+            {% if reservation_metrics.by_term %}
+            <div>
+                <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
+                    📅 Breakdown by Commitment Term
+                </h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Term</th>
+                                <th style="text-align: center;">Count</th>
+                                <th style="text-align: right;">Annual Savings</th>
+                                <th style="text-align: right;">Commitment Savings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for term_data in reservation_metrics.by_term %}
+                            <tr>
+                                <td><strong>{{ term_data.term_display }}</strong></td>
+                                <td class="text-center">
+                                    <strong class="text-lg">{{ term_data.count }}</strong>
+                                </td>
+                                <td class="text-right">
+                                    <strong class="text-success">${{ term_data.annual_savings|floatformat:0 }}</strong>
+                                </td>
+                                <td class="text-right">
+                                    <strong class="text-success text-lg">${{ term_data.commitment_savings|floatformat:0 }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Top Reservation Recommendations -->
+        {% if reservation_metrics.recommendations %}
+        <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
+            🏆 Top Reservation Opportunities
+        </h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Recommendation</th>
+                        <th style="width: 150px; text-align: center;">Type</th>
+                        <th style="width: 100px; text-align: center;">Term</th>
+                        <th style="width: 130px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">Total Commitment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in reservation_metrics.recommendations|slice:":10" %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; margin-bottom: 3px;">
+                                {{ rec.resource_name|default:"General Recommendation"|truncatechars:40 }}
+                            </div>
+                            <div style="color: #6c757d; font-size: 0.85rem;">
+                                {{ rec.recommendation|truncatewords:15 }}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if rec.reservation_type == 'reserved_instance' %}
+                            <span class="badge badge-high" style="background: #e3f2fd; color: #1976d2;">Reserved Instance</span>
+                            {% elif rec.reservation_type == 'savings_plan' %}
+                            <span class="badge badge-medium" style="background: #f3e5f5; color: #7b1fa2;">Savings Plan</span>
+                            {% elif rec.reservation_type == 'reserved_capacity' %}
+                            <span class="badge badge-low" style="background: #e8f5e9; color: #388e3c;">Reserved Capacity</span>
+                            {% else %}
+                            <span class="badge" style="background: #fafafa; color: #757575;">Other</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <strong>
+                                {% if rec.commitment_term_years %}
+                                {{ rec.commitment_term_years }} Year{{ rec.commitment_term_years|pluralize }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
+                        </td>
+                        <td class="text-right">
+                            <strong class="text-lg" style="color: #007bff;">
+                                {% if rec.commitment_term_years and rec.potential_savings %}
+                                ${{ rec.potential_savings|multiply:rec.commitment_term_years|floatformat:0 }}
+                                {% else %}
+                                ${{ rec.potential_savings|floatformat:0 }}
+                                {% endif %}
+                            </strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Key Insights -->
+        <div class="warning-box" style="margin-top: 40px;">
+            <div class="info-box-icon">💡</div>
+            <h3>Key Insights - Reservation Strategy</h3>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px; line-height: 1.8;">
+                <li>Total potential commitment savings of <strong>${{ reservation_metrics.total_commitment_savings|floatformat:0 }}</strong> over the full reservation terms</li>
+                <li>Average annual savings per reservation: <strong>${{ reservation_metrics.average_annual_savings|floatformat:0 }}</strong></li>
+                <li>{{ reservation_metrics.total_count }} reservation opportunities identified across {{ reservation_metrics.by_type|length }} different types</li>
+                {% if reservation_metrics.by_term %}
+                <li>Commitment terms available:
+                    {% for term in reservation_metrics.by_term %}
+                        {{ term.term_years }} year{{ term.term_years|pluralize }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </li>
+                {% endif %}
+                <li>Reserved Instances and Saving Plans typically provide 30-70% savings compared to pay-as-you-go pricing</li>
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Long-term Opportunities -->
     {% if long_term_opportunities %}

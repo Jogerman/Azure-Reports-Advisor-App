@@ -1,4 +1,5 @@
 {% extends 'reports/base.html' %}
+{% load report_filters %}
 
 {% block title %}Executive Summary - Azure Advisor Report - {{ client.company_name }}{% endblock %}
 
@@ -15,28 +16,28 @@
             <div class="metric-card">
                 <div class="metric-icon">📊</div>
                 <div class="metric-label">Total Recommendations</div>
-                <div class="metric-value">{{ summary_metrics.total_recommendations }}</div>
+                <div class="metric-value">{{ summary_metrics.total_recommendations|intcomma }}</div>
                 <div class="metric-subtitle">Optimization opportunities identified</div>
             </div>
 
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Annual Savings Potential</div>
-                <div class="metric-value">${{ summary_metrics.total_savings|floatformat:0 }}</div>
-                <div class="metric-subtitle">${{ summary_metrics.monthly_savings|floatformat:0 }}/month average</div>
+                <div class="metric-value">${{ summary_metrics.total_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">${{ summary_metrics.monthly_savings|floatformat:0|intcomma }}/month average</div>
             </div>
 
             <div class="metric-card metric-critical">
                 <div class="metric-icon">⚠️</div>
                 <div class="metric-label">High Priority Items</div>
-                <div class="metric-value">{{ summary_metrics.high_priority_count }}</div>
+                <div class="metric-value">{{ summary_metrics.high_priority_count|intcomma }}</div>
                 <div class="metric-subtitle">Require immediate attention</div>
             </div>
 
             <div class="metric-card metric-security">
                 <div class="metric-icon">🎯</div>
                 <div class="metric-label">Categories Impacted</div>
-                <div class="metric-value">{{ summary_metrics.categories_affected }}</div>
+                <div class="metric-value">{{ summary_metrics.categories_affected|intcomma }}</div>
                 <div class="metric-subtitle">Azure Advisor pillars</div>
             </div>
         </div>
@@ -53,14 +54,14 @@
             <div class="info-box-icon">📈</div>
             <h3 style="margin-bottom: 8px;">Strategic Overview</h3>
             <p style="font-size: 1em; line-height: 1.6; margin-top: 8px; margin-bottom: 0;">
-                Azure Advisor has identified <strong>{{ summary_metrics.total_recommendations }} optimization opportunities</strong>
-                across your Azure environment, representing <strong>{{ summary_metrics.categories_affected }} key areas</strong> for improvement.
+                Azure Advisor has identified <strong>{{ summary_metrics.total_recommendations|intcomma }} optimization opportunities</strong>
+                across your Azure environment, representing <strong>{{ summary_metrics.categories_affected|intcomma }} key areas</strong> for improvement.
                 {% if summary_metrics.total_savings > 0 %}
                 Implementing these recommendations could result in annual cost savings of
-                <strong>${{ summary_metrics.total_savings|floatformat:0 }}</strong>
+                <strong>${{ summary_metrics.total_savings|floatformat:0|intcomma }}</strong>
                 while improving security, reliability, and operational performance.
                 {% endif %}
-                <strong>{{ summary_metrics.high_priority_count }} high-priority items</strong> have been flagged for immediate executive attention.
+                <strong>{{ summary_metrics.high_priority_count|intcomma }} high-priority items</strong> have been flagged for immediate executive attention.
             </p>
         </div>
     </div>
@@ -114,7 +115,7 @@
                             <span class="badge badge-{{ cat.category|lower|cut:' ' }}">{{ cat.category }}</span>
                         </td>
                         <td class="text-center">
-                            <strong class="text-lg">{{ cat.count }}</strong>
+                            <strong class="text-lg">{{ cat.count|intcomma }}</strong>
                         </td>
                         <td class="text-center">
                             <strong>{{ cat.percentage }}%</strong>
@@ -138,12 +139,12 @@
         <div class="section-header" style="margin-bottom: 12px;">
             <div class="section-icon" style="background: var(--gradient-success);">⚡</div>
             <h2 class="section-title">Quick Wins - High Value Opportunities</h2>
-            <span class="section-count">{{ quick_wins.count }} items</span>
+            <span class="section-count">{{ quick_wins.count|intcomma }} items</span>
         </div>
 
         <div class="warning-box" style="padding: 15px; margin: 10px 0;">
             <div class="info-box-icon">🎯</div>
-            <p style="margin: 0;"><strong>High Impact, High Value:</strong> These {{ quick_wins.count }} recommendations offer the best combination of business impact and financial return. Prioritize these for immediate implementation to demonstrate quick wins to stakeholders.</p>
+            <p style="margin: 0;"><strong>High Impact, High Value:</strong> These {{ quick_wins.count|intcomma }} recommendations offer the best combination of business impact and financial return. Prioritize these for immediate implementation to demonstrate quick wins to stakeholders.</p>
         </div>
 
         <div class="table-container" style="margin: 10px 0;">
@@ -183,8 +184,8 @@
                             {% endif %}
                         </td>
                         <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0 }}</strong>
-                            <div class="text-xs text-muted">${{ rec.monthly_savings|floatformat:0 }}/month</div>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
+                            <div class="text-xs text-muted">${{ rec.monthly_savings|floatformat:0|intcomma }}/month</div>
                         </td>
                     </tr>
                     {% empty %}
@@ -251,7 +252,7 @@
                         </td>
                         <td class="text-right">
                             {% if rec.potential_savings > 0 %}
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:2 }}</strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:2|intcomma }}</strong>
                             {% else %}
                             <span class="text-muted font-medium">Non-financial benefit</span>
                             {% endif %}
@@ -280,7 +281,7 @@
             <div class="metric-card metric-critical">
                 <div class="metric-label">Immediate Actions</div>
                 <div class="metric-value" style="font-size: 2.5rem;">Week 1-2</div>
-                <div class="metric-subtitle">{{ summary_metrics.high_priority_count }} critical items</div>
+                <div class="metric-subtitle">{{ summary_metrics.high_priority_count|intcomma }} critical items</div>
             </div>
 
             <div class="metric-card metric-security">
@@ -300,7 +301,7 @@
             <div class="info-box-icon">🔴</div>
             <h3 style="margin-bottom: 8px;">Phase 1: Immediate Response (Week 1-2)</h3>
             <ol style="margin-left: 20px; margin-top: 8px; margin-bottom: 0; line-height: 1.6;">
-                <li><strong>Convene Leadership Team:</strong> Review {{ summary_metrics.high_priority_count }} high-priority items with key stakeholders</li>
+                <li><strong>Convene Leadership Team:</strong> Review {{ summary_metrics.high_priority_count|intcomma }} high-priority items with key stakeholders</li>
                 <li><strong>Security First:</strong> Address all critical security vulnerabilities immediately</li>
                 <li><strong>Assign Ownership:</strong> Designate executive sponsors and technical leads for each critical area</li>
                 <li><strong>Emergency Budget:</strong> Secure approvals for immediate remediation activities</li>
@@ -312,7 +313,7 @@
             <h3 style="margin-bottom: 8px;">Phase 2: Strategic Implementation (Month 1)</h3>
             <ol style="margin-left: 20px; margin-top: 8px; margin-bottom: 0; line-height: 1.6;">
                 <li><strong>Quick Wins Execution:</strong> Implement high-value, low-risk optimizations to demonstrate ROI</li>
-                <li><strong>Cost Optimization Initiative:</strong> Launch formal program to capture ${{ summary_metrics.total_savings|floatformat:0 }} in annual savings</li>
+                <li><strong>Cost Optimization Initiative:</strong> Launch formal program to capture ${{ summary_metrics.total_savings|floatformat:0|intcomma }} in annual savings</li>
                 <li><strong>Architecture Review:</strong> Conduct deep-dive technical assessments with Azure architects</li>
                 <li><strong>Progress Reporting:</strong> Establish weekly executive dashboards to track implementation</li>
             </ol>
@@ -342,7 +343,7 @@
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Total Annual Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ summary_metrics.total_savings|floatformat:0 }}</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ summary_metrics.total_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">Through optimization & right-sizing</div>
             </div>
 
@@ -363,7 +364,7 @@
             <div class="metric-card metric-critical">
                 <div class="metric-icon">🎯</div>
                 <div class="metric-label">Business Value</div>
-                <div class="metric-value" style="font-size: 2.5rem;">{{ summary_metrics.categories_affected }}x</div>
+                <div class="metric-value" style="font-size: 2.5rem;">{{ summary_metrics.categories_affected|intcomma }}x</div>
                 <div class="metric-subtitle">Multiple improvement areas</div>
             </div>
         </div>
@@ -371,7 +372,7 @@
         <div class="info-box" style="margin-top: 15px; padding: 15px;">
             <h3 style="margin-bottom: 8px;">ROI Breakdown & Business Case</h3>
             <div style="line-height: 1.5; margin-top: 8px;">
-                <p style="margin-bottom: 6px;"><strong>Direct Financial Benefits:</strong> ${{ summary_metrics.total_savings|floatformat:0 }} in annual cost savings through resource optimization, right-sizing, and reserved instance purchases</p>
+                <p style="margin-bottom: 6px;"><strong>Direct Financial Benefits:</strong> ${{ summary_metrics.total_savings|floatformat:0|intcomma }} in annual cost savings through resource optimization, right-sizing, and reserved instance purchases</p>
                 <p style="margin-bottom: 6px;"><strong>Operational Efficiency:</strong> Reduced management overhead, improved reliability, and automated operations leading to productivity gains</p>
                 <p style="margin-bottom: 6px;"><strong>Risk Mitigation:</strong> Enhanced security posture reduces potential breach costs (industry average: $4.24M per incident)</p>
                 <p style="margin-bottom: 6px;"><strong>Performance Improvements:</strong> Better customer experience, reduced latency, increased availability supporting revenue growth</p>

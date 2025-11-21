@@ -1,9 +1,13 @@
-import React from 'react';
-import { FiDownload, FiEye, FiFileText, FiFile, FiAlertCircle } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiDownload, FiEye, FiFileText, FiFile, FiAlertCircle, FiPlus } from 'react-icons/fi';
 import { format, parseISO, differenceInSeconds } from 'date-fns';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../common/Modal';
 import ReportStatusBadge from '../reports/ReportStatusBadge';
-import { Report } from '../../services/reportService';
+import ManualRecommendationForm from '../reports/ManualRecommendationForm';
+import { Report, ManualRecommendation } from '../../services/reportService';
+import reportService from '../../services/reportService';
+import { formatNumberWithCommas, formatCurrency } from '../../utils/numberFormat';
 
 interface ReportDetailsModalProps {
   report: Report | null;
@@ -18,6 +22,32 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
   onClose,
   onDownload,
 }) => {
+  const [isManualFormOpen, setIsManualFormOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const addManualRecommendationsMutation = useMutation({
+    mutationFn: async (recommendations: ManualRecommendation[]) => {
+      if (!report) throw new Error('No report selected');
+      return reportService.addManualRecommendations(report.id, recommendations);
+    },
+    onSuccess: (response) => {
+      // Invalidate queries to refresh report data
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['report', report?.id] });
+
+      // Show success message
+      alert(response.message);
+    },
+    onError: (error: any) => {
+      console.error('Failed to add manual recommendations:', error);
+      alert(error.response?.data?.message || 'Failed to add manual recommendations');
+    },
+  });
+
+  const handleAddManualRecommendations = async (recommendations: ManualRecommendation[]) => {
+    await addManualRecommendationsMutation.mutateAsync(recommendations);
+  };
+
   if (!report) return null;
 
   // Format date
@@ -71,6 +101,7 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
 
   const isCompleted = report.status === 'completed';
   const isFailed = report.status === 'failed';
+  const canAddManualData = ['completed', 'pending', 'processing'].includes(report.status);
 
   // Extract metrics from analysis_data if available
   const metrics = report.analysis_data?.summary;
@@ -93,6 +124,18 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
               <ReportStatusBadge status={report.status} size="md" />
             </div>
           </div>
+
+          {/* Add Manual Data Button */}
+          {canAddManualData && (
+            <button
+              onClick={() => setIsManualFormOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+              title="Add manual recommendations to this report"
+            >
+              <FiPlus size={16} />
+              Add Manual Data
+            </button>
+          )}
         </div>
 
         {/* General Information */}
@@ -158,35 +201,35 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
               {metrics.total_recommendations !== undefined && (
                 <MetricCard
                   label="Total Recommendations"
-                  value={metrics.total_recommendations.toLocaleString()}
+                  value={formatNumberWithCommas(metrics.total_recommendations)}
                   color="azure"
                 />
               )}
               {metrics.potential_savings !== undefined && (
                 <MetricCard
                   label="Potential Savings"
-                  value={`$${metrics.potential_savings.toLocaleString()}`}
+                  value={formatCurrency(metrics.potential_savings, 0)}
                   color="success"
                 />
               )}
               {metrics.high_impact !== undefined && (
                 <MetricCard
                   label="High Impact"
-                  value={metrics.high_impact.toLocaleString()}
+                  value={formatNumberWithCommas(metrics.high_impact)}
                   color="danger"
                 />
               )}
               {metrics.medium_impact !== undefined && (
                 <MetricCard
                   label="Medium Impact"
-                  value={metrics.medium_impact.toLocaleString()}
+                  value={formatNumberWithCommas(metrics.medium_impact)}
                   color="warning"
                 />
               )}
               {metrics.low_impact !== undefined && (
                 <MetricCard
                   label="Low Impact"
-                  value={metrics.low_impact.toLocaleString()}
+                  value={formatNumberWithCommas(metrics.low_impact)}
                   color="info"
                 />
               )}
@@ -207,6 +250,14 @@ const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Manual Recommendation Form Modal */}
+      <ManualRecommendationForm
+        isOpen={isManualFormOpen}
+        onClose={() => setIsManualFormOpen(false)}
+        onSubmit={handleAddManualRecommendations}
+        reportId={report.id}
+      />
     </Modal>
   );
 };

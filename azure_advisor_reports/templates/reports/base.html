@@ -1,3 +1,5 @@
+{% load static %}
+{% load report_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1301,6 +1303,9 @@
 
         <div class="cover-main">
             <h1 class="cover-title">Azure Advisor<br>Analysis Report</h1>
+            <div style="margin: 30px 0; text-align: center;">
+                <img src="data:image/png;base64,{% include 'reports/partials/logo_base64.html' %}" alt="Solvex Logo" style="max-width: 300px; height: auto;">
+            </div>
             <p class="cover-subtitle">{{ report_type_display }}</p>
 
             <div class="cover-icon-container">
@@ -1320,11 +1325,11 @@
                 </div>
                 <div class="cover-footer-item">
                     <div class="cover-footer-label">Total Findings</div>
-                    <div class="cover-footer-value">{{ total_recommendations }}</div>
+                    <div class="cover-footer-value">{{ total_recommendations|intcomma }}</div>
                 </div>
                 <div class="cover-footer-item">
                     <div class="cover-footer-label">Potential Savings</div>
-                    <div class="cover-footer-value">${{ total_savings|floatformat:0 }}</div>
+                    <div class="cover-footer-value">${{ total_savings|floatformat:0|intcomma }}</div>
                 </div>
             </div>
         </div>

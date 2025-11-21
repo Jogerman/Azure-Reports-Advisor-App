@@ -10,9 +10,9 @@ const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users'>('overview');
 
-  // For now, show user management to all authenticated users
-  // The backend will enforce permissions based on actual roles
-  const isAdmin = !!user; // TODO: Update once we fetch user details from backend
+  // Check if user has admin or manager role for user management access
+  // Backend enforces permissions, but we hide/show UI elements based on role
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
 
   const settingsSections = [
     {
