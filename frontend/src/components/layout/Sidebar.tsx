@@ -50,8 +50,8 @@ const NavItem: React.FC<NavItemProps> = ({
       className={({ isActive }) =>
         `flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 group ${
           isActive
-            ? 'bg-azure-50 text-azure-700 font-medium shadow-sm'
-            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+            ? 'bg-azure-50 dark:bg-azure-900/30 text-azure-700 dark:text-azure-400 font-medium shadow-sm'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
         }`
       }
     >
@@ -60,7 +60,7 @@ const NavItem: React.FC<NavItemProps> = ({
         <span className="text-sm">{label}</span>
       </div>
       {badge && (
-        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-azure-100 text-azure-700">
+        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-azure-100 dark:bg-azure-900/50 text-azure-700 dark:text-azure-300">
           {badge}
         </span>
       )}
@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-20 lg:hidden transition-opacity"
           onClick={onClose}
           role="button"
           aria-label="Close navigation menu"
@@ -103,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -112,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
           <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             {/* Main Menu */}
             <div className="mb-4">
-              <h2 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h2 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                 Main Menu
               </h2>
               <div className="space-y-1">
@@ -148,8 +148,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
             </div>
 
             {/* Analytics & Insights */}
-            <div className="pt-4 border-t border-gray-200 mb-4">
-              <h2 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mb-4">
+              <h2 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                 Analytics
               </h2>
               <div className="space-y-1">
@@ -165,8 +165,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
             </div>
 
             {/* Settings */}
-            <div className="pt-4 border-t border-gray-200">
-              <h2 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h2 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                 Configuration
               </h2>
               <div className="space-y-1">
@@ -182,22 +182,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, userRoles = [] }) =>
           </nav>
 
           {/* Help Section Footer */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="bg-gradient-to-br from-azure-50 to-azure-100 rounded-lg p-4 border border-azure-200">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="bg-gradient-to-br from-azure-50 to-azure-100 dark:from-azure-900/20 dark:to-azure-900/30 rounded-lg p-4 border border-azure-200 dark:border-azure-800">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-azure-600 rounded-lg flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                <div className="w-8 h-8 bg-azure-600 dark:bg-azure-500 rounded-lg flex items-center justify-center flex-shrink-0" aria-hidden="true">
                   <FiHelpCircle className="w-5 h-5 text-white" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-azure-900 mb-1">
+                  <h3 className="text-sm font-semibold text-azure-900 dark:text-azure-100 mb-1">
                     Need Help?
                   </h3>
-                  <p className="text-xs text-azure-700 mb-2">
+                  <p className="text-xs text-azure-700 dark:text-azure-300 mb-2">
                     Access guides, tutorials, and support resources.
                   </p>
                   <a
                     href="/docs"
-                    className="inline-flex items-center text-xs font-medium text-azure-600 hover:text-azure-700 transition-colors"
+                    className="inline-flex items-center text-xs font-medium text-azure-600 dark:text-azure-400 hover:text-azure-700 dark:hover:text-azure-300 transition-colors"
                   >
                     Documentation →
                   </a>

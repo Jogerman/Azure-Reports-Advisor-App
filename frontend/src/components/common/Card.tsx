@@ -34,7 +34,7 @@ const Card: React.FC<CardProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 transition-all duration-200 ${paddingStyles[padding]} ${hoverStyles} ${clickableStyles} ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 ${paddingStyles[padding]} ${hoverStyles} ${clickableStyles} ${className}`}
       onClick={onClick}
     >
       {children}

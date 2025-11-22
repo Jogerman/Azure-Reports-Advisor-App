@@ -11,6 +11,7 @@ import { queryClient } from './config/queryClient';
 
 // Auth Context
 import { AuthProvider } from './context/AuthContext';
+import { DarkModeProvider } from './context/DarkModeContext';
 
 // Layout Components
 import MainLayout from './components/layout/MainLayout';
@@ -36,8 +37,9 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Router>
+        <DarkModeProvider>
+          <AuthProvider>
+            <Router>
             <Toast />
             <SessionTimeoutWarning warningTime={5} sessionDuration={60} />
             <Suspense fallback={<LoadingSpinner fullScreen text="Loading page..." />}>
@@ -74,7 +76,8 @@ const App: React.FC = () => {
             process.env.REACT_APP_ENABLE_REACT_QUERY_DEVTOOLS === 'true' && (
               <ReactQueryDevtools initialIsOpen={false} />
             )}
-        </AuthProvider>
+          </AuthProvider>
+        </DarkModeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
