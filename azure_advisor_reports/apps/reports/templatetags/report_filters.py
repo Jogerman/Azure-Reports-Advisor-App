@@ -34,9 +34,10 @@ def multiply(value, arg):
 
 
 @register.filter
-def intcomma(value):
+def intcomma(value, use_l10n=True):
     """
     Format a number with thousand separators (commas).
+    Uses Django's proven humanize implementation.
 
     Usage in templates:
         {{ total_recommendations|intcomma }}
@@ -44,40 +45,16 @@ def intcomma(value):
 
     Args:
         value: The number to format (int, float, Decimal, or string)
+        use_l10n: Use Django localization settings (default: True)
 
     Returns:
         A string with the number formatted with commas, or the original value if invalid
     """
+    from django.contrib.humanize.templatetags.humanize import intcomma as django_intcomma
+
     try:
         if value is None or value == '':
             return value
-
-        # Convert to string and handle negative numbers
-        orig = str(value)
-        is_negative = orig.startswith('-')
-        if is_negative:
-            orig = orig[1:]
-
-        # Split into integer and decimal parts
-        parts = orig.split('.')
-        int_part = parts[0]
-
-        # Add commas to integer part
-        # Reverse, group by 3, join with commas, reverse back
-        int_part_with_commas = ','.join(
-            int_part[::-1][i:i+3][::-1]
-            for i in range(0, len(int_part), 3)
-        )[::-1]
-
-        # Reconstruct with decimal part if it exists
-        result = int_part_with_commas
-        if len(parts) > 1:
-            result += '.' + parts[1]
-
-        # Add negative sign back if needed
-        if is_negative:
-            result = '-' + result
-
-        return result
+        return django_intcomma(value, use_l10n=use_l10n)
     except (ValueError, TypeError, AttributeError):
         return value
