@@ -1,0 +1,256 @@
+import React from 'react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import ReportList from './ReportList';
+import { mockReport, mockClient, mockUser } from '../../utils/test-utils';
+
+// Mock react-icons
+jest.mock('react-icons/fi', () => ({
+  FiDownload: () => <div data-testid="download-icon">Download</div>,
+  FiEye: () => <div data-testid="eye-icon">Eye</div>,
+  FiTrash2: () => <div data-testid="trash-icon">Trash</div>,
+  FiClock: () => <div data-testid="clock-icon">Clock</div>,
+  FiCheckCircle: () => <div data-testid="check-icon">Check</div>,
+  FiAlertCircle: () => <div data-testid="alert-icon">Alert</div>,
+}));
+
+const mockReports = [
+  {
+    ...mockReport,
+    id: '1',
+    status: 'completed' as const,
+    client: { ...mockClient, company_name: 'Company A' },
+    created_at: '2025-01-01T00:00:00Z',
+  },
+  {
+    ...mockReport,
+    id: '2',
+    status: 'processing' as const,
+    client: { ...mockClient, company_name: 'Company B' },
+    created_at: '2025-01-02T00:00:00Z',
+  },
+  {
+    ...mockReport,
+    id: '3',
+    status: 'failed' as const,
+    client: { ...mockClient, company_name: 'Company C' },
+    created_at: '2025-01-03T00:00:00Z',
+  },
+];
+
+const defaultProps = {
+  reports: mockReports,
+  onDownload: jest.fn(),
+  onDelete: jest.fn(),
+  onView: jest.fn(),
+  loading: false,
+};
+
+const renderReportList = (props = defaultProps) => {
+  return render(
+    <BrowserRouter>
+      <ReportList {...props} />
+    </BrowserRouter>
+  );
+};
+
+describe('ReportList', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Rendering', () => {
+    it('should render all reports', () => {
+      renderReportList();
+
+      expect(screen.getByText('Company A')).toBeInTheDocument();
+      expect(screen.getByText('Company B')).toBeInTheDocument();
+      expect(screen.getByText('Company C')).toBeInTheDocument();
+    });
+
+    it('should display empty state when no reports', () => {
+      renderReportList({ ...defaultProps, reports: [] });
+
+      expect(screen.getByText(/No reports found/i)).toBeInTheDocument();
+    });
+
+    it('should display loading state', () => {
+      renderReportList({ ...defaultProps, loading: true });
+
+      const skeletons = screen.getAllByTestId(/skeleton/i);
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Report Status', () => {
+    it('should display completed status badge', () => {
+      renderReportList();
+
+      const completedBadges = screen.getAllByText(/completed/i);
+      expect(completedBadges.length).toBeGreaterThan(0);
+    });
+
+    it('should display processing status badge', () => {
+      renderReportList();
+
+      expect(screen.getByText(/processing/i)).toBeInTheDocument();
+    });
+
+    it('should display failed status badge', () => {
+      renderReportList();
+
+      expect(screen.getByText(/failed/i)).toBeInTheDocument();
+    });
+
+    it('should show correct icon for each status', () => {
+      renderReportList();
+
+      expect(screen.getByTestId('check-icon')).toBeInTheDocument(); // Completed
+      expect(screen.getByTestId('clock-icon')).toBeInTheDocument(); // Processing
+      expect(screen.getByTestId('alert-icon')).toBeInTheDocument(); // Failed
+    });
+  });
+
+  describe('User Interactions', () => {
+    it('should call onDownload when download button is clicked', async () => {
+      const user = userEvent.setup();
+      renderReportList();
+
+      const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+      await user.click(downloadButtons[0]);
+
+      expect(defaultProps.onDownload).toHaveBeenCalledWith(mockReports[0]);
+    });
+
+    it('should call onView when view button is clicked', async () => {
+      const user = userEvent.setup();
+      renderReportList();
+
+      const viewButtons = screen.getAllByRole('button', { name: /view/i });
+      await user.click(viewButtons[0]);
+
+      expect(defaultProps.onView).toHaveBeenCalledWith(mockReports[0]);
+    });
+
+    it('should call onDelete when delete button is clicked', async () => {
+      const user = userEvent.setup();
+      renderReportList();
+
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      await user.click(deleteButtons[0]);
+
+      expect(defaultProps.onDelete).toHaveBeenCalledWith(mockReports[0]);
+    });
+
+    it('should disable download button for non-completed reports', () => {
+      renderReportList();
+
+      const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+
+      // First report is completed, should be enabled
+      expect(downloadButtons[0]).not.toBeDisabled();
+
+      // Second report is processing, should be disabled
+      expect(downloadButtons[1]).toBeDisabled();
+
+      // Third report is failed, should be disabled
+      expect(downloadButtons[2]).toBeDisabled();
+    });
+  });
+
+  describe('Report Details', () => {
+    it('should display report type', () => {
+      renderReportList();
+
+      const detailedLabels = screen.getAllByText(/detailed/i);
+      expect(detailedLabels.length).toBeGreaterThan(0);
+    });
+
+    it('should display creation date', () => {
+      renderReportList();
+
+      // Dates should be formatted and displayed
+      expect(screen.getByText(/Jan 1, 2025/i)).toBeInTheDocument();
+      expect(screen.getByText(/Jan 2, 2025/i)).toBeInTheDocument();
+      expect(screen.getByText(/Jan 3, 2025/i)).toBeInTheDocument();
+    });
+
+    it('should display analysis data when available', () => {
+      renderReportList();
+
+      expect(screen.getAllByText(/50 recommendations/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/\$5,000/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('should have proper button labels', () => {
+      renderReportList();
+
+      expect(screen.getAllByRole('button', { name: /download/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /view/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /delete/i }).length).toBeGreaterThan(0);
+    });
+
+    it('should have semantic list structure', () => {
+      renderReportList();
+
+      const list = screen.getByRole('list');
+      expect(list).toBeInTheDocument();
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(mockReports.length);
+    });
+
+    it('should indicate disabled state clearly', () => {
+      renderReportList();
+
+      const downloadButtons = screen.getAllByRole('button', { name: /download/i });
+      const disabledButton = downloadButtons[1];
+
+      expect(disabledButton).toBeDisabled();
+      expect(disabledButton).toHaveClass('opacity-50', 'cursor-not-allowed');
+    });
+  });
+
+  describe('Responsive Behavior', () => {
+    it('should render report cards responsively', () => {
+      renderReportList();
+
+      const reportCards = screen.getAllByTestId(/report-card/i);
+      reportCards.forEach(card => {
+        expect(card).toHaveClass(/grid|flex/i);
+      });
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle missing client data gracefully', () => {
+      const reportsWithoutClient = [
+        {
+          ...mockReport,
+          client: null,
+        },
+      ];
+
+      renderReportList({ ...defaultProps, reports: reportsWithoutClient as any });
+
+      expect(screen.getByText(/Unknown Client/i)).toBeInTheDocument();
+    });
+
+    it('should handle missing analysis data gracefully', () => {
+      const reportsWithoutAnalysis = [
+        {
+          ...mockReport,
+          analysis_data: null,
+        },
+      ];
+
+      renderReportList({ ...defaultProps, reports: reportsWithoutAnalysis as any });
+
+      // Should not crash and should render report
+      expect(screen.getByText(mockClient.company_name)).toBeInTheDocument();
+    });
+  });
+});
