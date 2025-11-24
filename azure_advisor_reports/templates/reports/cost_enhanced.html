@@ -314,50 +314,50 @@
     {% if pure_reservation_metrics.three_year.count > 0 %}
     <div class="section">
         <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💎</div>
+            <div class="section-icon" style="background: var(--gradient-azure);">💎</div>
             <h2 class="section-title">Pure Reserved Instances - 3 Year Commitment</h2>
-            <span class="section-count">{{ pure_reservation_metrics.three_year.count|intcomma }} oportunidades</span>
+            <span class="section-count">{{ pure_reservation_metrics.three_year.count|intcomma }} opportunities</span>
         </div>
 
         <p class="section-description" style="margin-bottom: 30px;">
-            Instancias reservadas puras con compromiso de 3 años ofrecen los mayores descuentos para cargas de trabajo predecibles.
-            Ahorro total en el compromiso: <strong>${{ pure_reservation_metrics.three_year.total_commitment_savings|floatformat:0|intcomma }}</strong> durante 3 años.
+            Pure reserved instances with 3-year commitment offer the highest discounts for predictable workloads.
+            Total commitment savings: <strong>${{ pure_reservation_metrics.three_year.total_commitment_savings|floatformat:0|intcomma }}</strong> over 3 years.
         </p>
 
         <!-- Summary Metrics -->
         <div class="metrics-grid" style="margin-bottom: 40px;">
-            <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recomendaciones</div>
+            <div class="metric-card" style="background: var(--gradient-azure); color: white;">
+                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recommendations</div>
                 <div class="metric-value" style="font-size: 2.5rem;">{{ pure_reservation_metrics.three_year.count|intcomma }}</div>
-                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">Reservas de 3 años</div>
+                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">3-year reservations</div>
             </div>
 
             <div class="metric-card metric-cost">
-                <div class="metric-label">Ahorro Anual</div>
+                <div class="metric-label">Annual Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.three_year.total_annual_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Por año</div>
+                <div class="metric-subtitle">Per year</div>
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Ahorro Total del Compromiso</div>
+                <div class="metric-label">Total Commitment Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.three_year.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Durante 3 años</div>
+                <div class="metric-subtitle">Over 3 years</div>
             </div>
         </div>
 
         <!-- Top Recommendations Table -->
         {% if pure_reservation_metrics.three_year.top_recommendations %}
         <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
-            🏆 Principales Oportunidades - Reservas 3 Años
+            🏆 Top Opportunities - 3 Year Reservations
         </h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Recomendación</th>
-                        <th style="width: 180px;">Recurso</th>
-                        <th style="width: 130px; text-align: right;">Ahorro Anual</th>
-                        <th style="width: 150px; text-align: right;">Ahorro 3 Años</th>
+                        <th>Recommendation</th>
+                        <th style="width: 180px;">Resource</th>
+                        <th style="width: 130px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">3-Year Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -395,50 +395,50 @@
     {% if pure_reservation_metrics.one_year.count > 0 %}
     <div class="section">
         <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, #50E6FF 0%, #0078D4 100%);">💠</div>
+            <div class="section-icon" style="background: var(--gradient-success);">💠</div>
             <h2 class="section-title">Pure Reserved Instances - 1 Year Commitment</h2>
-            <span class="section-count">{{ pure_reservation_metrics.one_year.count|intcomma }} oportunidades</span>
+            <span class="section-count">{{ pure_reservation_metrics.one_year.count|intcomma }} opportunities</span>
         </div>
 
         <p class="section-description" style="margin-bottom: 30px;">
-            Instancias reservadas de 1 año ofrecen flexibilidad con ahorros significativos para cargas de trabajo de mediano plazo.
-            Ahorro total en el compromiso: <strong>${{ pure_reservation_metrics.one_year.total_commitment_savings|floatformat:0|intcomma }}</strong> durante 1 año.
+            1-year reserved instances offer flexibility with significant savings for medium-term workloads.
+            Total commitment savings: <strong>${{ pure_reservation_metrics.one_year.total_commitment_savings|floatformat:0|intcomma }}</strong> over 1 year.
         </p>
 
         <!-- Summary Metrics -->
         <div class="metrics-grid" style="margin-bottom: 40px;">
-            <div class="metric-card" style="background: linear-gradient(135deg, #50E6FF 0%, #0078D4 100%); color: white;">
-                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recomendaciones</div>
+            <div class="metric-card" style="background: var(--gradient-success); color: white;">
+                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recommendations</div>
                 <div class="metric-value" style="font-size: 2.5rem;">{{ pure_reservation_metrics.one_year.count|intcomma }}</div>
-                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">Reservas de 1 año</div>
+                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">1-year reservations</div>
             </div>
 
             <div class="metric-card metric-cost">
-                <div class="metric-label">Ahorro Anual</div>
+                <div class="metric-label">Annual Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.one_year.total_annual_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Por año</div>
+                <div class="metric-subtitle">Per year</div>
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Ahorro Total del Compromiso</div>
+                <div class="metric-label">Total Commitment Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.one_year.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Durante 1 año</div>
+                <div class="metric-subtitle">Over 1 year</div>
             </div>
         </div>
 
         <!-- Top Recommendations Table -->
         {% if pure_reservation_metrics.one_year.top_recommendations %}
         <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
-            🏆 Principales Oportunidades - Reservas 1 Año
+            🏆 Top Opportunities - 1 Year Reservations
         </h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Recomendación</th>
-                        <th style="width: 180px;">Recurso</th>
-                        <th style="width: 130px; text-align: right;">Ahorro Anual</th>
-                        <th style="width: 150px; text-align: right;">Ahorro 1 Año</th>
+                        <th>Recommendation</th>
+                        <th style="width: 180px;">Resource</th>
+                        <th style="width: 130px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">1-Year Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -476,50 +476,50 @@
     {% if combined_commitment_metrics.sp_plus_3y.count > 0 %}
     <div class="section">
         <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%);">🎯</div>
-            <h2 class="section-title">Estrategia Combinada: Savings Plans + Reservas 3 Años</h2>
-            <span class="section-count">{{ combined_commitment_metrics.sp_plus_3y.count|intcomma }} oportunidades</span>
+            <div class="section-icon" style="background: var(--gradient-success);">🎯</div>
+            <h2 class="section-title">Combined Strategy: Savings Plans + 3-Year Reservations</h2>
+            <span class="section-count">{{ combined_commitment_metrics.sp_plus_3y.count|intcomma }} opportunities</span>
         </div>
 
         <p class="section-description" style="margin-bottom: 30px;">
-            Combinación óptima de Savings Plans existentes más Reservas de 3 años para maximizar ahorros.
-            Ahorro total combinado: <strong>${{ combined_commitment_metrics.sp_plus_3y.total_commitment_savings|floatformat:0|intcomma }}</strong> durante 3 años.
+            Optimal combination of existing Savings Plans plus 3-year Reservations to maximize savings.
+            Total combined savings: <strong>${{ combined_commitment_metrics.sp_plus_3y.total_commitment_savings|floatformat:0|intcomma }}</strong> over 3 years.
         </p>
 
         <!-- Summary Metrics -->
         <div class="metrics-grid" style="margin-bottom: 40px;">
-            <div class="metric-card" style="background: linear-gradient(135deg, #9FDA3A 0%, #107C10 100%); color: white;">
-                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recomendaciones</div>
+            <div class="metric-card" style="background: var(--gradient-success); color: white;">
+                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recommendations</div>
                 <div class="metric-value" style="font-size: 2.5rem;">{{ combined_commitment_metrics.sp_plus_3y.count|intcomma }}</div>
-                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">SP + Reservas 3 años</div>
+                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">SP + 3-year reservations</div>
             </div>
 
             <div class="metric-card metric-cost">
-                <div class="metric-label">Ahorro Anual</div>
+                <div class="metric-label">Annual Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_3y.total_annual_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Por año</div>
+                <div class="metric-subtitle">Per year</div>
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Ahorro Total del Compromiso</div>
+                <div class="metric-label">Total Commitment Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_3y.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">SP + 3 años combinado</div>
+                <div class="metric-subtitle">SP + 3 years combined</div>
             </div>
         </div>
 
         <!-- Top Recommendations Table -->
         {% if combined_commitment_metrics.sp_plus_3y.top_recommendations %}
         <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
-            🏆 Principales Oportunidades - Estrategia Combinada 3 Años
+            🏆 Top Opportunities - Combined Strategy 3 Years
         </h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Recomendación</th>
-                        <th style="width: 180px;">Recurso</th>
-                        <th style="width: 130px; text-align: right;">Ahorro Anual</th>
-                        <th style="width: 150px; text-align: right;">Ahorro Combinado</th>
+                        <th>Recommendation</th>
+                        <th style="width: 180px;">Resource</th>
+                        <th style="width: 130px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">Combined Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -553,7 +553,7 @@
 
         <div class="info-box" style="margin-top: 30px;">
             <div class="info-box-icon">💡</div>
-            <p><strong>Estrategia Combinada:</strong> Esta sección muestra oportunidades adicionales de Reservas de 3 años que complementan tus Savings Plans existentes, maximizando el ahorro total.</p>
+            <p><strong>Combined Strategy:</strong> This section shows additional 3-year Reservation opportunities that complement your existing Savings Plans, maximizing total savings.</p>
         </div>
     </div>
     {% endif %}
@@ -562,50 +562,50 @@
     {% if combined_commitment_metrics.sp_plus_1y.count > 0 %}
     <div class="section">
         <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, #FFB900 0%, #FF8C00 100%);">🎪</div>
-            <h2 class="section-title">Estrategia Combinada: Savings Plans + Reservas 1 Año</h2>
-            <span class="section-count">{{ combined_commitment_metrics.sp_plus_1y.count|intcomma }} oportunidades</span>
+            <div class="section-icon" style="background: var(--gradient-warning);">🎪</div>
+            <h2 class="section-title">Combined Strategy: Savings Plans + 1-Year Reservations</h2>
+            <span class="section-count">{{ combined_commitment_metrics.sp_plus_1y.count|intcomma }} opportunities</span>
         </div>
 
         <p class="section-description" style="margin-bottom: 30px;">
-            Combinación flexible de Savings Plans existentes más Reservas de 1 año para optimización a corto plazo.
-            Ahorro total combinado: <strong>${{ combined_commitment_metrics.sp_plus_1y.total_commitment_savings|floatformat:0|intcomma }}</strong> durante 1 año.
+            Flexible combination of existing Savings Plans plus 1-year Reservations for short-term optimization.
+            Total combined savings: <strong>${{ combined_commitment_metrics.sp_plus_1y.total_commitment_savings|floatformat:0|intcomma }}</strong> over 1 year.
         </p>
 
         <!-- Summary Metrics -->
         <div class="metrics-grid" style="margin-bottom: 40px;">
-            <div class="metric-card" style="background: linear-gradient(135deg, #FFB900 0%, #FF8C00 100%); color: white;">
-                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recomendaciones</div>
+            <div class="metric-card" style="background: var(--gradient-warning); color: white;">
+                <div class="metric-label" style="color: rgba(255,255,255,0.9);">Total Recommendations</div>
                 <div class="metric-value" style="font-size: 2.5rem;">{{ combined_commitment_metrics.sp_plus_1y.count|intcomma }}</div>
-                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">SP + Reservas 1 año</div>
+                <div class="metric-subtitle" style="color: rgba(255,255,255,0.8);">SP + 1-year reservations</div>
             </div>
 
             <div class="metric-card metric-cost">
-                <div class="metric-label">Ahorro Anual</div>
+                <div class="metric-label">Annual Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_1y.total_annual_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Por año</div>
+                <div class="metric-subtitle">Per year</div>
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Ahorro Total del Compromiso</div>
+                <div class="metric-label">Total Commitment Savings</div>
                 <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_1y.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">SP + 1 año combinado</div>
+                <div class="metric-subtitle">SP + 1 year combined</div>
             </div>
         </div>
 
         <!-- Top Recommendations Table -->
         {% if combined_commitment_metrics.sp_plus_1y.top_recommendations %}
         <h3 style="color: #2c3e50; font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">
-            🏆 Principales Oportunidades - Estrategia Combinada 1 Año
+            🏆 Top Opportunities - Combined Strategy 1 Year
         </h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Recomendación</th>
-                        <th style="width: 180px;">Recurso</th>
-                        <th style="width: 130px; text-align: right;">Ahorro Anual</th>
-                        <th style="width: 150px; text-align: right;">Ahorro Combinado</th>
+                        <th>Recommendation</th>
+                        <th style="width: 180px;">Resource</th>
+                        <th style="width: 130px; text-align: right;">Annual Savings</th>
+                        <th style="width: 150px; text-align: right;">Combined Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -639,7 +639,7 @@
 
         <div class="info-box" style="margin-top: 30px;">
             <div class="info-box-icon">💡</div>
-            <p><strong>Estrategia Combinada:</strong> Esta sección muestra oportunidades adicionales de Reservas de 1 año que complementan tus Savings Plans existentes, ofreciendo flexibilidad con ahorros significativos.</p>
+            <p><strong>Combined Strategy:</strong> This section shows additional 1-year Reservation opportunities that complement your existing Savings Plans, offering flexibility with significant savings.</p>
         </div>
     </div>
     {% endif %}
