@@ -103,10 +103,13 @@ def process_csv_file(self, report_id):
                     retiring_feature=str(rec_data.get('retiring_feature', ''))[:255],
                     advisor_score_impact=rec_data.get('advisor_score_impact', 0),
                     csv_row_number=rec_data.get('csv_row_number'),
-                    # Reservation fields
+                    # Reservation fields (v2.0 - Enhanced Multi-Dimensional Analysis)
                     is_reservation_recommendation=rec_data.get('is_reservation_recommendation', False),
                     reservation_type=rec_data.get('reservation_type'),
                     commitment_term_years=rec_data.get('commitment_term_years'),
+                    # NEW FIELDS - Savings Plan categorization
+                    is_savings_plan=rec_data.get('is_savings_plan', False),
+                    commitment_category=rec_data.get('commitment_category', 'uncategorized'),
                 )
                 recommendation_instances.append(recommendation)
 

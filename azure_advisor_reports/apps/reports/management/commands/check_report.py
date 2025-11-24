@@ -89,7 +89,7 @@ class Command(BaseCommand):
             for i, rec in enumerate(report.recommendations.all()[:3], 1):
                 self.stdout.write(f'   {i}. Category: {rec.commitment_category or "NULL"}')
                 self.stdout.write(f'      Text: {rec.recommendation[:80]}...')
-                self.stdout.write(f'      Savings: ${rec.estimated_monthly_savings or 0:,.2f}/month')
+                self.stdout.write(f'      Savings: ${rec.potential_savings or 0:,.2f}/month')
                 self.stdout.write('')
 
             # DIAGNOSIS
