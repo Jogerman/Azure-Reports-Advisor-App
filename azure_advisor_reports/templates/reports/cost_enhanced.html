@@ -379,7 +379,7 @@
                         </td>
                         <td class="text-right">
                             <strong class="text-lg" style="color: #007bff;">
-                                ${% widthratio rec.potential_savings 1 3 %}
+                                ${{ rec.potential_savings|multiply:3|floatformat:0|intcomma }}
                             </strong>
                         </td>
                     </tr>
@@ -541,7 +541,7 @@
                         </td>
                         <td class="text-right">
                             <strong class="text-lg" style="color: #107C10;">
-                                ${% widthratio rec.potential_savings 1 3 %}
+                                ${{ rec.potential_savings|multiply:3|floatformat:0|intcomma }}
                             </strong>
                         </td>
                     </tr>
