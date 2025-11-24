@@ -33,9 +33,11 @@ class Command(BaseCommand):
 
             # Basic info
             self.stdout.write(self.style.SUCCESS('📋 REPORT DETAILS:'))
-            self.stdout.write(f'   Name: {report.report_name}')
+            self.stdout.write(f'   ID: {report.id}')
+            self.stdout.write(f'   Title: {report.title if report.title else "(No title)"}')
             self.stdout.write(f'   Type: {report.report_type}')
             self.stdout.write(f'   Status: {report.status}')
+            self.stdout.write(f'   Data Source: {report.data_source}')
             self.stdout.write(f'   Created: {report.created_at}')
             self.stdout.write('')
 
@@ -98,12 +100,19 @@ class Command(BaseCommand):
 
             if report.report_type != 'cost':
                 self.stdout.write(self.style.WARNING('⚠️  ISSUE: This is NOT a cost optimization report!'))
-                self.stdout.write(f'   Report Type: {report.report_type}')
+                self.stdout.write(f'   Report Type: {report.report_type.upper()}')
                 self.stdout.write('')
                 self.stdout.write('   Savings/Reservations sections ONLY appear in COST reports.')
                 self.stdout.write('')
                 self.stdout.write(self.style.SUCCESS('💡 SOLUTION:'))
                 self.stdout.write('   Generate a new report with type="cost" to see Savings/Reservations sections.')
+                self.stdout.write('')
+                self.stdout.write('   Available report types:')
+                self.stdout.write('      - cost: Cost Optimization (shows Savings/Reservations)')
+                self.stdout.write('      - detailed: Detailed Report')
+                self.stdout.write('      - executive: Executive Summary')
+                self.stdout.write('      - security: Security Assessment')
+                self.stdout.write('      - operations: Operational Excellence')
             elif uncategorized == total_recs:
                 self.stdout.write(self.style.ERROR('❌ ISSUE: All recommendations are UNCATEGORIZED!'))
                 self.stdout.write('')
