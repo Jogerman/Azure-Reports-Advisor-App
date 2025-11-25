@@ -7,6 +7,7 @@ export interface Client {
   industry?: string;
   contact_email?: string;
   contact_phone?: string;
+  logo?: string | null;
   azure_subscription_ids: string[];
   status: 'active' | 'inactive';
   notes?: string;
@@ -19,6 +20,7 @@ export interface CreateClientData {
   industry?: string;
   contact_email?: string;
   contact_phone?: string;
+  logo?: File | null;
   azure_subscription_ids?: string[];
   notes?: string;
 }
@@ -72,6 +74,37 @@ class ClientService {
    * Create new client
    */
   async createClient(data: CreateClientData): Promise<Client> {
+    // If logo is provided, use FormData for file upload
+    if (data.logo) {
+      const formData = new FormData();
+
+      // Add all fields to FormData
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (key === 'azure_subscription_ids' && Array.isArray(value)) {
+            // Send array as JSON string
+            formData.append(key, JSON.stringify(value));
+          } else if (key === 'logo' && value instanceof File) {
+            formData.append(key, value);
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+
+      const response = await apiClient.post<Client>(
+        API_ENDPOINTS.CLIENTS.CREATE,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    }
+
+    // If no logo, send as regular JSON
     const response = await apiClient.post<Client>(
       API_ENDPOINTS.CLIENTS.CREATE,
       data
@@ -83,6 +116,37 @@ class ClientService {
    * Update existing client
    */
   async updateClient(id: string, data: UpdateClientData): Promise<Client> {
+    // If logo is provided, use FormData for file upload
+    if (data.logo) {
+      const formData = new FormData();
+
+      // Add all fields to FormData
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (key === 'azure_subscription_ids' && Array.isArray(value)) {
+            // Send array as JSON string
+            formData.append(key, JSON.stringify(value));
+          } else if (key === 'logo' && value instanceof File) {
+            formData.append(key, value);
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+
+      const response = await apiClient.patch<Client>(
+        API_ENDPOINTS.CLIENTS.UPDATE(id),
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    }
+
+    // If no logo, send as regular JSON
     const response = await apiClient.patch<Client>(
       API_ENDPOINTS.CLIENTS.UPDATE(id),
       data

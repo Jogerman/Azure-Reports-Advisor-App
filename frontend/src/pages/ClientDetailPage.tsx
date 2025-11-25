@@ -82,6 +82,15 @@ const ClientDetailPage: React.FC = () => {
           >
             Back
           </Button>
+          {client.logo && (
+            <div className="flex-shrink-0">
+              <img
+                src={client.logo}
+                alt={`${client.company_name} logo`}
+                className="h-16 w-16 object-contain border border-gray-200 rounded-lg p-2 bg-white"
+              />
+            </div>
+          )}
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{client.company_name}</h1>
             <p className="text-gray-600 mt-1">

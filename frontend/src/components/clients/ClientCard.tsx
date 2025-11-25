@@ -26,16 +26,27 @@ const ClientCard: React.FC<ClientCardProps> = ({
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-            {client.company_name}
-          </h3>
-          <p className="text-sm text-gray-600">
-            {client.industry || 'No industry specified'}
-          </p>
+        <div className="flex items-start space-x-3 flex-1">
+          {client.logo && (
+            <div className="flex-shrink-0">
+              <img
+                src={client.logo}
+                alt={`${client.company_name} logo`}
+                className="h-12 w-12 object-contain border border-gray-200 rounded-lg p-1 bg-white"
+              />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
+              {client.company_name}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {client.industry || 'No industry specified'}
+            </p>
+          </div>
         </div>
         <span
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
+          className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${
             client.status === 'active'
               ? 'bg-green-100 text-green-800'
               : 'bg-gray-100 text-gray-800'

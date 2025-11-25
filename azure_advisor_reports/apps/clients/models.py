@@ -41,6 +41,14 @@ class Client(models.Model):
     contact_phone = models.CharField(max_length=20, blank=True, help_text="Primary contact phone")
     contact_person = models.CharField(max_length=255, blank=True, help_text="Primary contact person name")
 
+    # Company branding
+    logo = models.ImageField(
+        upload_to='client_logos/',
+        blank=True,
+        null=True,
+        help_text="Client company logo for report customization"
+    )
+
     # Azure subscription management
     azure_subscription_ids = models.JSONField(
         default=list,

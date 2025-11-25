@@ -43,6 +43,11 @@ const industries = [
 ];
 
 const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) => {
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(
+    client?.logo || null
+  );
+  const [selectedLogo, setSelectedLogo] = React.useState<File | null>(null);
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: CreateClientData) => clientService.createClient(data),
@@ -79,6 +84,37 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) 
     status: client?.status || 'active',
   };
 
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showToast.error('Please select a valid image file');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showToast.error('Logo file size must be less than 5MB');
+        return;
+      }
+
+      setSelectedLogo(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSelectedLogo(null);
+    setLogoPreview(null);
+  };
+
   const handleSubmit = (values: any) => {
     // Parse subscription IDs from textarea
     const subscriptionIds = values.azure_subscription_ids
@@ -91,6 +127,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) 
       industry: values.industry || undefined,
       contact_email: values.contact_email || undefined,
       contact_phone: values.contact_phone || undefined,
+      logo: selectedLogo || undefined,
       azure_subscription_ids: subscriptionIds,
       notes: values.notes || undefined,
       status: values.status,
@@ -159,6 +196,51 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onSuccess, onCancel }) 
               component="div"
               className="text-red-500 text-sm mt-1"
             />
+          </div>
+
+          {/* Company Logo */}
+          <div>
+            <label htmlFor="logo" className="block text-sm font-medium text-gray-700 mb-1">
+              Company Logo
+            </label>
+            <div className="space-y-3">
+              {logoPreview && (
+                <div className="relative inline-block">
+                  <img
+                    src={logoPreview}
+                    alt="Logo preview"
+                    className="h-24 w-24 object-contain border border-gray-300 rounded-lg p-2 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    title="Remove logo"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                id="logo"
+                name="logo"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-lg file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-azure-50 file:text-azure-700
+                  hover:file:bg-azure-100
+                  cursor-pointer"
+              />
+              <p className="text-xs text-gray-500">
+                Upload a company logo (PNG, JPG, GIF). Max size: 5MB. This logo will be used in generated reports.
+              </p>
+            </div>
           </div>
 
           {/* Contact Email */}
