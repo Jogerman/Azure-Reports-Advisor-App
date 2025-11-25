@@ -394,9 +394,25 @@ class Recommendation(models.Model):
 
     @property
     def total_commitment_savings(self):
-        """Calculate total savings over the entire commitment period."""
+        """
+        Calculate total savings over the entire commitment period.
+
+        IMPORTANT: Azure's tiered pricing means this is an APPROXIMATION only.
+        - 1-year RI: ~40% discount → higher annual cost
+        - 3-year RI: ~60% discount → lower annual cost
+        Therefore, multiplying annual savings by years is mathematically incorrect
+        for comparing 1Y vs 3Y options.
+
+        This method only works when the commitment_term_years is KNOWN and specified
+        in the recommendation. If None, returns annual savings only.
+
+        NOTE: Azure CSV exports typically do NOT specify the term - they only provide
+        annual savings for the recommended term (usually 3-year for maximum savings).
+        """
         if self.commitment_term_years and self.potential_savings:
+            # This is an approximation - real total depends on Azure's tiered pricing
             return self.potential_savings * self.commitment_term_years
+        # If term is None/unknown, return annual savings only
         return self.potential_savings
 
     @property
@@ -422,7 +438,11 @@ class Recommendation(models.Model):
         Combined commitment means recommendation involves BOTH
         Savings Plans AND Reservations together.
         """
-        return self.commitment_category in ['combined_sp_1y', 'combined_sp_3y']
+        return self.commitment_category in [
+            'combined_sp_1y',
+            'combined_sp_3y',
+            'combined_sp_unknown_term',  # Added for unknown terms
+        ]
 
 
 class ReportTemplate(models.Model):

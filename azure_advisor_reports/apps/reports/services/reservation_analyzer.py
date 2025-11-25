@@ -169,9 +169,10 @@ class ReservationAnalyzer:
 
         # Check for "one or three year" pattern first (most common in Azure Advisor)
         if re.search(r'(?:one|1)\s*or\s*(?:three|3)[\s-]*year', full_text, re.IGNORECASE):
-            # Default to 3 years for longer commitment (typically better savings)
-            logger.debug("Found 'one or three year' pattern - defaulting to 3 years")
-            return 3
+            # FIXED: This means both options are available but CSV doesn't specify which
+            # Return None to indicate the term is a user choice, not specified in data
+            logger.debug("Found 'one or three year' pattern - term is user choice, returning None")
+            return None
 
         # Check for specific year mentions
         if re.search(r'(?:three|3)[\s-]*year|36[\s-]*month', full_text, re.IGNORECASE):
@@ -188,10 +189,11 @@ class ReservationAnalyzer:
             logger.debug("Found 1-year commitment term")
             return 1
 
-        # If it's a reservation but no specific term, default to 3 years (most common)
+        # FIXED: Don't default to any term if unknown - Azure CSV doesn't provide this info
+        # Return None to indicate term is not specified in the recommendation
         if ReservationAnalyzer.is_reservation_recommendation(recommendation_text, potential_benefits):
-            logger.debug("Reservation detected but no specific term - defaulting to 3 years")
-            return 3
+            logger.debug("Reservation detected but no specific term found - returning None (term unknown)")
+            return None
 
         return None
 
@@ -324,8 +326,8 @@ class ReservationAnalyzer:
             elif commitment_term_years == 3:
                 return 'combined_sp_3y'
             else:
-                # Combined but no specific term - default to 3Y
-                return 'combined_sp_3y'
+                # FIXED: Don't default - term is unknown
+                return 'combined_sp_unknown_term'
 
         # Check for pure Savings Plan
         if cls.is_savings_plan(recommendation_text, potential_benefits):
@@ -338,8 +340,8 @@ class ReservationAnalyzer:
             elif commitment_term_years == 3:
                 return 'pure_reservation_3y'
             else:
-                # Reservation but no specific term - default to 3Y
-                return 'pure_reservation_3y'
+                # FIXED: Don't default - term is unknown
+                return 'pure_reservation_unknown_term'
 
         return 'uncategorized'
 
