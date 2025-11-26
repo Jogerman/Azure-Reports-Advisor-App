@@ -310,6 +310,23 @@
         </div>
     </div>
 
+    <!-- IMPORTANT DISCLAIMER - Reservation Terms -->
+    {% if pure_reservation_metrics.has_pure_reservations or combined_commitment_metrics.has_combined_commitments %}
+    <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 40px 0; border-radius: 8px;">
+        <div style="display: flex; align-items: start; gap: 15px;">
+            <div style="font-size: 24px;">⚠️</div>
+            <div>
+                <div style="font-weight: 600; color: #856404; margin-bottom: 10px; font-size: 16px;">Important Note About Commitment Terms</div>
+                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                    Azure Advisor CSV exports show <strong>annual savings</strong> for the recommended commitment term but <strong>do not specify</strong> whether that term is 1-year or 3-year.
+                    When purchasing reservations in Azure Portal, you can choose between <strong>1-year (~40% discount)</strong> or <strong>3-year (~60% discount)</strong> terms.
+                    All savings shown below are <strong>annual estimates</strong> - confirm actual terms and pricing in Azure Portal before purchasing.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Pure Reserved Instances - 3 Year -->
     {% if pure_reservation_metrics.three_year.count > 0 %}
     <div class="section">
@@ -321,7 +338,7 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             Pure reserved instances with 3-year commitment offer the highest discounts for predictable workloads.
-            Total commitment savings: <strong>${{ pure_reservation_metrics.three_year.total_commitment_savings|floatformat:0|intcomma }}</strong> over 3 years.
+            Annual savings potential: <strong>${{ pure_reservation_metrics.three_year.total_annual_savings|floatformat:0|intcomma }}</strong> per year.
         </p>
 
         <!-- Summary Metrics -->
@@ -339,9 +356,9 @@
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Total Commitment Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.three_year.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Over 3 years</div>
+                <div class="metric-label">Annual Savings Potential</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.three_year.total_annual_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">Per Year</div>
             </div>
         </div>
 
@@ -356,8 +373,8 @@
                     <tr>
                         <th>Recommendation</th>
                         <th style="width: 180px;">Resource</th>
-                        <th style="width: 130px; text-align: right;">Annual Savings</th>
-                        <th style="width: 150px; text-align: right;">3-Year Savings</th>
+                        <th style="width: 100px; text-align: center;">Impact</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -374,13 +391,17 @@
                         <td>
                             <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
                         </td>
-                        <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
+                        <td class="text-center">
+                            {% if rec.business_impact == 'high' %}
+                            <span style="background: #ffebee; color: #c62828; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">High</span>
+                            {% elif rec.business_impact == 'medium' %}
+                            <span style="background: #fff3e0; color: #e65100; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Medium</span>
+                            {% else %}
+                            <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Low</span>
+                            {% endif %}
                         </td>
                         <td class="text-right">
-                            <strong class="text-lg" style="color: #007bff;">
-                                ${{ rec.potential_savings|multiply:3|floatformat:0|intcomma }}
-                            </strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                     </tr>
                     {% endfor %}
@@ -402,7 +423,7 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             1-year reserved instances offer flexibility with significant savings for medium-term workloads.
-            Total commitment savings: <strong>${{ pure_reservation_metrics.one_year.total_commitment_savings|floatformat:0|intcomma }}</strong> over 1 year.
+            Annual savings potential: <strong>${{ pure_reservation_metrics.one_year.total_annual_savings|floatformat:0|intcomma }}</strong> per year.
         </p>
 
         <!-- Summary Metrics -->
@@ -420,9 +441,9 @@
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Total Commitment Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.one_year.total_commitment_savings|floatformat:0|intcomma }}</div>
-                <div class="metric-subtitle">Over 1 year</div>
+                <div class="metric-label">Annual Savings Potential</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ pure_reservation_metrics.one_year.total_annual_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-subtitle">Per Year</div>
             </div>
         </div>
 
@@ -438,7 +459,7 @@
                         <th>Recommendation</th>
                         <th style="width: 180px;">Resource</th>
                         <th style="width: 130px; text-align: right;">Annual Savings</th>
-                        <th style="width: 150px; text-align: right;">1-Year Savings</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -483,7 +504,7 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             Optimal combination of existing Savings Plans plus 3-year Reservations to maximize savings.
-            Total combined savings: <strong>${{ combined_commitment_metrics.sp_plus_3y.total_commitment_savings|floatformat:0|intcomma }}</strong> over 3 years.
+            Annual combined savings: <strong>${{ combined_commitment_metrics.sp_plus_3y.total_annual_savings|floatformat:0|intcomma }}</strong> per year.
         </p>
 
         <!-- Summary Metrics -->
@@ -501,8 +522,8 @@
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Total Commitment Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_3y.total_commitment_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-label">Annual Savings Potential</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_3y.total_annual_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">SP + 3 years combined</div>
             </div>
         </div>
@@ -518,8 +539,8 @@
                     <tr>
                         <th>Recommendation</th>
                         <th style="width: 180px;">Resource</th>
-                        <th style="width: 130px; text-align: right;">Annual Savings</th>
-                        <th style="width: 150px; text-align: right;">Combined Savings</th>
+                        <th style="width: 100px; text-align: center;">Impact</th>
+                        <th style="width: 150px; text-align: right;">Annual Savings</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -536,13 +557,17 @@
                         <td>
                             <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
                         </td>
-                        <td class="text-right">
-                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
+                        <td class="text-center">
+                            {% if rec.business_impact == 'high' %}
+                            <span style="background: #ffebee; color: #c62828; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">High</span>
+                            {% elif rec.business_impact == 'medium' %}
+                            <span style="background: #fff3e0; color: #e65100; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Medium</span>
+                            {% else %}
+                            <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Low</span>
+                            {% endif %}
                         </td>
                         <td class="text-right">
-                            <strong class="text-lg" style="color: #107C10;">
-                                ${{ rec.potential_savings|multiply:3|floatformat:0|intcomma }}
-                            </strong>
+                            <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
                         </td>
                     </tr>
                     {% endfor %}
@@ -569,7 +594,7 @@
 
         <p class="section-description" style="margin-bottom: 30px;">
             Flexible combination of existing Savings Plans plus 1-year Reservations for short-term optimization.
-            Total combined savings: <strong>${{ combined_commitment_metrics.sp_plus_1y.total_commitment_savings|floatformat:0|intcomma }}</strong> over 1 year.
+            Annual combined savings: <strong>${{ combined_commitment_metrics.sp_plus_1y.total_annual_savings|floatformat:0|intcomma }}</strong> per year.
         </p>
 
         <!-- Summary Metrics -->
@@ -587,8 +612,8 @@
             </div>
 
             <div class="metric-card metric-security">
-                <div class="metric-label">Total Commitment Savings</div>
-                <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_1y.total_commitment_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-label">Annual Savings Potential</div>
+                <div class="metric-value" style="font-size: 2.5rem;">${{ combined_commitment_metrics.sp_plus_1y.total_annual_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">SP + 1 year combined</div>
             </div>
         </div>
