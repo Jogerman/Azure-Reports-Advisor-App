@@ -200,7 +200,7 @@
                 <h4 class="quick-win-title">{{ rec.recommendation|truncatewords:12 }}</h4>
                 <div class="quick-win-meta">
                     <div style="font-size: 0.85em; color: var(--text-secondary);">
-                        <strong>Resource:</strong> {{ rec.resource_name|truncatechars:35 }}
+                        <strong>Resource:</strong> {{ rec.resource_name|default:"Unknown Resource"|truncatechars:35 }}
                     </div>
                 </div>
                 <div class="quick-win-footer">
@@ -245,8 +245,8 @@
                     </td>
                     <td>
                         <div style="font-size: 0.9em;">
-                            <div style="font-weight: 600;">{{ rec.resource_name|truncatewords:3 }}</div>
-                            <div style="color: #666;">{{ rec.resource_type|truncatewords:3 }}</div>
+                            <div style="font-weight: 600;">{{ rec.resource_name|default:"Unknown Resource"|truncatewords:3 }}</div>
+                            <div style="color: #666;">{{ rec.resource_type|default:"Unknown Type"|truncatewords:3 }}</div>
                         </div>
                     </td>
                     <td class="text-center">
@@ -459,8 +459,8 @@
                         {{ rec.recommendation }}
                     </h3>
                     <div style="display: flex; gap: 12px; font-size: 0.9em; color: #666;">
-                        <span><strong>Resource:</strong> {{ rec.resource_name|truncatewords:5 }}</span>
-                        <span><strong>Type:</strong> {{ rec.resource_type|truncatewords:3 }}</span>
+                        <span><strong>Resource:</strong> {{ rec.resource_name|default:"Unknown Resource"|truncatewords:5 }}</span>
+                        <span><strong>Type:</strong> {{ rec.resource_type|default:"Unknown Type"|truncatewords:3 }}</span>
                         {% if rec.resource_group %}
                         <span><strong>Resource Group:</strong> {{ rec.resource_group }}</span>
                         {% endif %}
@@ -669,7 +669,7 @@
                 data: {
                     labels: [
                         {% for rec in top_cost_savers|slice:":10" %}
-                        '{{ rec.resource_name|truncatechars:25 }}'{% if not forloop.last %}, {% endif %}
+                        '{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}'{% if not forloop.last %}, {% endif %}
                         {% endfor %}
                     ],
                     datasets: [{

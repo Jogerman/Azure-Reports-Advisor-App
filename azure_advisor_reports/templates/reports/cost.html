@@ -73,8 +73,8 @@
                     </td>
                     <td>
                         <div style="font-size: 0.9em;">
-                            <div style="font-weight: 600;">{{ rec.resource_name|truncatewords:3 }}</div>
-                            <div style="color: #666;">{{ rec.resource_type|truncatewords:3 }}</div>
+                            <div style="font-weight: 600;">{{ rec.resource_name|default:"Unknown Resource"|truncatewords:3 }}</div>
+                            <div style="color: #666;">{{ rec.resource_type|default:"Unknown Type"|truncatewords:3 }}</div>
                         </div>
                     </td>
                     <td class="text-center">
@@ -160,7 +160,7 @@
                 {% for rec in quick_wins %}
                 <tr>
                     <td>{{ rec.recommendation|truncatewords:20 }}</td>
-                    <td style="font-size: 0.9em;">{{ rec.resource_name|truncatewords:2 }}</td>
+                    <td style="font-size: 0.9em;">{{ rec.resource_name|default:"Unknown Resource"|truncatewords:2 }}</td>
                     <td class="text-center">
                         <span class="badge badge-success">Low</span>
                     </td>
@@ -190,8 +190,8 @@
                         {{ rec.recommendation }}
                     </h3>
                     <div style="display: flex; gap: 12px; font-size: 0.9em; color: #666;">
-                        <span><strong>Resource:</strong> {{ rec.resource_name|truncatewords:5 }}</span>
-                        <span><strong>Type:</strong> {{ rec.resource_type|truncatewords:3 }}</span>
+                        <span><strong>Resource:</strong> {{ rec.resource_name|default:"Unknown Resource"|truncatewords:5 }}</span>
+                        <span><strong>Type:</strong> {{ rec.resource_type|default:"Unknown Type"|truncatewords:3 }}</span>
                         {% if rec.resource_group %}
                         <span><strong>Resource Group:</strong> {{ rec.resource_group }}</span>
                         {% endif %}

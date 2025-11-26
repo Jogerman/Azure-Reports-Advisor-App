@@ -727,8 +727,8 @@
                     <td><span class="badge badge-{{ rec.category }}">{{ rec.get_category_display }}</span></td>
                     <td>
                         {% if rec.resource_name %}
-                        <div class="font-semibold">{{ rec.resource_name|truncatechars:20 }}</div>
-                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                        <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:20 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:25 }}</div>
                         {% else %}
                         <span class="text-muted">General</span>
                         {% endif %}
@@ -770,7 +770,7 @@
                     <td>
                         <strong>{{ rec.recommendation|truncatewords:18 }}</strong>
                         {% if rec.resource_name %}
-                        <div class="text-sm text-muted">Resource: {{ rec.resource_name|truncatechars:35 }}</div>
+                        <div class="text-sm text-muted">Resource: {{ rec.resource_name|default:"Unknown Resource"|truncatechars:35 }}</div>
                         {% endif %}
                     </td>
                     <td class="text-right">

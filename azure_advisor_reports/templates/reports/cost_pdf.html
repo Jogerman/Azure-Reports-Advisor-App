@@ -671,8 +671,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
-                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                        <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:25 }}</div>
                     </td>
                     <td class="text-center">
                         <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
@@ -723,8 +723,8 @@
                 <tr>
                     <td><strong>{{ rec.recommendation|truncatewords:18 }}</strong></td>
                     <td>
-                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
-                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:22 }}</div>
+                        <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:22 }}</div>
                     </td>
                     <td class="text-center"><span class="badge badge-low">Low Effort</span></td>
                     <td class="text-right"><strong class="text-success">${{ rec.potential_savings|floatformat:0 }}</strong></td>

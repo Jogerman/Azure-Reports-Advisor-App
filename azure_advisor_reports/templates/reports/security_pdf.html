@@ -834,8 +834,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
-                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                        <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:25 }}</div>
                     </td>
                     <td class="text-center">
                         <span class="risk-indicator risk-critical">CRITICAL</span>
@@ -881,8 +881,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <div class="font-semibold">{{ rec.resource_name|truncatechars:22 }}</div>
-                        <div class="text-sm text-muted">{{ rec.resource_type|truncatechars:22 }}</div>
+                        <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:22 }}</div>
+                        <div class="text-sm text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:22 }}</div>
                     </td>
                     <td class="text-center">
                         <span class="risk-indicator risk-high">HIGH</span>

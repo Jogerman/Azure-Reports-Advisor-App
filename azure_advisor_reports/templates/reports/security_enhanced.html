@@ -313,8 +313,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
-                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-center">
                             <span class="risk-indicator risk-critical">CRITICAL</span>
@@ -367,8 +367,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_name|truncatechars:25 }}</div>
-                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:25 }}</div>
                         </td>
                         <td class="text-center">
                             <span class="risk-indicator risk-high">HIGH</span>
@@ -435,6 +435,7 @@
                             <strong class="text-lg">{{ sub.total_count|intcomma }}</strong>
                         </td>
                         <td>
+                            {% if sub.total_count > 0 %}
                             <div style="display: flex; height: 24px; border-radius: 12px; overflow: hidden;">
                                 {% widthratio sub.critical_count sub.total_count 100 as critical_pct %}
                                 {% widthratio sub.high_count sub.total_count 100 as high_pct %}
@@ -443,6 +444,9 @@
                                 <div style="width: {{ high_pct }}%; background: var(--warning-orange);"></div>
                                 <div style="width: {{ medium_pct }}%; background: var(--warning-yellow);"></div>
                             </div>
+                            {% else %}
+                            <span class="text-muted" style="font-size: 0.9em;">No findings</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

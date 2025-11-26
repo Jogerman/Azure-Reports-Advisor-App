@@ -178,7 +178,7 @@
                         <td>
                             {% if rec.resource_name %}
                             <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
-                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                             {% else %}
                             <span class="text-muted">General Recommendation</span>
                             {% endif %}

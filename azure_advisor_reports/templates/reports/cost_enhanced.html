@@ -164,8 +164,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
-                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-center">
                             <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
@@ -234,8 +234,8 @@
                             <strong>{{ rec.recommendation|truncatewords:20 }}</strong>
                         </td>
                         <td>
-                            <div class="font-semibold">{{ rec.resource_name|truncatechars:25 }}</div>
-                            <div class="text-xs text-muted">{{ rec.resource_type|truncatechars:25 }}</div>
+                            <div class="font-semibold">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}</div>
+                            <div class="text-xs text-muted">{{ rec.resource_type|default:"Unknown Type"|truncatechars:25 }}</div>
                         </td>
                         <td class="text-center">
                             <span class="badge badge-low">Low Effort</span>
@@ -389,7 +389,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-center">
                             {% if rec.business_impact == 'high' %}
@@ -474,7 +474,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-right">
                             <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
@@ -555,7 +555,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-center">
                             {% if rec.business_impact == 'high' %}
@@ -645,7 +645,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_type|truncatechars:30 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_type|default:"Unknown Type"|truncatechars:30 }}</div>
                         </td>
                         <td class="text-right">
                             <strong class="text-success text-lg">${{ rec.potential_savings|floatformat:0|intcomma }}</strong>
@@ -703,7 +703,7 @@
                             <strong>{{ rec.recommendation|truncatewords:20 }}</strong>
                         </td>
                         <td>
-                            <div class="font-semibold text-sm">{{ rec.resource_name|truncatechars:25 }}</div>
+                            <div class="font-semibold text-sm">{{ rec.resource_name|default:"Unknown Resource"|truncatechars:25 }}</div>
                         </td>
                         <td class="text-center">
                             <span class="badge badge-{{ rec.business_impact }}">{{ rec.business_impact|upper }}</span>
