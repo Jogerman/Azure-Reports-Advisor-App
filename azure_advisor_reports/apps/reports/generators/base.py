@@ -3,6 +3,8 @@ Base report generator class with common functionality for all report types.
 """
 
 import os
+import base64
+import mimetypes
 from abc import ABC, abstractmethod
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -36,6 +38,42 @@ class BaseReportGenerator(ABC):
         self.report = report
         self.recommendations = report.recommendations.all()
         self.client = report.client
+
+    def get_client_logo_base64(self):
+        """
+        Convert client logo to base64 data URI for embedding in PDFs.
+
+        Returns:
+            str: Base64 data URI (e.g., 'data:image/png;base64,iVBORw0...') or None if no logo
+        """
+        if not self.client.logo:
+            return None
+
+        try:
+            # Check if logo file exists in storage
+            if default_storage.exists(self.client.logo.name):
+                # Read the logo file from storage
+                file_obj = default_storage.open(self.client.logo.name, 'rb')
+                file_content = file_obj.read()
+                file_obj.close()
+
+                # Determine MIME type
+                content_type, _ = mimetypes.guess_type(self.client.logo.name)
+                if not content_type:
+                    content_type = 'image/png'  # Default to PNG
+
+                # Encode to base64
+                encoded_logo = base64.b64encode(file_content).decode('utf-8')
+
+                # Return as data URI
+                return f'data:{content_type};base64,{encoded_logo}'
+            else:
+                logger.warning(f"Logo file not found in storage for client '{self.client.company_name}'")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error converting logo to base64 for client '{self.client.company_name}': {str(e)}")
+            return None
 
     @abstractmethod
     def get_template_name(self):
@@ -111,6 +149,7 @@ class BaseReportGenerator(ABC):
         return {
             'report': self.report,
             'client': self.client,
+            'client_logo_base64': self.get_client_logo_base64(),  # PDF-friendly base64 logo
             'recommendations': self.recommendations,
             'generated_date': timezone.now(),
             'total_recommendations': self.recommendations.count(),
@@ -356,9 +395,11 @@ class BaseReportGenerator(ABC):
         from django.db.models import F, Sum, Count, DecimalField, Case, When, Q
 
         # Filter only pure traditional reservations (NOT Savings Plans)
+        # FIXED: Include unknown term reservations (Azure CSV doesn't specify term)
         pure_reservations = self.recommendations.filter(
             Q(commitment_category='pure_reservation_1y') |
-            Q(commitment_category='pure_reservation_3y')
+            Q(commitment_category='pure_reservation_3y') |
+            Q(commitment_category='pure_reservation_unknown_term')
         ).annotate(
             commitment_savings=Case(
                 When(
@@ -371,9 +412,10 @@ class BaseReportGenerator(ABC):
             )
         )
 
-        # Separate 1-year and 3-year reservations
+        # Separate 1-year, 3-year, and unknown term reservations
         one_year_reservations = pure_reservations.filter(commitment_term_years=1)
         three_year_reservations = pure_reservations.filter(commitment_term_years=3)
+        unknown_term_reservations = pure_reservations.filter(commitment_term_years__isnull=True)
 
         # Calculate 1-year metrics
         one_year_totals = one_year_reservations.aggregate(
@@ -389,9 +431,16 @@ class BaseReportGenerator(ABC):
             total_commitment=Sum('commitment_savings')
         )
 
+        # Calculate unknown term metrics
+        unknown_term_totals = unknown_term_reservations.aggregate(
+            count=Count('id'),
+            total_annual=Sum('potential_savings'),
+        )
+
         # Get top recommendations for each term
         top_1y = list(one_year_reservations.order_by('-commitment_savings')[:10])
         top_3y = list(three_year_reservations.order_by('-commitment_savings')[:10])
+        top_unknown = list(unknown_term_reservations.order_by('-potential_savings')[:10])
 
         # Group by resource type for each term
         one_year_by_type = one_year_reservations.values('reservation_type').annotate(
@@ -406,9 +455,26 @@ class BaseReportGenerator(ABC):
             commitment_savings=Sum('commitment_savings')
         ).order_by('-annual_savings')
 
+        unknown_term_by_type = unknown_term_reservations.values('reservation_type').annotate(
+            count=Count('id'),
+            annual_savings=Sum('potential_savings'),
+        ).order_by('-annual_savings')
+
+        # Get all recommendations sorted by savings for the unified table
+        all_recommendations_list = list(pure_reservations.order_by('-potential_savings'))
+
+        # Calculate total annual savings across all terms
+        total_annual_savings = (
+            (one_year_totals['total_annual'] or 0) +
+            (three_year_totals['total_annual'] or 0) +
+            (unknown_term_totals['total_annual'] or 0)
+        )
+
         return {
             'has_pure_reservations': pure_reservations.exists(),
             'total_count': pure_reservations.count(),
+            'all_recommendations': all_recommendations_list,
+            'total_annual_savings': float(total_annual_savings),
 
             # 1-Year Reservations
             'one_year': {
@@ -452,6 +518,26 @@ class BaseReportGenerator(ABC):
                     for item in three_year_by_type
                 ],
                 'top_recommendations': top_3y,
+            },
+
+            # Unknown Term Reservations (Azure CSV doesn't specify term)
+            'unknown_term': {
+                'count': unknown_term_totals['count'] or 0,
+                'total_annual_savings': float(unknown_term_totals['total_annual'] or 0),
+                'average_annual_savings': (
+                    float(unknown_term_totals['total_annual'] / unknown_term_totals['count'])
+                    if unknown_term_totals['count'] else 0
+                ),
+                'by_type': [
+                    {
+                        'type': item['reservation_type'],
+                        'type_display': self._get_reservation_type_display(item['reservation_type']),
+                        'count': item['count'],
+                        'annual_savings': float(item['annual_savings'] or 0),
+                    }
+                    for item in unknown_term_by_type
+                ],
+                'top_recommendations': top_unknown,
             },
         }
 
@@ -512,12 +598,16 @@ class BaseReportGenerator(ABC):
         # Get top recommendations
         top_recommendations = list(savings_plans.order_by('-commitment_savings')[:10])
 
+        # Get all recommendations sorted by savings for the unified table
+        all_recommendations_list = list(savings_plans.order_by('-potential_savings'))
+
         return {
             'has_savings_plans': True,
             'count': count,
             'total_annual_savings': float(totals['total_annual'] or 0),
             'total_commitment_savings': float(totals['total_commitment'] or 0),
             'average_annual_savings': float(totals['total_annual'] / count) if count else 0,
+            'all_recommendations': all_recommendations_list,
             'by_term': [
                 {
                     'term_years': item['commitment_term_years'],
@@ -581,9 +671,20 @@ class BaseReportGenerator(ABC):
         top_1y = list(combined_1y.order_by('-commitment_savings')[:5])
         top_3y = list(combined_3y.order_by('-commitment_savings')[:5])
 
+        # Get all recommendations sorted by savings for the unified table
+        all_recommendations_list = list(combined.order_by('-potential_savings'))
+
+        # Calculate total annual savings
+        total_annual_savings = (
+            (totals_1y['total_annual'] or 0) +
+            (totals_3y['total_annual'] or 0)
+        )
+
         return {
             'has_combined_commitments': combined.exists(),
             'total_count': combined.count(),
+            'all_recommendations': all_recommendations_list,
+            'total_annual_savings': float(total_annual_savings),
 
             # Savings Plan + 1-Year Reservations
             'sp_plus_1y': {

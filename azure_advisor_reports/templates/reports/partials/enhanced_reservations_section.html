@@ -18,14 +18,14 @@
 {% endcomment %}
 
 <div class="section" style="page-break-inside: avoid; margin-top: 50px;">
-    <h1 style="color: #2c3e50; border-bottom: 4px solid #3498db; padding-bottom: 15px; margin-bottom: 40px;">
+    <h1 style="color: #201F1E; border-bottom: 4px solid #0078D4; padding-bottom: 15px; margin-bottom: 40px;">
         Azure Commitment Savings Analysis
     </h1>
 
     <!-- SECTION 1: PURE RESERVATIONS ONLY -->
     {% if pure_reservation_metrics.has_pure_reservations %}
     <div style="margin-bottom: 60px;">
-        <h2 style="color: #27ae60; border-left: 6px solid #27ae60; padding-left: 15px; margin-bottom: 30px;">
+        <h2 style="color: #107C10; border-left: 6px solid #107C10; padding-left: 15px; margin-bottom: 30px;">
             Traditional Reservations (VM Instances & Capacity)
         </h2>
 
@@ -55,14 +55,14 @@
         </div>
 
         <!-- UNIFIED RESERVATIONS TABLE -->
-        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #3498db; margin-bottom: 40px;">
-            <h3 style="margin-top: 0; color: #2c3e50; font-size: 20px; margin-bottom: 20px;">
+        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #0078D4; margin-bottom: 40px;">
+            <h3 style="margin-top: 0; color: #201F1E; font-size: 20px; margin-bottom: 20px;">
                 All Traditional Reservation Opportunities
             </h3>
 
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr style="background: #2c3e50; color: white;">
+                    <tr style="background: #0078D4; color: white;">
                         <th style="padding: 12px; text-align: left; font-size: 13px;">Resource</th>
                         <th style="padding: 12px; text-align: center; font-size: 13px;">Type</th>
                         <th style="padding: 12px; text-align: center; font-size: 13px;">Impact</th>
@@ -71,6 +71,7 @@
                 </thead>
                 <tbody>
                     {% for rec in pure_reservation_metrics.all_recommendations %}
+                    {% if rec.potential_savings > 0 %}
                     <tr style="border-bottom: 1px solid #dee2e6;">
                         <td style="padding: 15px;">
                             <div style="font-weight: 600; margin-bottom: 5px;">{{ rec.resource_name|default:"General Recommendation"|truncatechars:40 }}</div>
@@ -95,10 +96,11 @@
                             <span style="background: #e8f5e9; color: #2e7d32; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 600;">Low</span>
                             {% endif %}
                         </td>
-                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #27ae60;">
+                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #107C10;">
                             ${{ rec.potential_savings|floatformat:2|intcomma }}
                         </td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -109,7 +111,7 @@
     <!-- SECTION 2: PURE SAVINGS PLANS -->
     {% if savings_plan_metrics.has_savings_plans %}
     <div style="margin-bottom: 60px;">
-        <h2 style="color: #e67e22; border-left: 6px solid #e67e22; padding-left: 15px; margin-bottom: 30px;">
+        <h2 style="color: #FF8C00; border-left: 6px solid #FF8C00; padding-left: 15px; margin-bottom: 30px;">
             Azure Compute Savings Plans (Flexible Commitments)
         </h2>
 
@@ -137,14 +139,14 @@
         </div>
 
         <!-- Savings Plans Table -->
-        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #e67e22;">
-            <h3 style="margin-top: 0; color: #2c3e50; font-size: 20px; margin-bottom: 20px;">
+        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #FF8C00;">
+            <h3 style="margin-top: 0; color: #201F1E; font-size: 20px; margin-bottom: 20px;">
                 All Savings Plan Opportunities
             </h3>
 
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr style="background: #2c3e50; color: white;">
+                    <tr style="background: #0078D4; color: white;">
                         <th style="padding: 12px; text-align: left; font-size: 13px;">Recommendation</th>
                         <th style="padding: 12px; text-align: center; font-size: 13px;">Impact</th>
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Annual Savings</th>
@@ -169,7 +171,7 @@
                             <span style="background: #e8f5e9; color: #2e7d32; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 600;">Low</span>
                             {% endif %}
                         </td>
-                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #e67e22;">
+                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #FF8C00;">
                             ${{ rec.potential_savings|floatformat:2|intcomma }}
                         </td>
                     </tr>
@@ -183,7 +185,7 @@
     <!-- SECTION 3: COMBINED COMMITMENTS -->
     {% if combined_commitment_metrics.has_combined_commitments %}
     <div style="margin-bottom: 60px;">
-        <h2 style="color: #16a085; border-left: 6px solid #16a085; padding-left: 15px; margin-bottom: 30px;">
+        <h2 style="color: #00BCF2; border-left: 6px solid #00BCF2; padding-left: 15px; margin-bottom: 30px;">
             Combined Savings (Savings Plans + Reservations Together)
         </h2>
 
@@ -211,14 +213,14 @@
         </div>
 
         <!-- Combined Commitments Table -->
-        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #16a085;">
-            <h3 style="margin-top: 0; color: #2c3e50; font-size: 20px; margin-bottom: 20px;">
+        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 2px solid #00BCF2;">
+            <h3 style="margin-top: 0; color: #201F1E; font-size: 20px; margin-bottom: 20px;">
                 All Combined Commitment Opportunities
             </h3>
 
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr style="background: #2c3e50; color: white;">
+                    <tr style="background: #0078D4; color: white;">
                         <th style="padding: 12px; text-align: left; font-size: 13px;">Recommendation</th>
                         <th style="padding: 12px; text-align: center; font-size: 13px;">Impact</th>
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Annual Savings</th>
@@ -243,7 +245,7 @@
                             <span style="background: #e8f5e9; color: #2e7d32; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 600;">Low</span>
                             {% endif %}
                         </td>
-                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #16a085;">
+                        <td style="padding: 15px; text-align: right; font-size: 16px; font-weight: 700; color: #00BCF2;">
                             ${{ rec.potential_savings|floatformat:2|intcomma }}
                         </td>
                     </tr>
