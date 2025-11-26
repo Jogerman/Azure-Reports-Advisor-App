@@ -68,6 +68,7 @@ class ClientListSerializer(serializers.ModelSerializer):
         source='account_manager.full_name',
         read_only=True
     )
+    logo = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
@@ -88,6 +89,20 @@ class ClientListSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
 
+    def get_logo(self, obj):
+        """
+        Return backend URL for logo instead of direct blob storage URL.
+        This ensures authenticated access through the backend.
+        """
+        if obj.logo:
+            request = self.context.get('request')
+            if request:
+                # Build the URL to the backend logo endpoint
+                return request.build_absolute_uri(
+                    f'/api/v1/clients/{obj.id}/logo/'
+                )
+        return None
+
 
 class ClientDetailSerializer(serializers.ModelSerializer):
     """
@@ -106,6 +121,7 @@ class ClientDetailSerializer(serializers.ModelSerializer):
         source='created_by.full_name',
         read_only=True
     )
+    logo = serializers.SerializerMethodField()
 
     # Include related contacts and notes
     contacts = ClientContactSerializer(many=True, read_only=True)
@@ -150,6 +166,20 @@ class ClientDetailSerializer(serializers.ModelSerializer):
             'total_reports',
             'latest_report_date',
         ]
+
+    def get_logo(self, obj):
+        """
+        Return backend URL for logo instead of direct blob storage URL.
+        This ensures authenticated access through the backend.
+        """
+        if obj.logo:
+            request = self.context.get('request')
+            if request:
+                # Build the URL to the backend logo endpoint
+                return request.build_absolute_uri(
+                    f'/api/v1/clients/{obj.id}/logo/'
+                )
+        return None
 
 
 class ClientCreateUpdateSerializer(serializers.ModelSerializer):

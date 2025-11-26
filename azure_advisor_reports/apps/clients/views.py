@@ -3,6 +3,9 @@ API views for client management.
 """
 
 import logging
+import mimetypes
+from django.http import HttpResponse, Http404
+from django.core.files.storage import default_storage
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -290,6 +293,54 @@ class ClientViewSet(viewsets.ModelViewSet):
                 serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=True, methods=['get'], url_path='logo')
+    def get_logo(self, request, pk=None):
+        """
+        Serve client logo securely through backend with authentication.
+
+        GET /api/v1/clients/{id}/logo/
+
+        This endpoint proxies the logo from Azure Blob Storage with authentication,
+        preventing direct public access to the storage account.
+        """
+        client = self.get_object()
+
+        # Check if client has a logo
+        if not client.logo:
+            raise Http404("Client logo not found")
+
+        try:
+            # Get the file from storage (works with both local and Azure Blob Storage)
+            if default_storage.exists(client.logo.name):
+                # Open the file from storage
+                file_obj = default_storage.open(client.logo.name, 'rb')
+                file_content = file_obj.read()
+                file_obj.close()
+
+                # Determine content type
+                content_type, _ = mimetypes.guess_type(client.logo.name)
+                if not content_type:
+                    content_type = 'image/png'  # Default to PNG
+
+                # Create HTTP response with image content
+                response = HttpResponse(file_content, content_type=content_type)
+                response['Content-Disposition'] = f'inline; filename="{client.company_name}_logo"'
+                response['Cache-Control'] = 'private, max-age=3600'  # Cache for 1 hour
+
+                logger.info(
+                    f"Logo served for client '{client.company_name}' to user {request.user.email}"
+                )
+
+                return response
+            else:
+                raise Http404("Logo file not found in storage")
+
+        except Exception as e:
+            logger.error(
+                f"Error serving logo for client '{client.company_name}': {str(e)}"
+            )
+            raise Http404("Error retrieving logo")
 
 
 class ClientContactViewSet(viewsets.ModelViewSet):
