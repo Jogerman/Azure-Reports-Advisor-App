@@ -23,7 +23,7 @@
             <div class="metric-card metric-cost">
                 <div class="metric-icon">💰</div>
                 <div class="metric-label">Potential Annual Savings</div>
-                <div class="metric-value">${{ total_savings|floatformat:0|intcomma }}</div>
+                <div class="metric-value">${{ total_annual_savings|floatformat:0|intcomma }}</div>
                 <div class="metric-subtitle">${{ monthly_savings|floatformat:0|intcomma }} per month</div>
             </div>
 
@@ -427,7 +427,7 @@
                     {% if total_savings > 0 %}High{% else %}Medium{% endif %}
                 </div>
                 <div class="metric-subtitle">
-                    Based on ${{ total_savings|floatformat:0 }} annual savings potential
+                    Based on ${{ total_annual_savings|floatformat:0 }} annual savings potential
                 </div>
             </div>
 
@@ -457,7 +457,7 @@
             <h3>Analysis Summary</h3>
             <div style="line-height: 2; margin-top: 15px;">
                 <p><strong>Total Optimization Opportunities:</strong> {{ total_recommendations }} recommendations across {{ category_distribution|length }} Azure Advisor categories</p>
-                <p><strong>Financial Impact:</strong> Potential annual savings of ${{ total_savings|floatformat:2 }} (${{ monthly_savings|floatformat:2 }}/month)</p>
+                <p><strong>Financial Impact:</strong> Potential annual savings of ${{ total_annual_savings|floatformat:2 }} (${{ monthly_savings|floatformat:2 }}/month)</p>
                 <p><strong>Priority Distribution:</strong> {{ high_impact_count }} high-priority, {{ medium_impact_count }} medium-priority, and {{ low_impact_count }} low-priority items</p>
                 <p><strong>Implementation Effort:</strong> Estimated 4-8 weeks for comprehensive implementation of high and medium priority items</p>
             </div>
