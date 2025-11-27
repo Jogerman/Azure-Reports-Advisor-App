@@ -34,6 +34,10 @@ class ReservationAnalyzer:
         'compute savings',
         'azure savings plan',
         'savings commitment',
+        'purchasing a savings plan',  # NEW - Azure Advisor format
+        'purchase a savings plan',     # NEW - variation
+        'buy a savings plan',          # NEW - variation
+        'consider purchasing a savings plan',  # NEW - full phrase from Azure Advisor
     ]
 
     # Traditional reservation keywords (excluding savings plans)
@@ -47,6 +51,18 @@ class ReservationAnalyzer:
         'reserve',
         'ri ',  # Abbreviation for Reserved Instance
         'reserved',
+        # NEW - Azure Advisor specific phrases
+        'consider virtual machine reserved instance',
+        'consider cosmos db reserved instance',
+        'consider sql paas db reserved instance',
+        'consider app service reserved instance',
+        'consider database for mysql reserved instance',
+        'consider blob storage reserved instance',
+        'consider suselinux reserved instance',
+        'consider azure synapse analytics',
+        'purchasing reserved instance',
+        'purchase reserved instance',
+        'buy reserved instance',
     ]
 
     # Combined list for general reservation detection
@@ -101,6 +117,7 @@ class ReservationAnalyzer:
             bool: True if this is a reservation recommendation
         """
         if not recommendation_text:
+            logger.debug("No recommendation text provided, returning False")
             return False
 
         # Combine all text for analysis
@@ -109,8 +126,13 @@ class ReservationAnalyzer:
         # Check for reservation keywords
         for keyword in ReservationAnalyzer.RESERVATION_KEYWORDS:
             if keyword in full_text:
-                logger.debug(f"Found reservation keyword: '{keyword}' in recommendation")
+                logger.info(f"✓ DETECTED RESERVATION: keyword '{keyword}' in: {recommendation_text[:100]}")
                 return True
+
+        # Log when we DON'T detect a reservation (for debugging)
+        # Only log if the text contains cost-related terms to reduce noise
+        if any(term in full_text for term in ['cost', 'saving', 'price', 'purchase', 'buy']):
+            logger.debug(f"✗ NOT DETECTED as reservation (cost-related): {recommendation_text[:100]}")
 
         return False
 

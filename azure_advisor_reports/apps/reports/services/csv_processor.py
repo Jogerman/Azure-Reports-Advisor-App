@@ -531,8 +531,20 @@ class AzureAdvisorCSVProcessor:
                     recommendation_data['is_savings_plan'] = reservation_analysis['is_savings_plan']
                     recommendation_data['commitment_category'] = reservation_analysis['commitment_category']
 
+                    # Log successful categorization for monitoring
+                    if reservation_analysis['is_reservation']:
+                        logger.info(
+                            f"Row {idx + 2}: Categorized as '{reservation_analysis['commitment_category']}' - "
+                            f"{recommendation_text[:80]}"
+                        )
+
                 except Exception as e:
-                    logger.warning(f"Failed to analyze reservation for row {idx}: {str(e)}")
+                    logger.error(
+                        f"⚠️ FAILED to analyze reservation for row {idx + 2}: {str(e)}\n"
+                        f"Recommendation: {recommendation_text[:100]}\n"
+                        f"Benefits: {potential_benefits_text[:100]}",
+                        exc_info=True
+                    )
                     recommendation_data['is_reservation_recommendation'] = False
                     recommendation_data['reservation_type'] = None
                     recommendation_data['commitment_term_years'] = None

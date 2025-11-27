@@ -94,14 +94,19 @@ class ClientListSerializer(serializers.ModelSerializer):
         Return backend URL for logo instead of direct blob storage URL.
         This ensures authenticated access through the backend.
         """
-        if obj.logo:
-            request = self.context.get('request')
-            if request:
-                # Build the URL to the backend logo endpoint
-                return request.build_absolute_uri(
-                    f'/api/v1/clients/{obj.id}/logo/'
-                )
-        return None
+        if not obj.logo:
+            return None
+
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        # Cache the base URL to avoid repeated build_absolute_uri calls
+        if not hasattr(self, '_base_url'):
+            self._base_url = request.build_absolute_uri('/api/v1/clients/')
+
+        # Simply append the client ID and logo path
+        return f'{self._base_url}{obj.id}/logo/'
 
 
 class ClientDetailSerializer(serializers.ModelSerializer):
@@ -172,14 +177,19 @@ class ClientDetailSerializer(serializers.ModelSerializer):
         Return backend URL for logo instead of direct blob storage URL.
         This ensures authenticated access through the backend.
         """
-        if obj.logo:
-            request = self.context.get('request')
-            if request:
-                # Build the URL to the backend logo endpoint
-                return request.build_absolute_uri(
-                    f'/api/v1/clients/{obj.id}/logo/'
-                )
-        return None
+        if not obj.logo:
+            return None
+
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        # Cache the base URL to avoid repeated build_absolute_uri calls
+        if not hasattr(self, '_base_url'):
+            self._base_url = request.build_absolute_uri('/api/v1/clients/')
+
+        # Simply append the client ID and logo path
+        return f'{self._base_url}{obj.id}/logo/'
 
 
 class ClientCreateUpdateSerializer(serializers.ModelSerializer):

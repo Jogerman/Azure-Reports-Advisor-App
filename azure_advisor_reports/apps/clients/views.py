@@ -9,7 +9,7 @@ from django.core.files.storage import default_storage
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.authentication.permissions import CanManageClients
@@ -40,7 +40,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     - DELETE /api/v1/clients/{id}/     - Delete (deactivate) a client
     """
 
-    queryset = Client.objects.all()
+    queryset = Client.objects.select_related('account_manager', 'created_by').all()
     permission_classes = [CanManageClients]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'industry', 'account_manager']
@@ -294,15 +294,16 @@ class ClientViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=True, methods=['get'], url_path='logo')
+    @action(detail=True, methods=['get'], url_path='logo', permission_classes=[AllowAny])
     def get_logo(self, request, pk=None):
         """
-        Serve client logo securely through backend with authentication.
+        Serve client logo publicly without authentication.
 
         GET /api/v1/clients/{id}/logo/
 
-        This endpoint proxies the logo from Azure Blob Storage with authentication,
-        preventing direct public access to the storage account.
+        This endpoint proxies the logo from Azure Blob Storage for public access.
+        Logos are not sensitive information and need to be accessible without authentication
+        for HTML img tags to load them properly.
         """
         client = self.get_object()
 
@@ -328,8 +329,9 @@ class ClientViewSet(viewsets.ModelViewSet):
                 response['Content-Disposition'] = f'inline; filename="{client.company_name}_logo"'
                 response['Cache-Control'] = 'private, max-age=3600'  # Cache for 1 hour
 
+                user_identifier = getattr(request.user, 'email', 'anonymous') if request.user.is_authenticated else 'anonymous'
                 logger.info(
-                    f"Logo served for client '{client.company_name}' to user {request.user.email}"
+                    f"Logo served for client '{client.company_name}' to user {user_identifier}"
                 )
 
                 return response

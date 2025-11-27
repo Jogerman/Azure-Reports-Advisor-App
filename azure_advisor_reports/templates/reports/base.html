@@ -1310,9 +1310,9 @@
             <h1 class="cover-title">Azure Advisor<br>Analysis Report</h1>
             <div style="margin: 30px 0; text-align: center;">
                 <!-- Client Logo -->
-                {% if client.logo %}
+                {% if client_logo_base64 %}
                 <div style="margin-bottom: 20px;">
-                    <img src="{{ client.logo.url }}" alt="{{ client.company_name }} Logo" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 50%; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+                    <img src="{{ client_logo_base64 }}" alt="{{ client.company_name }} Logo" style="max-width: 250px; max-height: 250px; object-fit: contain; border-radius: 50%; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
                 </div>
                 {% endif %}
                 <div style="font-size: 2rem; color: white; font-weight: 600; margin-bottom: 20px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);">
