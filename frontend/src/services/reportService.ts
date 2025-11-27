@@ -85,7 +85,7 @@ export interface GenerateReportData {
 export interface ReportListParams {
   page?: number;
   page_size?: number;
-  client_id?: string;
+  client?: string;  // Changed from client_id to match backend filter field
   report_type?: ReportType | ReportType[];
   status?: ReportStatus | ReportStatus[];
   created_by?: string | string[];

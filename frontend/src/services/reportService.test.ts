@@ -174,7 +174,7 @@ describe('ReportService', () => {
 
       mockedApiClient.get.mockResolvedValue({ data: mockResponse });
 
-      const params = { client_id: mockClient.id };
+      const params = { client: mockClient.id };
       await reportService.getReports(params);
 
       expect(mockedApiClient.get).toHaveBeenCalledWith('/reports/', {

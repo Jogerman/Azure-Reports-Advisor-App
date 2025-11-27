@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FiArrowLeft, FiEdit2, FiTrash2, FiFileText, FiCalendar, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiTrash2, FiFileText, FiCalendar, FiDollarSign, FiTrendingUp } from 'react-icons/fi';
 import { clientService, reportService } from '../services';
 import { Button, Card, LoadingSpinner, Modal, ConfirmDialog, showToast } from '../components/common';
 import ClientForm from '../components/clients/ClientForm';
 import ClientAzureSubscriptions from '../components/clients/ClientAzureSubscriptions';
+import ReportComparison from '../components/clients/ReportComparison';
 import { format } from 'date-fns';
 
 const ClientDetailPage: React.FC = () => {
@@ -15,6 +16,7 @@ const ClientDetailPage: React.FC = () => {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'history' | 'comparison'>('history');
 
   // Fetch client details
   const { data: client, isLoading: clientLoading } = useQuery({
@@ -25,8 +27,8 @@ const ClientDetailPage: React.FC = () => {
 
   // Fetch client's reports
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['reports', { client_id: id }],
-    queryFn: () => reportService.getReports({ client_id: id }),
+    queryKey: ['reports', { client: id }],
+    queryFn: () => reportService.getReports({ client: id }),
     enabled: !!id,
   });
 
@@ -211,61 +213,98 @@ const ClientDetailPage: React.FC = () => {
       {/* Azure Subscriptions - New integrated management */}
       <ClientAzureSubscriptions clientId={id!} clientName={client.company_name} />
 
-      {/* Reports History */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Reports History</h2>
-          <Button
-            variant="primary"
-            icon={<FiFileText />}
-            onClick={() => navigate(`/reports?client=${id}`)}
-          >
-            Generate Report
-          </Button>
+      {/* Reports Section with Tabs */}
+      <div>
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 mb-6">
+          <div className="flex items-center justify-between">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`${
+                  activeTab === 'history'
+                    ? 'border-azure-500 text-azure-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              >
+                <FiFileText className="w-4 h-4" />
+                <span>Reports History</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('comparison')}
+                className={`${
+                  activeTab === 'comparison'
+                    ? 'border-azure-500 text-azure-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              >
+                <FiTrendingUp className="w-4 h-4" />
+                <span>Comparative Analysis</span>
+              </button>
+            </nav>
+            {activeTab === 'history' && (
+              <Button
+                variant="primary"
+                icon={<FiFileText />}
+                onClick={() => navigate(`/reports?client=${id}`)}
+              >
+                Generate Report
+              </Button>
+            )}
+          </div>
         </div>
 
-        {reportsLoading ? (
-          <div className="flex justify-center py-8">
-            <LoadingSpinner text="Loading reports..." />
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="text-center py-8 text-gray-600">
-            No reports generated yet for this client
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {reports.map((report) => (
-              <div
-                key={report.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => navigate(`/reports/${report.id}`)}
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 capitalize">
-                    {report.report_type.replace('_', ' ')} Report
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {format(new Date(report.created_at), 'MMMM d, yyyy • h:mm a')}
-                  </p>
-                </div>
-                <div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      report.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : report.status === 'failed'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {report.status}
-                  </span>
-                </div>
+        {/* Tab Content */}
+        {activeTab === 'history' && (
+          <Card>
+            {reportsLoading ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner text="Loading reports..." />
               </div>
-            ))}
-          </div>
+            ) : reports.length === 0 ? (
+              <div className="text-center py-8 text-gray-600">
+                No reports generated yet for this client
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/reports/${report.id}`)}
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900 capitalize">
+                        {report.report_type.replace('_', ' ')} Report
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {format(new Date(report.created_at), 'MMMM d, yyyy • h:mm a')}
+                      </p>
+                    </div>
+                    <div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          report.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : report.status === 'failed'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {report.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         )}
-      </Card>
+
+        {activeTab === 'comparison' && (
+          <ReportComparison clientId={id!} reports={reports} />
+        )}
+      </div>
 
       {/* Edit Modal */}
       <Modal

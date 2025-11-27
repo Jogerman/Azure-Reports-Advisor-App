@@ -49,4 +49,26 @@ export const API_ENDPOINTS = {
   HEALTH: '/health/',
 } as const;
 
+/**
+ * Convert a relative media URL to an absolute URL
+ * @param path - Relative path from backend (e.g., "/media/logos/logo.png")
+ * @returns Full URL to access the media file
+ */
+export const getMediaUrl = (path: string | null | undefined): string | null => {
+  if (!path) return null;
+
+  // If it's already an absolute URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  // Get the base URL without /api/v1
+  const baseUrl = API_BASE_URL.replace('/api/v1', '');
+
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  return `${baseUrl}${normalizedPath}`;
+};
+
 export { API_BASE_URL };

@@ -44,7 +44,7 @@ const ReportList: React.FC<ReportListProps> = ({
   const queryParams: ReportListParams = {
     page: currentPage,
     page_size: pageSize,
-    client_id: clientId,
+    client: clientId,
     report_type: typeFilter !== 'all' ? typeFilter : undefined,
     status: statusFilter !== 'all' ? statusFilter : undefined,
     ordering: '-created_at',
